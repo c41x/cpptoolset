@@ -77,7 +77,7 @@ template<typename... P> class signal{
 		}
 		void fire(P... args){
 			for(auto &it:m_slots){
-				gassert(it,"call to invalid slot");
+				gassert(it.second,"call to invalid slot");
 				it.second(args...);
 			}
 		}

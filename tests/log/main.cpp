@@ -5,7 +5,7 @@ int main(int argc, char**argv){
 
 	log::init("c:\\log.txt");
 	logInfo("logger initialized");
-	logInfo("build info: "GE_BUILD_INFO);
+	logInfo("build info: " GE_BUILD_INFO);
 
 	// output something to log
 	for(int i=0;i<100;++i){std::stringstream ss;
