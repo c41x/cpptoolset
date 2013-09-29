@@ -53,6 +53,7 @@ bool containsSubstr(const string &s,const string &search){
 }
 
 void divideString(const string &s,char divChar,std::vector<string> &result){
+	result.reserve(std::count(s.begin(), s.end(), divChar) + 1);
 	size_t pos=0,bpos=0;
 	while((pos=s.find(divChar,bpos))!=s.npos){
 		result.push_back(s.substr(bpos,pos-bpos));

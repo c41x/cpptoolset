@@ -1,4 +1,4 @@
-#include "../../base/base.h"
+#include <base/base.h>
 
 void PrintStats(std::vector<double> timings) {
     double fastest = std::numeric_limits<double>::max();

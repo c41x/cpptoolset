@@ -1,4 +1,4 @@
-#include "../../base/base.h"
+#include <base/base.h>
 
 void printVec(const granite::base::vec4f &v,const std::string &name){
 	std::cout<<"\nvector-print: "<<name<<"("<<v.x<<","<<v.y<<","<<v.z<<","<<v.w<<")";

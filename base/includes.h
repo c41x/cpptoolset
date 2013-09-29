@@ -8,6 +8,7 @@
  * changelog:
  * - 22-10-2012: add
  * - 20-01-2013: added windows/linux headers for hires timers
+ * - 29-09-2013: changelog moved to GIT repository
  * 
  * todo:
  * - 22-10-2012: fix linux includes as soon as possible
@@ -29,7 +30,7 @@
 #include <cstdlib>
 #include <cstdarg>
 #include <string>
-#include <io.h>
+//#include <io.h>
 #include <iostream>
 #include <functional>
 #include <algorithm>
@@ -51,8 +52,6 @@
 #include <pmmintrin.h> //SSE 3
 
 //string as built-in type
-namespace granite{
 using std::string;
-}
 
 //~
