@@ -1,4 +1,4 @@
-#include "../../base/base.h"
+#include <base/base.h>
 
 int main(int argc, char**argv){
 	using namespace granite::base;
