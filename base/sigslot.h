@@ -9,6 +9,7 @@
  * - 15-12-2012: file created
  * - 19-12-2012: first working version
  * - 19-01-2013: added asserts
+ * - 29-09-2013: changelog moved to GIT repository
  * 
  * notes:
  * - there are no return type because it does not make any sense in this case
@@ -83,6 +84,29 @@ template<typename... P> class signal{
 		}
 		slotId operator+=(const tdSlot &f){return connect(f);}
 		void operator-=(slotId id){disconnect(id);}
+};
+
+
+template<typename... P> class delegate
+{
+	static const int argsCount=sizeof...(P);
+	typedef std::function<void(P...)> tdSlot;
+	tdSlot m_slot;
+public:
+	delegate(){}
+	~delegate(){}
+	void connect(const tdSlot &f){
+		m_slot=f;
+	}
+	template<typename MP,typename TP>void connect(MP mp,TP *tp){
+		detail::bind<MP,TP,tdSlot>::template get<argsCount>(mp,tp,m_slot);
+	}
+	void fire(P... args){
+		m_slot(args...);
+	}
+	void operator=(const tdSlot &f){
+		return connect(f);
+	}
 };
 
 }}

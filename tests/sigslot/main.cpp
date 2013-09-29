@@ -1,28 +1,5 @@
 #include <base/base.h>
 
-template<typename... P> class delegate
-{
-	static const int argsCount=sizeof...(P);
-	typedef std::function<void(P...)> tdSlot;
-	tdSlot m_slot;
-public:
-	delegate(){}
-	~delegate(){}
-	void connect(const tdSlot &f){
-		m_slot=f;
-	}
-	template<typename MP,typename TP>void connect(MP mp,TP *tp){
-		granite::base::detail::bind<MP,TP,tdSlot>::template get<argsCount>(mp,tp,m_slot);
-	}
-	void fire(P... args){
-		m_slot(args...);
-	}
-	void operator=(const tdSlot &f){
-		return connect(f);
-	}
-};
-
-
 class foo{
 	public:
 		void zzz(int &x){
