@@ -178,36 +178,41 @@ inline float radToDeg(float ix){
 	return GE_180D_PI*ix;
 }
 
-using std::swap;
-
 // non optimized float vectors
 class vec2f{
-	public:
-		GE_ALIGN_BEGIN(16) union{
-			struct{
-				float x,y;
-			};
-			float data[2];
-		}GE_ALIGN_END(16);
-		vec2f(const float _x,const float _y):x(_x),y(-y){}
-		vec2f(const float _v):x(_v),y(_v){}
-		vec2f(const float *p){x=*p;y=*(p+1);}
-		vec2f(){}
-		~vec2f();
-		vec2f &operator+=(const vec2f &v){x+=v.x;y+=v.y;return *this;}
-		vec2f &operator-=(const vec2f &v){x-=v.x;y-=v.y;return *this;}
-		vec2f &operator*=(const float v){x*=v;y*=v;return *this;}
-		vec2f &operator*=(const vec2f &r){x*=r.x;y*=r.y;return *this;}
-		vec2f &operator/=(const float v){x/=v;y/=v;return *this;}
-		vec2f &operator/=(const vec2f &r){x/=r.x;y/=r.y;return *this;}
-		vec2f &operator()(const float _x,const float _y){x=_x;y=_y;return *this;}
-		vec2f &operator-(){x=-x;y=-y;return *this;}
-		const vec2f operator+(const vec2f &r){return vec2f(x+r.x,y+r.y);}
-		const vec2f operator-(const vec2f &r){return vec2f(x-r.x,y-r.y);}
-		const vec2f operator*(const vec2f &r){return vec2f(x*r.x,y*r.y);}
-		const vec2f operator/(const vec2f &r){return vec2f(x/r.x,y/r.y);}
-		const vec2f operator*(const float v){return vec2f(x*v,y*v);}
-		const vec2f operator/(const float v){return vec2f(x/v,y/v);}
+public:
+	GE_ALIGN_BEGIN(16) union{
+		struct{
+			float x,y;
+		};
+		float data[2];
+	}GE_ALIGN_END(16);
+	vec2f(const float _x,const float _y):x(_x),y(-y){}
+	vec2f(const float _v):x(_v),y(_v){}
+	vec2f(const float *p){x=*p;y=*(p+1);}	
+	vec2f(){}
+	~vec2f();	
+	vec2f &operator+=(const vec2f &v){x+=v.x;y+=v.y;return *this;}
+	vec2f &operator-=(const vec2f &v){x-=v.x;y-=v.y;return *this;}
+	vec2f &operator*=(const float v){x*=v;y*=v;return *this;}
+	vec2f &operator*=(const vec2f &r){x*=r.x;y*=r.y;return *this;}
+	vec2f &operator/=(const float v){x/=v;y/=v;return *this;}
+	vec2f &operator/=(const vec2f &r){x/=r.x;y/=r.y;return *this;}
+	vec2f &operator()(const float _x,const float _y){x=_x;y=_y;return *this;}
+	vec2f &operator-(){x=-x;y=-y;return *this;}
+	vec2f operator+(const vec2f &r) const {return vec2f(x+r.x,y+r.y);}
+	vec2f operator-(const vec2f &r) const {return vec2f(x-r.x,y-r.y);}
+	vec2f operator*(const vec2f &r) const {return vec2f(x*r.x,y*r.y);}
+	vec2f operator/(const vec2f &r) const {return vec2f(x/r.x,y/r.y);}
+	vec2f operator*(const float v) const {return vec2f(x*v,y*v);}
+	vec2f operator/(const float v) const {return vec2f(x/v,y/v);}
+	
+	float cross(const vec2f &p) const { return x * p.y - y * p.x; }
+	float dot(const vec2f &p) const { return x * p.x + y * p.y; }
+	float distance(const vec2f &p) const { vec2f t = p - *this; return sqrt(t.x * t.x + t.y * t.y); }
+	float length() const { return sqrt(x * x + y * y); }
+	float angle(const vec2f &p) { return acosf(this->dot(p)); }
+	vec2f &normalize() { return *this /= length(); }
 };
 
 class vec3f{
@@ -233,12 +238,12 @@ class vec3f{
 		vec3f &operator()(const float _x,const float _y,const float _z){x=_x;y=_y;z=_z;return *this;}
 		vec3f &operator()(const vec2f &xy,const float _z){x=xy.x;y=xy.y;z=_z;return *this;}
 		vec3f &operator-(){x=-x;y=-y;z=-z;return *this;}
-		const vec3f operator+(const vec3f &r){return vec3f(x+r.x,y+r.y,z+r.z);}
-		const vec3f operator-(const vec3f &r){return vec3f(x-r.x,y-r.y,z-r.z);}
-		const vec3f operator*(const vec3f &r){return vec3f(x*r.x,y*r.y,z*r.z);}
-		const vec3f operator/(const vec3f &r){return vec3f(x/r.x,y/r.y,z/r.z);}
-		const vec3f operator*(const float v){return vec3f(x*v,y*v,z*v);}
-		const vec3f operator/(const float v){return vec3f(x/v,y/v,z/v);}
+		vec3f operator+(const vec3f &r) const {return vec3f(x+r.x,y+r.y,z+r.z);}
+		vec3f operator-(const vec3f &r) const {return vec3f(x-r.x,y-r.y,z-r.z);}
+		vec3f operator*(const vec3f &r) const {return vec3f(x*r.x,y*r.y,z*r.z);}
+		vec3f operator/(const vec3f &r) const {return vec3f(x/r.x,y/r.y,z/r.z);}
+		vec3f operator*(const float v) const {return vec3f(x*v,y*v,z*v);}
+		vec3f operator/(const float v) const {return vec3f(x/v,y/v,z/v);}
 };
 
 class vec4f{
@@ -268,12 +273,12 @@ class vec4f{
 		vec4f &operator()(const vec2f &xy,const float _z,const float _w){x=xy.x;y=xy.y;z=_z;w=_w;return *this;}
 		vec4f &operator()(const vec3f &xyz,const float _w){x=xyz.x;y=xyz.y;z=xyz.z;w=_w;return *this;}
 		vec4f &operator-(){x=-x;y=-y;z=-z;w=-w;return *this;}
-		const vec4f operator+(const vec4f &r){return vec4f(x+r.x,y+r.y,z+r.z,w+r.w);}
-		const vec4f operator-(const vec4f &r){return vec4f(x-r.x,y-r.y,z-r.z,w-r.w);}
-		const vec4f operator*(const vec4f &r){return vec4f(x*r.x,y*r.y,z*r.z,w*r.w);}
-		const vec4f operator/(const vec4f &r){return vec4f(x/r.x,y/r.y,z/r.z,w/r.w);}
-		const vec4f operator*(const float v){return vec4f(x*v,y*v,z*v,w*v);}
-		const vec4f operator/(const float v){return vec4f(x/v,y/v,z/v,w/v);}
+		vec4f operator+(const vec4f &r) const {return vec4f(x+r.x,y+r.y,z+r.z,w+r.w);}
+		vec4f operator-(const vec4f &r) const {return vec4f(x-r.x,y-r.y,z-r.z,w-r.w);}
+		vec4f operator*(const vec4f &r) const {return vec4f(x*r.x,y*r.y,z*r.z,w*r.w);}
+		vec4f operator/(const vec4f &r) const {return vec4f(x/r.x,y/r.y,z/r.z,w/r.w);}
+		vec4f operator*(const float v) const {return vec4f(x*v,y*v,z*v,w*v);}
+		vec4f operator/(const float v) const {return vec4f(x/v,y/v,z/v,w/v);}
 		void print(){
 			std::cout<<"("<<x<<","<<y<<","<<z<<","<<w<<")";
 		}
@@ -309,13 +314,13 @@ class vec{
 		vec &operator()(const float &x,const float &y,const float &z,const float &w=0.f){xmm=_mm_setr_ps(x,y,z,w); return *this;}
 		vec &operator()(const float &r){xmm=_mm_set1_ps(r); return *this;}
 		vec &operator-(){static const __m128 mask=_mm_castsi128_ps(_mm_set1_epi32(0x80000000)); xmm=_mm_xor_ps(xmm,mask); return *this;}
-		const vec operator+(const vec &r)const{return vec(_mm_add_ps(xmm,r.xmm));}
-		const vec operator-(const vec &r)const{return vec(_mm_sub_ps(xmm,r.xmm));}
-		const vec operator*(const vec &r)const{return vec(_mm_mul_ps(xmm,r.xmm));}
-		const vec operator/(const vec &r)const{return vec(_mm_div_ps(xmm,r.xmm));}
-		const vec operator*(const float r)const{return vec(_mm_mul_ps(vec(r).xmm,xmm));}
-		const vec operator/(const float r)const{return vec(_mm_div_ps(vec(r).xmm,xmm));}
-		const vec operator^(const vec &v)const{return _mm_sub_ps(_mm_mul_ps(_mm_shuffle_ps(xmm,xmm,_MM_SHUFFLE(3,0,2,1)),_mm_shuffle_ps(v.xmm,v.xmm,_MM_SHUFFLE(3,1,0,2))),_mm_mul_ps(_mm_shuffle_ps(xmm,xmm,_MM_SHUFFLE(3,1,0,2)),_mm_shuffle_ps(v.xmm,v.xmm,_MM_SHUFFLE(3,0,2,1))));}
+		vec operator+(const vec &r)const{return vec(_mm_add_ps(xmm,r.xmm));}
+		vec operator-(const vec &r)const{return vec(_mm_sub_ps(xmm,r.xmm));}
+		vec operator*(const vec &r)const{return vec(_mm_mul_ps(xmm,r.xmm));}
+		vec operator/(const vec &r)const{return vec(_mm_div_ps(xmm,r.xmm));}
+		vec operator*(const float r)const{return vec(_mm_mul_ps(vec(r).xmm,xmm));}
+		vec operator/(const float r)const{return vec(_mm_div_ps(vec(r).xmm,xmm));}
+		vec operator^(const vec &v)const{return _mm_sub_ps(_mm_mul_ps(_mm_shuffle_ps(xmm,xmm,_MM_SHUFFLE(3,0,2,1)),_mm_shuffle_ps(v.xmm,v.xmm,_MM_SHUFFLE(3,1,0,2))),_mm_mul_ps(_mm_shuffle_ps(xmm,xmm,_MM_SHUFFLE(3,1,0,2)),_mm_shuffle_ps(v.xmm,v.xmm,_MM_SHUFFLE(3,0,2,1))));}
 		operator vec3f()const{vec4f tr; _mm_store_ps(tr.data,xmm); return vec3f(tr.x,tr.y,tr.z);}
 		operator vec4f()const{vec4f r; _mm_store_ps(r.data,xmm); return r;}
 		operator __m128()const{return xmm;}
@@ -327,13 +332,56 @@ class vec{
 		vec &setLength(const float &len){xmm=_mm_mul_ps(_mm_set1_ps(len),_mm_div_ps(xmm,_mm_sqrt_ps(lengthSq()))); return *this;}
 		vec &setDirectionFrom(const vec &v){__m128 len=_mm_sqrt_ps(lengthSq()); xmm=_mm_mul_ps(len,_mm_div_ps(v.xmm,_mm_sqrt_ps(v.lengthSq()))); return *this;}
 		vec &normalize(){xmm=_mm_div_ps(xmm,_mm_sqrt_ps(lengthSq())); return *this;} // precise version, for fast version use mulps and rsqrt (rsqrt uses internal CPU lookup table to compute result)
-		const vec reflection(const vec &normal)const{float x=2.f*this->dot(normal); return (*this)-normal*x;}
-		const float angle(const vec &v)const{return acosf(this->dot(v));} // angle between vectors in radians (vectors must be normalized)
-		const float length()const{return _mm_cvtss_f32(_mm_sqrt_ps(lengthSq()));}
-		const vec lengthSq()const{__m128 m=_mm_mul_ps(xmm,xmm); __m128 t1=_mm_hadd_ps(m,m); return _mm_hadd_ps(t1,t1);}
-		const float distance(const vec &v)const{return (*this-v).length();}
-		const float dot(const vec &v)const{__m128 t=_mm_mul_ps(xmm,v.xmm); __m128 t2=_mm_hadd_ps(t,t); __m128 t3=_mm_hadd_ps(t2,t2); return _mm_cvtss_f32(t3);}
-		const vec cross(const vec &v)const{return *this^v;}
+		vec reflection(const vec &normal)const{float x=2.f*this->dot(normal); return (*this)-normal*x;}
+		float angle(const vec &v)const{return acosf(this->dot(v));} // angle between vectors in radians (vectors must be normalized)
+		float length()const{return _mm_cvtss_f32(_mm_sqrt_ps(lengthSq()));}
+		vec lengthSq()const{__m128 m=_mm_mul_ps(xmm,xmm); __m128 t1=_mm_hadd_ps(m,m); return _mm_hadd_ps(t1,t1);}
+		float distance(const vec &v)const{return (*this-v).length();}
+		float dot(const vec &v)const{__m128 t=_mm_mul_ps(xmm,v.xmm); __m128 t2=_mm_hadd_ps(t,t); __m128 t3=_mm_hadd_ps(t2,t2); return _mm_cvtss_f32(t3);}
+		vec cross(const vec &v)const{return *this^v;}
+};
+
+class line2d{
+public:
+	vec2f a, b;
+
+	// const/dest
+	line2d(){}
+	~line2d(){}
+	line2d(const vec2f &_a, const vec2f &_b) : a(_a), b(_b){}
+	line2d(float ax, float ay, float bx, float by) : a(ax, ay), b(bx, by){}
+
+	// operators
+	line2d operator+(const line2d &r){ return line2d(r.a + a, r.b + b); }
+	line2d &operator+=(const line2d &r){ a += r.a; b += r.b; return *this; }
+	line2d operator-(const line2d &r){ return line2d(r.a - a, r.b - b); }
+	line2d &operator-=(const line2d &r){ a -= r.a; b -= r.b; return *this; }
+	line2d operator+(const vec2f &p){ return line2d(p + a, p + b); }
+	line2d &operator+=(const vec2f &p){ a += p; b += p; return *this; }
+	line2d operator-(const vec2f &p){ return line2d(p - a, p - b); }
+	line2d &operator-=(const vec2f &p){ a -= p; b -= p; return *this; }
+	line2d operator*(float s){ return line2d(a * s, b * s); }
+	line2d &operator*=(float s){ a *= s; b *= s; return *this; }
+	line2d operator/(float s){ return line2d(a / s, b / s); }
+	line2d &operator/=(float s){ a /= s; b /= s; return *this; }
+	line2d &operator()(const vec2f &_a, const vec2f &_b){ a = _a; b = _b; return *this; }
+	line2d &operator()(float ax, float ay, float bx, float by){ a(ax, ay); b(bx, by); return *this; }
+
+	// fxs
+	float pointOrientation(const vec2f &p) const { return (b - a).cross(p - a); } //!< r > 0 -> left, r > 0 -> right, r == 0 point on line, r -> length
+	bool pointOnLine(const vec2f &p) const { return equal(0.f, pointOrientation(p)) && (p.distance(b - a) <= (b - a).length()); }
+	bool isParallel(const line2d &l) const { return equal(0.f, (b - a).dot(l.getVector())); }
+	bool isPerpendicular(const line2d &l) const { return equal(0.f, (b - a).cross(l.getVector())); }
+	float length() const { return a.distance(b); }
+	float angle(const line2d &l) const { return getVector().normalize().angle(l.getVector()); }
+
+	// get/set
+	vec2f getNormal() const { return vec2f(b.y - a.y, -(b.x - a.x)); }
+	vec2f getVector() const { return b - a; }
+	vec2f getStart() const { return a; }
+	vec2f getEnd() const { return b; }
+	line2d &normalize() { b = a + (b - a).normalize(); return *this; }
+	line2d &setLength(float l) { b = a + (b - a).normalize() * l; return *this; }
 };
 
 }}
