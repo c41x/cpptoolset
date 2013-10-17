@@ -32,7 +32,8 @@
 
 #include "includes.h"
 
-namespace granite { namespace base {
+namespace granite {
+namespace base {
 
 // some consts
 const float GE_E=2.71828182845904523536f; // e
@@ -179,7 +180,7 @@ inline float radToDeg(float ix){
 }
 
 // non optimized float vectors
-class vec2f{
+class vec2f {
 public:
 	GE_ALIGN_BEGIN(16) union{
 		struct{
@@ -215,7 +216,7 @@ public:
 	vec2f &normalize() { return *this /= length(); }
 };
 
-class vec3f{
+class vec3f {
 	public:
 		GE_ALIGN_BEGIN(16) union{
 			struct{
@@ -246,7 +247,7 @@ class vec3f{
 		vec3f operator/(const float v) const {return vec3f(x/v,y/v,z/v);}
 };
 
-class vec4f{
+class vec4f {
 	public:
 		GE_ALIGN_BEGIN(16) union{
 			struct{
@@ -285,7 +286,7 @@ class vec4f{
 };
 
 // SSE optimized vector
-class vec{
+class vec {
 		__m128 xmm;
 	public:
 		// constructors/destructors
@@ -341,7 +342,7 @@ class vec{
 		vec cross(const vec &v)const{return *this^v;}
 };
 
-class line2d{
+class line2d {
 public:
 	vec2f a, b;
 
@@ -384,8 +385,34 @@ public:
 	line2d &setLength(float l) { b = a + (b - a).normalize() * l; return *this; }
 };
 
-class circle2d{
+class circle2d {
 public:
+	vec2f o;
+	float r;
+
+	// const / dest
+	circle2d(){}
+	circle2d(const vec2f &mid, float radius) : o(mid), r(radius) {}
+	circle2d(float x, float y, float radius) : o(x, y), r(radius) {}
+	~circle2d(){}
+
+	// operators
+	circle2d &operator+=(const vec2f &p) { o += p; return *this; }
+	circle2d operator+(const vec2f &p) const { return circle2d(o + p, r); }
+	circle2d &operator()(const vec2f &mid, float radius) { o = mid; r = radius; return *this; }
+	circle2d &operator()(float x, float y, float radius) { o(x, y); r = radius; return *this; }
+
+	// fxs
+	bool isPointInside(const vec2f &p) const { return p.distance(o) < r; }
+	bool intersects(const circle2d &c) const { return o.distance(c.o) < (r + c.r); }
+	float getArea() const { return r * r * GE_PI; }
+	float getPerimeter() const { return r * GE_2PI; }
+	vec2f getPointOnEdge(float rad) const { return vec2f(r * cosf(rad) + o.y, r * sinf(rad) + o.y); }
+};
+
+class triangle2d {
+public:
+	vec2f a, b, c;
 };
 
 }}
