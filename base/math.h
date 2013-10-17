@@ -32,7 +32,7 @@
 
 #include "includes.h"
 
-namespace granite{namespace base{
+namespace granite { namespace base {
 
 // some consts
 const float GE_E=2.71828182845904523536f; // e
@@ -382,6 +382,10 @@ public:
 	vec2f getEnd() const { return b; }
 	line2d &normalize() { b = a + (b - a).normalize(); return *this; }
 	line2d &setLength(float l) { b = a + (b - a).normalize() * l; return *this; }
+};
+
+class circle2d{
+public:
 };
 
 }}
