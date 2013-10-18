@@ -466,6 +466,31 @@ public:
 	rect2d getUnion(const rect2d &r) const { return rect2d(std::max(left, r.left), std::min(right, r.right), std::max(top, r.top), std::min(bottom, r.bottom)); }
 };
 
+class polygon2d {
+public:
+	std::vector<vec2f> points;
+
+	// const / dest
+	polygon2d(){}
+	~polygon2d(){}
+
+	// operators
+	polygon2d &operator+=(const vec2f &t);
+	polygon2d operator+(const vec2f &t) const;
+	
+	//fxs
+	float getArea() const;
+	float getPerimeter() const;
+	vec2f getCenter() const;
+	float getMaxx() const;
+	float getMaxy() const;
+	float getMinx() const;
+	float getMiny() const;
+	rect2d getBoundingRect() const;
+	void deleteDuplicates();
+	bool isPointInside(const vec2f &p) const;
+};
+
 }}
 
 //~

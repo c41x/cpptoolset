@@ -1,4 +1,5 @@
 #include "math.h"
+#include <numeric>
 
 namespace granite{
 namespace base{
@@ -91,6 +92,97 @@ bool triangle2d::intersects(const triangle2d &t) const{
 		|| t.isPointInside(a)
 		|| t.isPointInside(b)
 		|| t.isPointInside(c);
+}
+
+polygon2d &polygon2d::operator+=(const vec2f &t) {
+	for(auto &p : points)
+		p += t;
+	return *this;
+}
+
+polygon2d polygon2d::operator+(const vec2f &t) const {
+	polygon2d ret = *this;
+	return ret += t;
+}
+	
+float polygon2d::getArea() const {
+	if(points.size() < 3)
+		return 0.f;
+
+	float area = 0.f;
+	auto ia = points.cbegin(), ib = ia + 1, ic = ia + 2;
+
+	for(; ic != points.cend(); ++ic, ++ib){
+		triangle2d tri(*ia, *ib, *ic);
+		area += tri.getArea();
+	}
+
+	return area;
+}
+
+float polygon2d::getPerimeter() const {
+	if(points.size() < 2)
+		return 0.f;
+
+	float per = 0.f;
+	auto prv = points.cbegin();
+	
+	for(auto curr = points.cbegin() + 1; curr != points.cend(); ++curr){
+		per += prv->distance(*curr);
+		prv = curr;
+	}
+	per += points.front().distance(points.back());
+	
+	return per;
+}
+
+vec2f polygon2d::getCenter() const {
+	return std::accumulate(points.cbegin(), points.cend(), vec2f(0.f, 0.f)) / float(points.size());
+}
+
+float polygon2d::getMaxx() const {
+	return std::max_element(points.cbegin(), points.cend(), [](const vec2f &a, const vec2f &b) -> bool { return a.x > b.x; })->x;
+}
+
+float polygon2d::getMaxy() const {
+	return std::max_element(points.cbegin(), points.cend(), [](const vec2f &a, const vec2f &b) -> bool { return a.y > b.y; })->y;
+}
+
+float polygon2d::getMinx() const {
+	return std::min_element(points.cbegin(), points.cend(), [](const vec2f &a, const vec2f &b) -> bool { return a.x < b.x; })->x;
+}
+
+float polygon2d::getMiny() const {
+	return std::max_element(points.cbegin(), points.cend(), [](const vec2f &a, const vec2f &b) -> bool { return a.y < b.y; })->y;
+}
+
+rect2d polygon2d::getBoundingRect() const {
+	auto mmx = std::minmax_element(points.cbegin(), points.cend(), [](const vec2f &a, const vec2f &b) -> bool { return a.x < b.x; });
+	auto mmy = std::minmax_element(points.cbegin(), points.cend(), [](const vec2f &a, const vec2f &b) -> bool { return a.y < b.y; });
+	return rect2d(mmx.first->x, mmx.second->x, mmy.first->y, mmy.second->y);
+}
+
+void polygon2d::deleteDuplicates() {
+	std::unique(points.begin(), points.end(), [](const vec2f &a, const vec2f &b) -> bool { return equal(a.x, b.x) && equal(a.y, b.y); });
+}
+
+bool polygon2d::isPointInside(const vec2f &p) const {
+	if(points.size() < 2)
+		return equal(points.front().x, p.x) && equal(points.front().y, p.y);
+
+	int intersections = 0;
+	auto prv = points.cbegin(), curr = prv + 1;
+	
+	for(; curr != points.cend(); ++curr){
+		if(rayUpIntersectsLine(p, *curr, *prv))
+			++intersections;
+		prv = curr;
+	}
+
+	if(rayUpIntersectsLine(p, points.front(), points.back()))
+		++intersections;
+
+	return 0 != intersections % 2;
 }
 
 }}
