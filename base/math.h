@@ -413,6 +413,26 @@ public:
 class triangle2d {
 public:
 	vec2f a, b, c;
+
+	// const / dest
+	triangle2d(){}
+	triangle2d(const vec2f &_a, const vec2f &_b, const vec2f &_c) : a(_a), b(_b), c(_c){}
+	~triangle2d(){}
+	
+	// opearators
+	triangle2d &operator()(const vec2f &_a, const vec2f &_b, const vec2f &_c) { a = _a; b = _b; c = _c; return *this; }
+	triangle2d &operator+=(const vec2f &t) { a += t; b += t; c += t; return *this; }
+	triangle2d operator+(const vec2f &t) const { return triangle2d(a + t, b + t, c + t); }
+
+	// fxs
+	triangle2d &scale(const vec2f &p, float s) { return *this; }
+	vec2f getMiddle() const { return vec2f(a.x + b.x + c.x, a.y + b.y + c.y) / 3.f; }
+	float getArea() const { return abs((c - a).cross(b - a) * 5.f); }
+	float getPerimeter() const { return (b - a).length() + (c - a).length() + (c - b).length(); }
+	circle2d getInscribedCircle() const;
+	circle2d getCircumscribedCircle() const;
+	bool isPointInside(const vec2f &p) const;
+	bool intersects(const triangle2d &t) const;
 };
 
 }}
