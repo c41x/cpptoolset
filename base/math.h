@@ -435,6 +435,37 @@ public:
 	bool intersects(const triangle2d &t) const;
 };
 
+class rect2d {
+public:
+	float left, right, top, bottom;
+
+	// const / dest
+	rect2d(){}
+	rect2d(float l, float r, float t, float b) : left(l), right(r), top(t), bottom(b) {}
+	rect2d(const vec2f &lt, const vec2f &rb) : left(lt.x), right(rb.x), top(lt.y), bottom(rb.y) {}
+	~rect2d(){}
+
+	// operators
+	rect2d &operator()(float l, float r, float t, float b) { left = l; right = r; top = t; bottom = b; return *this; }
+	rect2d &operator()(const vec2f &lt, const vec2f &rb) { left = lt.x; right = rb.x; top = lt.y; bottom = rb.y; return *this; }
+	rect2d &operator+=(const vec2f &t) { left += t.x; right += t.x; top += t.y; bottom += t.y; return *this; }
+	rect2d operator+(const vec2f &t) const { return rect2d(left + t.x, right + t.x, top + t.y, bottom + t.y); }
+
+	// fxs
+	float getArea() const { return getWidth() * getHeight(); }
+	float getPerimeter() const { return 2.f * getWidth() + 2.f * getHeight(); }
+	float getDiagonal() const { return sqrtf(getWidth() * getWidth() + getHeight() * getHeight()); }
+	float getWidth() const { return abs(right - left); }
+	float getHeight() const { return abs(top - bottom); }
+	vec2f getCenter() const { return vec2f((left + right) / 2.f, (top + bottom) / 2.f); }
+	vec2f getDimmensions() const { return vec2f(getWidth(), getHeight()); }
+	void repair() { if(left > right) std::swap(left, right); if(bottom > top) std::swap(bottom, top); }
+	bool isPointInside(const vec2f &p) const { return p.x <= right && p.x >= left && p.y >= bottom && p.y <= top; }
+	bool intersects(const rect2d &r) const { return right > r.left && left < r.right && bottom < r.top && top > r.bottom; }
+	bool includes(const rect2d &r) const { return r.right < right && r.left > left && r.top < top && r.bottom > bottom; }
+	rect2d getUnion(const rect2d &r) const { return rect2d(std::max(left, r.left), std::min(right, r.right), std::max(top, r.top), std::min(bottom, r.bottom)); }
+};
+
 }}
 
 //~
