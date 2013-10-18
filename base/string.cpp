@@ -76,7 +76,7 @@ float matchString(const string &a,const string &b){ // check string similarity i
 	char const *pb=b.c_str();
 	uint32 lena=a.size();
 	uint32 lenb=b.size();
-	uint32 len=max(lena,lenb);
+	uint32 len=std::max(lena,lenb);
 	float ret=0.f;
 	while((pa<(a.c_str()+lena))&&(pb<(b.c_str()+lenb))){
 		if(*pa==*pb){

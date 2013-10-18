@@ -62,14 +62,6 @@ inline bool equal(double a,double b,double ep=1e-13){
 	return std::abs(a-b)<=ep;
 }
 
-template<typename T>inline const T &max(const T &a,const T &b){
-	return a>b?a:b;
-}
-
-template<typename T>inline const T &min(const T &a,const T &b){
-	return a>b?b:a;
-}
-
 template<typename T>inline T clip(const T &imin,const T &ix,const T &imax){
 	if(ix<imin)
 		return imin;
@@ -146,29 +138,6 @@ template<typename T>T greaterPow2(T ix){
 	while(ix>>=1)
 		w<<=1;
 	return w;
-}
-
-template<typename T>T min(const T &iA,const T &iB,const T &iC)
-{
-	if(iA<iB){
-		if(iA<iC)
-			return iA;
-		else return iC;
-	}
-	else if(iB<iC)
-		return iB;
-	return iC;
-}
-
-template<typename T>T max(const T &iA,const T &iB,const T &iC){
-	if(iA>iB){
-		if(iA>iC)
-			return iA;
-		else return iC;
-	}
-	else if(iB>iC)
-		return iB;
-	return iC;
 }
 
 inline float degToRad(float ix){
@@ -488,6 +457,30 @@ public:
 	float getMiny() const;
 	rect2d getBoundingRect() const;
 	void deleteDuplicates();
+	bool isPointInside(const vec2f &p) const;
+};
+
+class quad2d {
+public:
+	vec2f a, b, c, d;
+
+	// const / dest
+	quad2d(){}
+	quad2d(const vec2f &_a, const vec2f &_b, const vec2f &_c, const vec2f &_d) : a(_a), b(_b), c(_c), d(_d) {}
+	quad2d(float _l, float _r, float _t, float _b) : a(_l, _t), b(_l, _b), c(_r, _b), d(_r, _t) {}
+	~quad2d(){}
+
+	// operators
+	quad2d &operator()(const vec2f &_a, const vec2f &_b, const vec2f &_c, const vec2f &_d) { a = _a; b = _b; c = _c; d = _d; return *this; }
+	quad2d &operator()(float _l, float _r, float _t, float _b) { a(_l, _t); b(_l, _b); c(_r, _b); d(_r, _t); return *this; }
+	quad2d &operator+=(const vec2f &t) { a += t; b += t; c += t; d += t; return *this; }
+	quad2d operator+(const vec2f &t) { return quad2d(a + t, b + t, c + t, d + t); }
+
+	// fxs
+	float getArea() const;
+	float getPerimeter() const;
+	vec2f getCenter() const;
+	rect2d getBoundingRect() const;
 	bool isPointInside(const vec2f &p) const;
 };
 

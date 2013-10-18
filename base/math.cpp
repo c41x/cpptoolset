@@ -185,4 +185,34 @@ bool polygon2d::isPointInside(const vec2f &p) const {
 	return 0 != intersections % 2;
 }
 
+float quad2d::getArea() const {
+	return triangle2d(a, b, c).getArea() + triangle2d(a, c, d).getArea();
+}
+
+float quad2d::getPerimeter() const {
+	return a.distance(b) + b.distance(c) + c.distance(d) + d.distance(a);
+}
+
+vec2f quad2d::getCenter() const {
+	return (a + b + c + d) / 4.f;
+}
+
+rect2d quad2d::getBoundingRect() const {
+	return rect2d(std::min({a.x, b.x, c.x, d.x}), std::max({a.x, b.x, c.x, d.x}), std::min({a.y, b.y, c.y, d.y}), std::max({a.y, b.y, c.y, d.y}));
+	
+}
+
+bool quad2d::isPointInside(const vec2f &p) const {
+	int intersections = 0;
+	if(rayUpIntersectsLine(p, a, b))
+		++intersections;
+	if(rayUpIntersectsLine(p, b, c))
+		++intersections;
+	if(rayUpIntersectsLine(p, c, d))
+		++intersections;
+	if(rayUpIntersectsLine(p, d, a))
+		++intersections;
+	return 0 != intersections % 2;
+}
+
 }}
