@@ -215,4 +215,25 @@ bool quad2d::isPointInside(const vec2f &p) const {
 	return 0 != intersections % 2;
 }
 
+vec line::closestPointClamp(const vec &v) const {
+	vec ab = b - a;
+	float t = vec(v - a).dot(ab) / ab.dot(ab); // projekcja d(t) = a + t * (b - a)
+	t = clip(0.f, t, 1.f); // przyciecie do granic odcinka
+	return a + ab * t;
+}
+
+vec line::closestPoint(const vec &v) const {
+	vec ab = b - a;
+	float t = vec(v - a).dot(ab) / ab.dot(ab);
+	return a + ab * t;
+}
+
+float line::distance(const vec &p) const {
+	return closestPoint(p).distance(p);
+}
+
+float line::length() const {
+	return a.distance(b);
+}
+
 }}

@@ -484,6 +484,27 @@ public:
 	bool isPointInside(const vec2f &p) const;
 };
 
+class line {
+public:
+	vec a, b;
+
+	// const / dest
+	line(){}
+	line(const vec &_a, const vec &_b) : a(_a), b(_b) {}
+	line(float ax, float ay, float az, float bx, float by, float bz) : a(ax, ay, az), b(bx, by, bz) {}
+	~line(){}
+
+	// ops
+	line &operator()(const vec &_a, const vec &_b) { a = _a; b = _b; return *this; }
+	line &operator()(float ax, float ay, float az, float bx, float by, float bz) { a(ax, ay, az); b(bx, by, bz); return *this; }
+	
+	// fxs
+	vec closestPointClamp(const vec &v) const;
+	vec closestPoint(const vec &v) const;
+	float distance(const vec &p) const;
+	float length() const;
+};
+
 }}
 
 //~
