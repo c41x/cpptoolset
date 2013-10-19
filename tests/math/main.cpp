@@ -68,6 +68,16 @@ int main(int argc, char**argv){
 	vec4f leTest(5,10,15,20);
 	vec leTestSSE(leTest);
 	printVec(leTestSSE, "little-endiannes test:");
+
+	// test aabbox
+	aabbox bbox(vec(1.f, 1.f, 1.f), vec(-1.f, -1.f, -1.f));
+	bbox.repair();
+	bool ta = bbox.contains(vec(0.f, 0.f, 0.f));
+	bool tb = bbox.contains(vec(2.f, 0.f, 0.f));
+	std::cout << "\ncontains: a = " << (ta ? "true" : "false") << " contains b = " << (tb ? "true" : "false");
+
+	std::cout << "\nfinished";
+	std::cout << std::flush;
 	
 	return 0;
 }

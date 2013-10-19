@@ -236,4 +236,39 @@ float line::length() const {
 	return a.distance(b);
 }
 
+void aabbox::getEdges(vec3f *o) const {
+	// TODO: change vec3f to vec (SSE)
+	vec3f pma = pmax, pmi = pmin;
+	o[0] = pma;
+	o[1](pma.x,pmi.y,pma.z);
+	o[2](pmi.x,pmi.y,pma.z);
+	o[3](pmi.x,pma.y,pma.z);
+	o[4](pma.x,pma.y,pmi.z);
+	o[5](pma.x,pmi.y,pmi.z);
+	o[6] = pmi;
+	o[7](pmi.x,pma.y,pmi.z);
+}
+
+bool aabbox::contains(const vec &p) const {
+	__m128 le = _mm_cmple_ps(pmin, p); // test if p >= min
+	__m128 ge = _mm_cmple_ps(p, pmax); // p <= max
+	__m128 t = _mm_and_ps(le, ge); // combine results
+	t = _mm_shuffle_ps(t, t, _MM_SHUFFLE(2, 2, 1, 0));
+	return 0xffff == _mm_movemask_epi8(_mm_castps_si128(t));
+}
+
+bool aabbox::contains(const aabbox &box) const {
+	__m128 le = _mm_cmple_ps(pmin, box.pmin); // box.min >= min
+	__m128 ge = _mm_cmpge_ps(pmax, box.pmax); // box.max <= max
+	__m128 t = _mm_and_ps(le, ge);
+	t = _mm_shuffle_ps(t, t, _MM_SHUFFLE(2, 2, 1, 0));
+	return 0xffff == _mm_movemask_epi8(_mm_castps_si128(t));
+}
+
+bool aabbox::isValid() const {
+	__m128 test = _mm_cmple_ps(pmin, pmax);
+	test = _mm_shuffle_ps(test, test, _MM_SHUFFLE(2, 2, 1, 0));
+	return 0xffff == _mm_movemask_epi8(_mm_castps_si128(test));
+}
+
 }}

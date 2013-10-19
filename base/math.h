@@ -161,7 +161,7 @@ public:
 	vec2f(const float _v):x(_v),y(_v){}
 	vec2f(const float *p){x=*p;y=*(p+1);}	
 	vec2f(){}
-	~vec2f();	
+	~vec2f(){}
 	vec2f &operator+=(const vec2f &v){x+=v.x;y+=v.y;return *this;}
 	vec2f &operator-=(const vec2f &v){x-=v.x;y-=v.y;return *this;}
 	vec2f &operator*=(const float v){x*=v;y*=v;return *this;}
@@ -488,21 +488,67 @@ class line {
 public:
 	vec a, b;
 
-	// const / dest
 	line(){}
 	line(const vec &_a, const vec &_b) : a(_a), b(_b) {}
 	line(float ax, float ay, float az, float bx, float by, float bz) : a(ax, ay, az), b(bx, by, bz) {}
 	~line(){}
 
-	// ops
 	line &operator()(const vec &_a, const vec &_b) { a = _a; b = _b; return *this; }
 	line &operator()(float ax, float ay, float az, float bx, float by, float bz) { a(ax, ay, az); b(bx, by, bz); return *this; }
 	
-	// fxs
 	vec closestPointClamp(const vec &v) const;
 	vec closestPoint(const vec &v) const;
 	float distance(const vec &p) const;
 	float length() const;
+};
+
+class triangle {
+public:
+	vec a, b, c;
+
+	triangle(){}
+	triangle(const vec &_a, const vec &_b, const vec &_c) : a(_a), b(_b), c(_c) {}
+	~triangle(){}
+
+	triangle &operator()(const vec &_a, const vec &_b, const vec &_c) { a = _a; b = _b; c = _c; return *this; }
+};
+
+class sphere {
+public:
+	vec cr; // xyz - center, w - radius
+
+	sphere(){}
+	sphere(const vec &_cr) : cr(_cr) {}
+	//sphere(const vec &center, float radius) { cr = center; cr.w = radius; }
+	~sphere(){}
+};
+
+class aabbox {
+public:
+	vec pmin, pmax;
+
+	aabbox(){}
+	aabbox(const vec &pmi, const vec &pma) : pmin(pmi), pmax(pma) {}
+	aabbox(const sphere &sp) { this->operator()(sp); }
+	~aabbox(){}
+
+	aabbox &operator()(const vec &pmi, const vec &pma) { pmin = pmi; pmax = pma; return *this; }
+	aabbox &operator()(const sphere &sp) { __m128 r = _mm_shuffle_ps(sp.cr, sp.cr, _MM_SHUFFLE(3, 3, 3, 3)); pmin = sp.cr - r; pmax = sp.cr + r; return *this; }
+	
+	vec getCenter() const { return (pmax + pmin) / 2.f; }
+	void getEdges(vec3f *o) const; // gets 8 edges
+	float getDiagonal() const { return pmin.distance(pmax); }
+	vec getDimmensions() const { return pmax - pmin; }
+	bool contains(const vec &p) const;
+	bool contains(const sphere &s) const { return contains(aabbox(s)); }
+	bool contains(const aabbox &box) const;
+	bool isValid() const;
+
+	aabbox &zero() { pmin = pmax = 0.f; return *this; }
+	aabbox &extend(const vec &p) { pmin = _mm_min_ps(pmin, p); pmax = _mm_max_ps(pmax, p); return *this; }
+	aabbox &extend(const aabbox &box) { pmin = _mm_min_ps(pmin, box.pmin); pmax = _mm_max_ps(pmax, box.pmax); return *this; }
+	aabbox &extend(const sphere &sp) { return extend(aabbox(sp)); }
+	aabbox &repair() { __m128 t = pmin; pmin = _mm_min_ps(pmin, pmax); pmax = _mm_max_ps(t, pmax); return *this; }
 };
 
 }}
