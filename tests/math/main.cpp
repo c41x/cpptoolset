@@ -70,11 +70,32 @@ int main(int argc, char**argv){
 	printVec(leTestSSE, "little-endiannes test:");
 
 	// test aabbox
-	aabbox bbox(vec(1.f, 1.f, 1.f), vec(-1.f, -1.f, -1.f));
+	aabbox bbox(vec(1.f, 2.f, 3.f), vec(-1.f, -2.f, -3.f));
 	bbox.repair();
 	bool ta = bbox.contains(vec(0.f, 0.f, 0.f));
 	bool tb = bbox.contains(vec(2.f, 0.f, 0.f));
 	std::cout << "\ncontains: a = " << (ta ? "true" : "false") << " contains b = " << (tb ? "true" : "false");
+
+	std::cout << "\nedges: ";
+	vec edges[8];
+	bbox.getEdges(edges);
+	for(vec &e : edges){
+		printVec(e, "");
+	}
+
+	// test sphere
+	std::cout << std::boolalpha;
+	sphere sp(vec(0.f, 1.f, 0.1f, 4.f));
+	printVec(sp.cr, "sphere data: ");
+	printVec(sp.getCenter(), "sphere center: ");
+	std::cout << "\nradius: " << sp.getRadius();
+	std::cout << "\nis valid? " << sp.isValid();
+	std::cout << "\ncontains (0, 0, 0) " << sp.contains(vec(0.f, 0.f, 0.f));
+	std::cout << "\ncontains (0, 1, 0) " << sp.contains(vec(0.f, 1.f, 0.f));
+	std::cout << "\ncontains (1, 1, 1) " << sp.contains(vec(1.f, 1.f, 1.f));
+	std::cout << "\ncontains (0, 5, 0) " << sp.contains(vec(0.f, 5.f, 0.f));
+	std::cout << "\ncontains (0, 5.1, 0) " << sp.contains(vec(0.f, 5.1f, 0.f));
+	printVec(sp.expand(vec(10.f, 10.f, 10.f)).cr, "expand sphere to contain (10, 10, 10): ");
 
 	std::cout << "\nfinished";
 	std::cout << std::flush;

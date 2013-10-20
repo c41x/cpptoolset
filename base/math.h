@@ -32,6 +32,9 @@
 
 #include "includes.h"
 
+// reverse shuffle
+#define SSE_RSHUFFLE(VX, VY, VZ, VW) _MM_SHUFFLE(VW, VZ, VY, VX)
+
 namespace granite {
 namespace base {
 
@@ -256,59 +259,65 @@ class vec4f {
 
 // SSE optimized vector
 class vec {
-		__m128 xmm;
-	public:
-		// constructors/destructors
-		vec(){}
-		vec(const vec &copy){xmm=copy.xmm;}
-		vec(const float &x,const float &y,const float &z,const float &w=0.f){xmm=_mm_setr_ps(x,y,z,w);}
-		vec(const float &a){xmm=_mm_set1_ps(a);}
-		vec(const float *v){xmm=_mm_loadu_ps(v);}
-		vec(const vec3f &v){xmm=_mm_setr_ps(v.x,v.y,v.z,0.f);}
-		vec(const vec4f &v){xmm=_mm_load_ps(v.data);}
-		vec(const __m128 &_xmm){xmm=_xmm;}
-		~vec(){}
+	__m128 xmm;
+public:
+	// constructors/destructors
+	vec(){}
+	vec(const vec &copy){xmm=copy.xmm;}
+	vec(const float &x,const float &y,const float &z,const float &w=0.f){xmm=_mm_setr_ps(x,y,z,w);}
+	vec(const float &a){xmm=_mm_set1_ps(a);}
+	vec(const float *v){xmm=_mm_loadu_ps(v);}
+	vec(const vec3f &v){xmm=_mm_setr_ps(v.x,v.y,v.z,0.f);}
+	vec(const vec4f &v){xmm=_mm_load_ps(v.data);}
+	vec(const __m128 &_xmm){xmm=_xmm;}
+	~vec(){}
 
-		// operators
-		vec &operator=(const vec &copy){xmm=copy.xmm; return *this;}
-		vec &operator=(const float &a){xmm=_mm_set1_ps(a); return *this;}
-		vec &operator=(const float *v){xmm=_mm_loadu_ps(v); return *this;}
-		vec &operator=(const vec3f &v){xmm=_mm_setr_ps(v.x,v.y,v.z,0.f); return *this;}
-		vec &operator=(const vec4f &v){xmm=_mm_load_ps(v.data); return *this;}
-		vec &operator+=(const vec &r){xmm=_mm_add_ps(xmm,r.xmm); return *this;}
-		vec &operator-=(const vec &r){xmm=_mm_sub_ps(xmm,r.xmm); return *this;}
-		vec &operator*=(const float &r){xmm=_mm_mul_ps(vec(r).xmm,xmm); return *this;}
-		vec &operator/=(const float &r){xmm=_mm_div_ps(vec(r).xmm,xmm); return *this;}
-		vec &operator*=(const vec &r){xmm=_mm_mul_ps(r.xmm,xmm); return *this;}
-		vec &operator/=(const vec &r){xmm=_mm_div_ps(r.xmm,xmm); return *this;}
-		vec &operator()(const float &x,const float &y,const float &z,const float &w=0.f){xmm=_mm_setr_ps(x,y,z,w); return *this;}
-		vec &operator()(const float &r){xmm=_mm_set1_ps(r); return *this;}
-		vec &operator-(){static const __m128 mask=_mm_castsi128_ps(_mm_set1_epi32(0x80000000)); xmm=_mm_xor_ps(xmm,mask); return *this;}
-		vec operator+(const vec &r)const{return vec(_mm_add_ps(xmm,r.xmm));}
-		vec operator-(const vec &r)const{return vec(_mm_sub_ps(xmm,r.xmm));}
-		vec operator*(const vec &r)const{return vec(_mm_mul_ps(xmm,r.xmm));}
-		vec operator/(const vec &r)const{return vec(_mm_div_ps(xmm,r.xmm));}
-		vec operator*(const float r)const{return vec(_mm_mul_ps(vec(r).xmm,xmm));}
-		vec operator/(const float r)const{return vec(_mm_div_ps(vec(r).xmm,xmm));}
-		vec operator^(const vec &v)const{return _mm_sub_ps(_mm_mul_ps(_mm_shuffle_ps(xmm,xmm,_MM_SHUFFLE(3,0,2,1)),_mm_shuffle_ps(v.xmm,v.xmm,_MM_SHUFFLE(3,1,0,2))),_mm_mul_ps(_mm_shuffle_ps(xmm,xmm,_MM_SHUFFLE(3,1,0,2)),_mm_shuffle_ps(v.xmm,v.xmm,_MM_SHUFFLE(3,0,2,1))));}
-		operator vec3f()const{vec4f tr; _mm_store_ps(tr.data,xmm); return vec3f(tr.x,tr.y,tr.z);}
-		operator vec4f()const{vec4f r; _mm_store_ps(r.data,xmm); return r;}
-		operator __m128()const{return xmm;}
+	// operators
+	vec &operator=(const vec &copy){xmm=copy.xmm; return *this;}
+	vec &operator=(const float &a){xmm=_mm_set1_ps(a); return *this;}
+	vec &operator=(const float *v){xmm=_mm_loadu_ps(v); return *this;}
+	vec &operator=(const vec3f &v){xmm=_mm_setr_ps(v.x,v.y,v.z,0.f); return *this;}
+	vec &operator=(const vec4f &v){xmm=_mm_load_ps(v.data); return *this;}
+	vec &operator+=(const vec &r){xmm=_mm_add_ps(xmm,r.xmm); return *this;}
+	vec &operator-=(const vec &r){xmm=_mm_sub_ps(xmm,r.xmm); return *this;}
+	vec &operator*=(const float &r){xmm=_mm_mul_ps(vec(r).xmm,xmm); return *this;}
+	vec &operator/=(const float &r){xmm=_mm_div_ps(vec(r).xmm,xmm); return *this;}
+	vec &operator*=(const vec &r){xmm=_mm_mul_ps(r.xmm,xmm); return *this;}
+	vec &operator/=(const vec &r){xmm=_mm_div_ps(r.xmm,xmm); return *this;}
+	vec &operator()(const float &x,const float &y,const float &z,const float &w=0.f){xmm=_mm_setr_ps(x,y,z,w); return *this;}
+	vec &operator()(const float &r){xmm=_mm_set1_ps(r); return *this;}
+	vec &operator-(){static const __m128 mask=_mm_castsi128_ps(_mm_set1_epi32(0x80000000)); xmm=_mm_xor_ps(xmm,mask); return *this;}
+	vec operator+(const vec &r)const{return vec(_mm_add_ps(xmm,r.xmm));}
+	vec operator-(const vec &r)const{return vec(_mm_sub_ps(xmm,r.xmm));}
+	vec operator*(const vec &r)const{return vec(_mm_mul_ps(xmm,r.xmm));}
+	vec operator/(const vec &r)const{return vec(_mm_div_ps(xmm,r.xmm));}
+	vec operator*(const float r)const{return vec(_mm_mul_ps(vec(r).xmm,xmm));}
+	vec operator/(const float r)const{return vec(_mm_div_ps(vec(r).xmm,xmm));}
+	vec operator^(const vec &v)const{return _mm_sub_ps(_mm_mul_ps(_mm_shuffle_ps(xmm,xmm,_MM_SHUFFLE(3,0,2,1)),_mm_shuffle_ps(v.xmm,v.xmm,_MM_SHUFFLE(3,1,0,2))),_mm_mul_ps(_mm_shuffle_ps(xmm,xmm,_MM_SHUFFLE(3,1,0,2)),_mm_shuffle_ps(v.xmm,v.xmm,_MM_SHUFFLE(3,0,2,1))));}
+	operator vec3f()const{vec4f tr; _mm_store_ps(tr.data,xmm); return vec3f(tr.x,tr.y,tr.z);}
+	operator vec4f()const{vec4f r; _mm_store_ps(r.data,xmm); return r;}
+	operator __m128()const{return xmm;}
 
-		// fxs
-		vec &shuffle(const int &x,const int &y,const int &z,const int w){xmm=_mm_shuffle_ps(xmm,xmm,_MM_SHUFFLE(x,y,z,w));return *this;}
-		vec &negate(){return *this=-*this;}
-		vec &zero(){xmm=_mm_setzero_ps(); return *this;}
-		vec &setLength(const float &len){xmm=_mm_mul_ps(_mm_set1_ps(len),_mm_div_ps(xmm,_mm_sqrt_ps(lengthSq()))); return *this;}
-		vec &setDirectionFrom(const vec &v){__m128 len=_mm_sqrt_ps(lengthSq()); xmm=_mm_mul_ps(len,_mm_div_ps(v.xmm,_mm_sqrt_ps(v.lengthSq()))); return *this;}
-		vec &normalize(){xmm=_mm_div_ps(xmm,_mm_sqrt_ps(lengthSq())); return *this;} // precise version, for fast version use mulps and rsqrt (rsqrt uses internal CPU lookup table to compute result)
-		vec reflection(const vec &normal)const{float x=2.f*this->dot(normal); return (*this)-normal*x;}
-		float angle(const vec &v)const{return acosf(this->dot(v));} // angle between vectors in radians (vectors must be normalized)
-		float length()const{return _mm_cvtss_f32(_mm_sqrt_ps(lengthSq()));}
-		vec lengthSq()const{__m128 m=_mm_mul_ps(xmm,xmm); __m128 t1=_mm_hadd_ps(m,m); return _mm_hadd_ps(t1,t1);}
-		float distance(const vec &v)const{return (*this-v).length();}
-		float dot(const vec &v)const{__m128 t=_mm_mul_ps(xmm,v.xmm); __m128 t2=_mm_hadd_ps(t,t); __m128 t3=_mm_hadd_ps(t2,t2); return _mm_cvtss_f32(t3);}
-		vec cross(const vec &v)const{return *this^v;}
+	// fxs
+	vec &shuffle(const int &x,const int &y,const int &z,const int w){xmm=_mm_shuffle_ps(xmm,xmm,_MM_SHUFFLE(x,y,z,w));return *this;}
+	vec &negate(){return *this=-*this;}
+	vec &zero(){xmm=_mm_setzero_ps(); return *this;}
+	vec &setLength(const float &len){xmm=_mm_mul_ps(_mm_set1_ps(len),_mm_div_ps(xmm,_mm_sqrt_ps(lengthSq()))); return *this;}
+	vec &setDirectionFrom(const vec &v){__m128 len=_mm_sqrt_ps(lengthSq()); xmm=_mm_mul_ps(len,_mm_div_ps(v.xmm,_mm_sqrt_ps(v.lengthSq()))); return *this;}
+	vec &normalize(){xmm=_mm_div_ps(xmm,_mm_sqrt_ps(lengthSq())); return *this;} // precise version, for fast version use mulps and rsqrt (rsqrt uses internal CPU lookup table to compute result)
+	vec reflection(const vec &normal)const{float x=2.f*this->dot(normal); return (*this)-normal*x;}
+	float angle(const vec &v)const{return acosf(this->dot(v));} // angle between vectors in radians (vectors must be normalized)
+	float length()const{return _mm_cvtss_f32(xmmLength());}
+	vec lengthSq()const{__m128 m=_mm_mul_ps(xmm,xmm); __m128 t1=_mm_hadd_ps(m,m); return _mm_hadd_ps(t1,t1);}
+	float distance(const vec &v)const{return (*this-v).length();}
+	float dot(const vec &v)const{__m128 t=_mm_mul_ps(xmm,v.xmm); __m128 t2=_mm_hadd_ps(t,t); __m128 t3=_mm_hadd_ps(t2,t2); return _mm_cvtss_f32(t3);}
+	vec cross(const vec &v)const{return *this^v;}
+
+	// xmm stuff 4U
+	vec xmmLength() const { return _mm_sqrt_ps(lengthSq()); }
+	vec xmmDistance(const vec &v) const {return (*this - v).xmmLength(); }
+	vec xmmVec3() const { __m128 t = _mm_shuffle_ps(xmm, xmm, _MM_SHUFFLE(0, 1, 2, 3)); t = _mm_sub_ss(t, t); return _mm_shuffle_ps(t, t, _MM_SHUFFLE(0, 1, 2, 3)); } // zeroes w component
+	vec xmmVec3W() const { return _mm_shuffle_ps(xmm, xmm, _MM_SHUFFLE(0, 1, 2, 3)); }
 };
 
 class line2d {
@@ -519,8 +528,21 @@ public:
 
 	sphere(){}
 	sphere(const vec &_cr) : cr(_cr) {}
-	//sphere(const vec &center, float radius) { cr = center; cr.w = radius; }
+	sphere(const vec &center, float radius) { (*this)(center, radius); }
 	~sphere(){}
+
+	sphere &operator()(const vec &_cr) { cr = _cr; return *this; }
+	sphere &operator()(const vec &center, float radius) { cr = _mm_set_ss(radius); cr = _mm_shuffle_ps(cr, cr, _MM_SHUFFLE(0, 1, 1, 1)); cr = _mm_add_ps(cr, center); return *this; }
+
+	vec getCenter() const { return cr.xmmVec3(); }
+	float getRadius() const { return _mm_cvtss_f32(cr.xmmVec3W()); }
+	sphere &zero() { cr = _mm_setzero_ps(); return *this; }
+	sphere &expand(const sphere &s);
+	sphere &expand(const vec &p);
+	bool isValid() const { __m128 r = _mm_shuffle_ps(cr, cr, _MM_SHUFFLE(3, 3, 3, 3)); r = _mm_cmpge_ss(r, _mm_setzero_ps()); return 0 != _mm_cvtss_si32(r); }
+	bool contains(const sphere &s) const;
+	bool contains(const vec &p) const;
+	bool intersects(const sphere &s) const;
 };
 
 class aabbox {
@@ -536,7 +558,7 @@ public:
 	aabbox &operator()(const sphere &sp) { __m128 r = _mm_shuffle_ps(sp.cr, sp.cr, _MM_SHUFFLE(3, 3, 3, 3)); pmin = sp.cr - r; pmax = sp.cr + r; return *this; }
 	
 	vec getCenter() const { return (pmax + pmin) / 2.f; }
-	void getEdges(vec3f *o) const; // gets 8 edges
+	void getEdges(vec *o) const; // gets 8 edges
 	float getDiagonal() const { return pmin.distance(pmax); }
 	vec getDimmensions() const { return pmax - pmin; }
 	bool contains(const vec &p) const;

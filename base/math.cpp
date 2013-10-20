@@ -236,25 +236,67 @@ float line::length() const {
 	return a.distance(b);
 }
 
-void aabbox::getEdges(vec3f *o) const {
-	// TODO: change vec3f to vec (SSE)
-	vec3f pma = pmax, pmi = pmin;
-	o[0] = pma;
-	o[1](pma.x,pmi.y,pma.z);
-	o[2](pmi.x,pmi.y,pma.z);
-	o[3](pmi.x,pma.y,pma.z);
-	o[4](pma.x,pma.y,pmi.z);
-	o[5](pma.x,pmi.y,pmi.z);
-	o[6] = pmi;
-	o[7](pmi.x,pma.y,pmi.z);
+sphere &sphere::expand(const sphere &s) {
+	vec c1 = getCenter(), c2 = s.getCenter();
+	vec r = _mm_add_ss(_mm_add_ss(c1.xmmDistance(c2), s.cr.xmmVec3W()), cr.xmmVec3W()); // distance + r1 + r2
+	r = _mm_mul_ss(r, _mm_set_ss(.5f));
+	cr = (c1 + c2) * .5f; // new center
+	r = _mm_shuffle_ps(cr, r, SSE_RSHUFFLE(0, 2, 3, 3)); // write radius
+	cr = _mm_shuffle_ps(cr, r, SSE_RSHUFFLE(0, 1, 1, 3));
+	return *this;
+}
+
+sphere &sphere::expand(const vec &p) {
+	// r = max(distance(p, center), r)
+	__m128 distance = p.xmmDistance(getCenter());
+	__m128 t = _mm_max_ss(distance, cr.xmmVec3W()); // compute new radius
+	t = _mm_shuffle_ps(cr, t, SSE_RSHUFFLE(0, 2, 3, 3)); // t = (cr.x, cr.z, t.w, t.w)
+	cr = _mm_shuffle_ps(cr, t, SSE_RSHUFFLE(0, 1, 1, 3)); // cr = (cr.x, cr.y, t.y, t.w)
+	return *this;
+}
+
+bool sphere::contains(const sphere &s) const {
+	// distance + s.r < r => distance < r - s.r
+	__m128 rsub = _mm_sub_ps(cr.xmmVec3W(), s.cr.xmmVec3W());
+	__m128 distance = getCenter().xmmDistance(s.getCenter());
+	return 0 != _mm_cvtss_si32(_mm_cmple_ss(distance, rsub));
+}
+
+bool sphere::contains(const vec &p) const {
+	vec distance = p.xmmDistance(getCenter());
+	__m128 t = _mm_cmple_ss(distance, cr.xmmVec3W()); // distance <= r
+	return 0 != _mm_cvtss_si32(t);
+}
+
+bool sphere::intersects(const sphere &s) const {
+	__m128 rsum = _mm_add_ss(s.cr.xmmVec3W(), cr.xmmVec3W()); // r1 + r2
+	__m128 distance = s.getCenter().xmmDistance(getCenter()); // center distance
+	return 0 != _mm_cvtss_si32(_mm_cmple_ss(distance, rsum)); // distance < r1 + r2
+}
+
+void aabbox::getEdges(vec *o) const {
+	const vec &a = pmin;
+	const vec &b = pmax;
+	o[0] = b;
+	o[1] = _mm_shuffle_ps(b, a, SSE_RSHUFFLE(0, 2, 1, 3)); // (b.x, b.z, a.y)
+	o[1] = _mm_shuffle_ps(o[1], b, SSE_RSHUFFLE(0, 2, 2, 3)); // (b.x, a.y, b.z)
+	o[2] = _mm_shuffle_ps(a, b, SSE_RSHUFFLE(0, 1, 2, 3)); // (a.x, a.y, b.z)
+	o[3] = _mm_shuffle_ps(b, a, SSE_RSHUFFLE(2, 1, 0, 3)); // (b.z, b.y, a.x)
+	o[3] = _mm_shuffle_ps(o[3], b, SSE_RSHUFFLE(2, 1, 2, 3)); // (a.x, b.y, b.z)
+	o[4] = _mm_shuffle_ps(b, a, SSE_RSHUFFLE(0, 1, 2, 3)); // (b.x, b.y, a.z)
+	o[5] = _mm_shuffle_ps(a, b, SSE_RSHUFFLE(1, 2, 0, 3)); // (a.y, a.z, b.x)
+	o[5] = _mm_shuffle_ps(o[5], a, SSE_RSHUFFLE(2, 0, 2, 3)); // (b.x, a.y, a.z);
+	o[6] = a;
+	o[7] = _mm_shuffle_ps(a, b, SSE_RSHUFFLE(0, 2, 1, 3)); // (a.x, a.z, b.y)
+	o[7] = _mm_shuffle_ps(o[7], a, SSE_RSHUFFLE(0, 2, 2, 3)); // (a.x, b.y, a.z)
 }
 
 bool aabbox::contains(const vec &p) const {
 	__m128 le = _mm_cmple_ps(pmin, p); // test if p >= min
 	__m128 ge = _mm_cmple_ps(p, pmax); // p <= max
 	__m128 t = _mm_and_ps(le, ge); // combine results
-	t = _mm_shuffle_ps(t, t, _MM_SHUFFLE(2, 2, 1, 0));
-	return 0xffff == _mm_movemask_epi8(_mm_castps_si128(t));
+	t = _mm_shuffle_ps(t, t, _MM_SHUFFLE(2, 2, 1, 0)); // ignore w component
+	return 0 != _mm_movemask_epi8(_mm_castps_si128(t)); // cast to int and shift & or register
 }
 
 bool aabbox::contains(const aabbox &box) const {
@@ -262,13 +304,13 @@ bool aabbox::contains(const aabbox &box) const {
 	__m128 ge = _mm_cmpge_ps(pmax, box.pmax); // box.max <= max
 	__m128 t = _mm_and_ps(le, ge);
 	t = _mm_shuffle_ps(t, t, _MM_SHUFFLE(2, 2, 1, 0));
-	return 0xffff == _mm_movemask_epi8(_mm_castps_si128(t));
+	return 0 != _mm_movemask_epi8(_mm_castps_si128(t));
 }
 
 bool aabbox::isValid() const {
 	__m128 test = _mm_cmple_ps(pmin, pmax);
 	test = _mm_shuffle_ps(test, test, _MM_SHUFFLE(2, 2, 1, 0));
-	return 0xffff == _mm_movemask_epi8(_mm_castps_si128(test));
+	return 0 != _mm_movemask_epi8(_mm_castps_si128(test));
 }
 
 }}
