@@ -97,6 +97,22 @@ int main(int argc, char**argv){
 	std::cout << "\ncontains (0, 5.1, 0) " << sp.contains(vec(0.f, 5.1f, 0.f));
 	printVec(sp.expand(vec(10.f, 10.f, 10.f)).cr, "expand sphere to contain (10, 10, 10): ");
 
+	// obbox
+	obbox obo(vec(0.f, 0.f, 0.f), vec(1.f, 2.f, 3.f), vec(1.f, 0.f, 0.f), vec(0.f, 1.f, 0.f), vec(0.f, 0.f, 1.f));
+	std::cout << "\nedges: ";
+	obo.getEdges(edges);
+	for(vec &e : edges){
+		printVec(e, "");
+	}
+	std::cout << "\ndiagonal = " << obo.diagonal();
+	std::cout << "\ncontains (0, 0, 0) " << obo.contains(vec(0.f, 0.f, 0.f));
+	std::cout << "\ncontains (0, 1, 0) " << obo.contains(vec(0.f, 1.f, 0.f));
+	std::cout << "\ncontains (1, 1, 1) " << obo.contains(vec(1.f, 1.f, 1.f));
+	std::cout << "\ncontains (-1, -1, -1) " << obo.contains(vec(-1.f, -1.f, -1.f));
+	std::cout << "\ncontains (0, 5, 0) " << obo.contains(vec(0.f, 5.f, 0.f));
+	std::cout << "\ncontains (0, -2.01, 0) " << obo.contains(vec(0.f, -2.01f, 0.f));
+	std::cout << "\ncontains (0, 5.1, 0) " << obo.contains(vec(0.f, 5.1f, 0.f));
+
 	std::cout << "\nfinished";
 	std::cout << std::flush;
 	

@@ -315,10 +315,10 @@ bool aabbox::isValid() const {
 
 vec obbox::dotAll(const vec &p) const {
 	// compute dot product for all axis
-	vec t1 = _mm_mul_ps(axis[0], p);
-	vec t2 = _mm_mul_ps(axis[1], p);
-	vec t3 = _mm_mul_ps(axis[2], p);
-	vec t4 = _mm_setzero_ps();
+	__m128 t1 = _mm_mul_ps(axis[0], p);
+	__m128 t2 = _mm_mul_ps(axis[1], p);
+	__m128 t3 = _mm_mul_ps(axis[2], p);
+	__m128 t4 = _mm_setzero_ps();
 	_MM_TRANSPOSE4_PS(t1, t2, t3, t4); // transpose above...
 	t1 = _mm_add_ps(t1, t2); // ...sum all results
 	t1 = _mm_add_ps(t1, t3);
@@ -356,10 +356,10 @@ float obbox::diagonal() const {
 bool obbox::contains(const vec &p) const {
 	static const __m128 signMask = _mm_set1_ps(-0.f);
 	vec pt = p - center; // move p to obbox view
-	vec dp = dotAll(p); // compute dot for all axis
+	vec dp = dotAll(pt); // compute dot for all axis (project p to all axis)
 	dp = _mm_andnot_ps(signMask, dp); // compute abs (remove sign with mask)
-	dp = _mm_cmpgt_ss(dp, scale); // abs(dots) > axis scale
-	return 0 != _mm_movemask_epi8(_mm_castps_si128(dp));
+	dp = _mm_cmpgt_ps(dp, scale); // if abs(dots) > axis scale then return false
+	return 0 == _mm_movemask_epi8(_mm_castps_si128(dp));
 }
 
 vec obbox::closestPoint(const vec &p) const {
