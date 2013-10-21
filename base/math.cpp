@@ -313,4 +313,109 @@ bool aabbox::isValid() const {
 	return 0 != _mm_movemask_epi8(_mm_castps_si128(test));
 }
 
+vec obbox::dotAll(const vec &p) const {
+	// compute dot product for all axis
+	vec t1 = _mm_mul_ps(axis[0], p);
+	vec t2 = _mm_mul_ps(axis[1], p);
+	vec t3 = _mm_mul_ps(axis[2], p);
+	vec t4 = _mm_setzero_ps();
+	_MM_TRANSPOSE4_PS(t1, t2, t3, t4); // transpose above...
+	t1 = _mm_add_ps(t1, t2); // ...sum all results
+	t1 = _mm_add_ps(t1, t3);
+	t1 = _mm_add_ps(t1, t4);
+	return t1;
+}
+
+void obbox::getEdges(vec *o) const {
+	vec ax [] = { // scale axis
+		axis[0] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(0, 0, 0, 3)),
+		axis[1] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(1, 1, 1, 3)),
+		axis[2] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(2, 2, 2, 3))
+	};
+	
+	o[0] = center + ax[0] + ax[1] + ax[2];
+	o[1] = center - ax[0] + ax[1] + ax[2];
+	o[2] = center - ax[0] - ax[1] + ax[2];
+	o[3] = center + ax[0] - ax[1] + ax[2];
+	o[4] = center + ax[0] + ax[1] - ax[2];
+	o[5] = center - ax[0] + ax[1] - ax[2];
+	o[6] = center - ax[0] - ax[1] - ax[2];
+	o[7] = center + ax[0] - ax[1] - ax[2];
+}
+
+float obbox::diagonal() const {
+	vec ax[] = {
+		axis[0] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(0, 0, 0, 3)),
+		axis[1] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(1, 1, 1, 3)),
+		axis[2] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(2, 2, 2, 3))
+	};
+
+	return ((ax[0] + ax[1] + ax[2]) * 2.f).length();
+}
+
+bool obbox::contains(const vec &p) const {
+	static const __m128 signMask = _mm_set1_ps(-0.f);
+	vec pt = p - center; // move p to obbox view
+	vec dp = dotAll(p); // compute dot for all axis
+	dp = _mm_andnot_ps(signMask, dp); // compute abs (remove sign with mask)
+	dp = _mm_cmpgt_ss(dp, scale); // abs(dots) > axis scale
+	return 0 != _mm_movemask_epi8(_mm_castps_si128(dp));
+}
+
+vec obbox::closestPoint(const vec &p) const {
+	vec pt = p - center;
+	vec dp = dotAll(pt);
+	vec t = _mm_min_ps(dp, scale);
+	t = _mm_max_ps(t, -scale);
+
+	// translate back to global space
+	vec ret = center;
+	ret += axis[0] * _mm_shuffle_ps(t, t, SSE_RSHUFFLE(0, 0, 0, 3));
+	ret += axis[1] * _mm_shuffle_ps(t, t, SSE_RSHUFFLE(1, 1, 1, 3));
+	ret += axis[2] * _mm_shuffle_ps(t, t, SSE_RSHUFFLE(2, 2, 2, 3));
+	return ret;
+}
+
+vec obbox::minPointAlongNormal(const vec &normal) const {
+	static const __m128 signMask = _mm_set1_ps(-0.f);
+	vec dt = dotAll(normal);
+	__m128 test = _mm_cmple_ps(dt, _mm_setzero_ps()); // create mask (dot <= 0.f)
+	
+	vec r = center;
+	
+	// if(d[i] <= 0.f) r += axis[i] * size[i]
+	r -= _mm_mul_ps(
+		_mm_and_ps(test, _mm_shuffle_ps(signMask, signMask, SSE_RSHUFFLE(0, 0, 0, 0))),
+		axis[0] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(0, 0, 0, 3)));
+	r -= _mm_mul_ps(
+		_mm_and_ps(test, _mm_shuffle_ps(signMask, signMask, SSE_RSHUFFLE(1, 1, 1, 1))),
+		axis[1] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(1, 1, 1, 3)));
+	r -= _mm_mul_ps(
+		_mm_and_ps(test, _mm_shuffle_ps(signMask, signMask, SSE_RSHUFFLE(2, 2, 2, 2))),
+		axis[2] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(2, 2, 2, 3)));
+
+	return r;
+}
+
+vec obbox::maxPointAlongNormal(const vec &normal) const {
+	static const __m128 signMask = _mm_set1_ps(-0.f);
+	vec dt = dotAll(normal);
+	__m128 test = _mm_cmpgt_ps(dt, _mm_setzero_ps()); // create mask (dot > 0.f)
+	
+	vec r = center;
+	
+	// if(d[i] > 0.f) r += axis[i] * size[i]
+	r -= _mm_mul_ps(
+		_mm_and_ps(test, _mm_shuffle_ps(signMask, signMask, SSE_RSHUFFLE(0, 0, 0, 0))),
+		axis[0] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(0, 0, 0, 3)));
+	r -= _mm_mul_ps(
+		_mm_and_ps(test, _mm_shuffle_ps(signMask, signMask, SSE_RSHUFFLE(1, 1, 1, 1))),
+		axis[1] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(1, 1, 1, 3)));
+	r -= _mm_mul_ps(
+		_mm_and_ps(test, _mm_shuffle_ps(signMask, signMask, SSE_RSHUFFLE(2, 2, 2, 2))),
+		axis[2] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(2, 2, 2, 3)));
+
+	return r;
+}
+
 }}

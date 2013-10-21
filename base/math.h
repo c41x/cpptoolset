@@ -286,7 +286,7 @@ public:
 	vec &operator/=(const vec &r){xmm=_mm_div_ps(r.xmm,xmm); return *this;}
 	vec &operator()(const float &x,const float &y,const float &z,const float &w=0.f){xmm=_mm_setr_ps(x,y,z,w); return *this;}
 	vec &operator()(const float &r){xmm=_mm_set1_ps(r); return *this;}
-	vec &operator-(){static const __m128 mask=_mm_castsi128_ps(_mm_set1_epi32(0x80000000)); xmm=_mm_xor_ps(xmm,mask); return *this;}
+	vec operator-() const { static const __m128 mask = _mm_castsi128_ps(_mm_set1_epi32(0x80000000)); return _mm_xor_ps(xmm, mask); }
 	vec operator+(const vec &r)const{return vec(_mm_add_ps(xmm,r.xmm));}
 	vec operator-(const vec &r)const{return vec(_mm_sub_ps(xmm,r.xmm));}
 	vec operator*(const vec &r)const{return vec(_mm_mul_ps(xmm,r.xmm));}
@@ -299,25 +299,26 @@ public:
 	operator __m128()const{return xmm;}
 
 	// fxs
-	vec &shuffle(const int &x,const int &y,const int &z,const int w){xmm=_mm_shuffle_ps(xmm,xmm,_MM_SHUFFLE(x,y,z,w));return *this;}
-	vec &negate(){return *this=-*this;}
-	vec &zero(){xmm=_mm_setzero_ps(); return *this;}
-	vec &setLength(const float &len){xmm=_mm_mul_ps(_mm_set1_ps(len),_mm_div_ps(xmm,_mm_sqrt_ps(lengthSq()))); return *this;}
-	vec &setDirectionFrom(const vec &v){__m128 len=_mm_sqrt_ps(lengthSq()); xmm=_mm_mul_ps(len,_mm_div_ps(v.xmm,_mm_sqrt_ps(v.lengthSq()))); return *this;}
-	vec &normalize(){xmm=_mm_div_ps(xmm,_mm_sqrt_ps(lengthSq())); return *this;} // precise version, for fast version use mulps and rsqrt (rsqrt uses internal CPU lookup table to compute result)
-	vec reflection(const vec &normal)const{float x=2.f*this->dot(normal); return (*this)-normal*x;}
-	float angle(const vec &v)const{return acosf(this->dot(v));} // angle between vectors in radians (vectors must be normalized)
-	float length()const{return _mm_cvtss_f32(xmmLength());}
-	vec lengthSq()const{__m128 m=_mm_mul_ps(xmm,xmm); __m128 t1=_mm_hadd_ps(m,m); return _mm_hadd_ps(t1,t1);}
-	float distance(const vec &v)const{return (*this-v).length();}
-	float dot(const vec &v)const{__m128 t=_mm_mul_ps(xmm,v.xmm); __m128 t2=_mm_hadd_ps(t,t); __m128 t3=_mm_hadd_ps(t2,t2); return _mm_cvtss_f32(t3);}
-	vec cross(const vec &v)const{return *this^v;}
+	vec &shuffle(const int &x, const int &y, const int &z, const int w) { xmm = _mm_shuffle_ps(xmm, xmm, _MM_SHUFFLE(x, y, z, w)); return *this; }
+	vec &negate() { return *this = -*this; }
+	vec &zero() { xmm = _mm_setzero_ps(); return *this; }
+	vec &setLength(const float &len) { xmm = _mm_mul_ps(_mm_set1_ps(len), _mm_div_ps(xmm, _mm_sqrt_ps(lengthSq()))); return *this; }
+	vec &setDirectionFrom(const vec &v) { __m128 len = _mm_sqrt_ps(lengthSq()); xmm = _mm_mul_ps(len, _mm_div_ps(v.xmm, _mm_sqrt_ps(v.lengthSq()))); return *this; }
+	vec &normalize() { xmm = _mm_div_ps(xmm, _mm_sqrt_ps(lengthSq())); return *this; } // precise version, for fast version use mulps and rsqrt (rsqrt uses internal CPU lookup table to compute result)
+	vec reflection(const vec &normal) const {float x = 2.f * this->dot(normal); return (*this) - normal * x; }
+	float angle(const vec &v) const { return acosf(this->dot(v)); } // angle between vectors in radians (vectors must be normalized)
+	float length() const { return _mm_cvtss_f32(xmmLength()); }
+	vec lengthSq() const { __m128 m = _mm_mul_ps(xmm, xmm); __m128 t1 = _mm_hadd_ps(m, m); return _mm_hadd_ps(t1, t1);}
+	float distance(const vec &v) const { return (*this - v).length(); }
+	float dot(const vec &v) const { return _mm_cvtss_f32(xmmDot(v)); }
+	vec cross(const vec &v) const { return *this ^ v; }
 
 	// xmm stuff 4U
 	vec xmmLength() const { return _mm_sqrt_ps(lengthSq()); }
 	vec xmmDistance(const vec &v) const {return (*this - v).xmmLength(); }
 	vec xmmVec3() const { __m128 t = _mm_shuffle_ps(xmm, xmm, _MM_SHUFFLE(0, 1, 2, 3)); t = _mm_sub_ss(t, t); return _mm_shuffle_ps(t, t, _MM_SHUFFLE(0, 1, 2, 3)); } // zeroes w component
 	vec xmmVec3W() const { return _mm_shuffle_ps(xmm, xmm, _MM_SHUFFLE(0, 1, 2, 3)); }
+	vec xmmDot(const vec &v) const { __m128 t = _mm_mul_ps(xmm, v.xmm); __m128 t2 = _mm_hadd_ps(t, t); return _mm_hadd_ps(t2, t2); }
 };
 
 class line2d {
@@ -536,13 +537,14 @@ public:
 
 	vec getCenter() const { return cr.xmmVec3(); }
 	float getRadius() const { return _mm_cvtss_f32(cr.xmmVec3W()); }
-	sphere &zero() { cr = _mm_setzero_ps(); return *this; }
-	sphere &expand(const sphere &s);
-	sphere &expand(const vec &p);
 	bool isValid() const { __m128 r = _mm_shuffle_ps(cr, cr, _MM_SHUFFLE(3, 3, 3, 3)); r = _mm_cmpge_ss(r, _mm_setzero_ps()); return 0 != _mm_cvtss_si32(r); }
 	bool contains(const sphere &s) const;
 	bool contains(const vec &p) const;
 	bool intersects(const sphere &s) const;
+	
+	sphere &zero() { cr = _mm_setzero_ps(); return *this; }
+	sphere &expand(const sphere &s);
+	sphere &expand(const vec &p);
 };
 
 class aabbox {
@@ -571,6 +573,34 @@ public:
 	aabbox &extend(const aabbox &box) { pmin = _mm_min_ps(pmin, box.pmin); pmax = _mm_max_ps(pmax, box.pmax); return *this; }
 	aabbox &extend(const sphere &sp) { return extend(aabbox(sp)); }
 	aabbox &repair() { __m128 t = pmin; pmin = _mm_min_ps(pmin, pmax); pmax = _mm_max_ps(t, pmax); return *this; }
+};
+
+class obbox {
+	vec dotAll(const vec &p) const;
+public:
+	vec center, scale, axis[3];
+
+	obbox(){}
+	obbox(const vec &c, const vec &s, const vec *ax) { (*this)(c, s, ax); }
+	obbox(const vec &c, const vec &s, const vec &axx, const vec &axy, const vec &axz) { (*this)(c, s, axx, axy, axz); }
+	obbox(const aabbox &box) { (*this)(box); }
+	obbox(const sphere &sp) { (*this)(sp); }
+	~obbox(){}
+
+	obbox &operator()(const vec &c, const vec &s, const vec *ax) { center = c; axis[0] = ax[0]; axis[1] = ax[1]; axis[2] = ax[2]; scale = s; return *this; }
+	obbox &operator()(const vec &c, const vec &s, const vec &axx, const vec &axy, const vec &axz) { center = c; axis[0] = axx; axis[1] = axy; axis[2] = axz; scale = s; return *this; }
+	obbox &operator()(const aabbox &box) { center = box.getCenter(); scale = box.getDimmensions() * .5f; axis[0] = vec4f(1.f, 0.f, 0.f); axis[1] = vec4f(0.f, 1.f, 0.f); axis[2] = vec4f(0.f, 0.f, 1.f); return *this; }
+	obbox &operator()(const sphere &sp) { center = sp.getCenter(); scale = sp.getRadius(); axis[0] = vec4f(1.f, 0.f, 0.f); axis[1] = vec4f(0.f, 1.f, 0.f); axis[2] = vec4f(0.f, 0.f, 1.f); return *this; }
+
+	void getEdges(vec *o) const;
+	float diagonal() const;
+	bool contains(const vec &p) const;
+	vec closestPoint(const vec &p) const;
+	vec minPointAlongNormal(const vec &normal) const;
+	vec maxPointAlongNormal(const vec &normal) const;
+
+	obbox &zero() { center = scale = axis[0] = axis[1] = axis[2] = _mm_setzero_ps(); return *this; }
+	obbox &normalize() { for(int i = 0; i < 3; ++i) axis[i].normalize(); return *this; }
 };
 
 }}
