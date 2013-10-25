@@ -373,7 +373,7 @@ vec obbox::closestPoint(const vec &p) const {
 	ret += axis[0] * _mm_shuffle_ps(t, t, SSE_RSHUFFLE(0, 0, 0, 3));
 	ret += axis[1] * _mm_shuffle_ps(t, t, SSE_RSHUFFLE(1, 1, 1, 3));
 	ret += axis[2] * _mm_shuffle_ps(t, t, SSE_RSHUFFLE(2, 2, 2, 3));
-	return ret * p.normalized();
+	return ret;
 }
 
 vec obbox::minPointAlongNormal(const vec &normal) const {
@@ -386,7 +386,7 @@ vec obbox::minPointAlongNormal(const vec &normal) const {
 	r -= _mm_and_ps(test, axis[0] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(0, 0, 0, 3)));
 	r -= _mm_and_ps(test, axis[1] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(1, 1, 1, 3)));
 	r -= _mm_and_ps(test, axis[2] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(2, 2, 2, 3)));
-	return r * normal;
+	return r;
 }
 
 vec obbox::maxPointAlongNormal(const vec &normal) const {
@@ -399,7 +399,17 @@ vec obbox::maxPointAlongNormal(const vec &normal) const {
 	r += _mm_and_ps(test, axis[0] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(0, 0, 0, 3)));
 	r += _mm_and_ps(test, axis[1] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(1, 1, 1, 3)));
 	r += _mm_and_ps(test, axis[2] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(2, 2, 2, 3)));
-	return r * normal;
+	return r;
+}
+
+float plane::intersection(const vec *v, int count) const {
+	float first = intersection(v[0]);
+	for(int i = 0; i < count; ++i){
+		float next = intersection(v[i]);
+		if(next * first <= 0.f)
+			return 0.f;
+	}
+	return first;
 }
 
 }}

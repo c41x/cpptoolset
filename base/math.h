@@ -604,6 +604,41 @@ public:
 	obbox &normalize() { for(int i = 0; i < 3; ++i) axis[i].normalize(); return *this; }
 };
 
+class plane{
+public:
+	vec normal;
+	float d;
+	
+	plane(){}
+	plane(float x, float y, float z, float _d) : normal(x, y, z), d(_d) {}
+	plane(const vec &_normal, float _d) : normal(_normal), d(_d) {}
+	plane(const vec &a, const vec &b, const vec &c) { (*this)(a, b, c); }
+	plane(const vec &_normal, const vec &member) { (*this)(_normal, member); }
+	plane(const triangle &tri) { (*this)(tri); }
+	~plane(){}
+	
+	plane &operator()(float x, float y, float z, float _d) { normal(x, y, z); d = _d; return *this; }
+	plane &operator()(const vec &_normal, float _d) { normal = _normal; d = _d; return *this; }
+	plane &operator()(const vec &a, const vec &b, const vec &c) { normal = (b - a).cross(c - a).normalize(); recalcD(a); return *this; }
+	plane &operator()(const vec &_normal, const vec &member) { normal = _normal; recalcD(member); return *this; }
+	plane &operator()(const triangle &tri) { (*this)(tri.a, tri.b, tri.c); return *this; }
+	plane operator-() const { return plane(-normal, d); }
+	
+	plane &recalcD(const vec &member) { d = -(member.dot(normal)); return *this; }
+	vec getMember() const { return normal * (-d); }
+	bool isValid() const { return normal.length() > 0.f; }
+	float distance(const vec &p) const { return p.dot(normal) + d;}
+	float distance(const sphere &s) const { return s.getCenter().dot(normal) + d + s.getRadius(); }
+	float intersection(const vec &p) const { return distance(p); } // ret > 0 - above ret < 0 - below ret = 0 - on
+	float intersection(const vec *v, int count) const;
+	float intersection(const sphere &s) const { return distance(s); }
+	float intersection(const aabbox &box) const { vec edges[8]; box.getEdges(edges); return intersection(edges, 8); }
+																	 float intersection(const line &l) const { float ia = intersection(l.a), ib = intersection(l.b); return ia * ib < 0.f ? 0.f : ia; }
+	bool isAnyAbove(const vec *v, int size) const { for(int i = 0; i < size; ++i) if(intersection(v[i]) >= 0.f) return true; return false; }
+	bool isAnyAbove(const aabbox &box) const { __m128 test = _mm_cmpge_ps(normal, _mm_setzero_ps()); vec xtrP = _mm_add_ps(_mm_and_ps(test, box.pmax), _mm_andnot_ps(test, box.pmin)); /* <- max point along normal */ return intersection(xtrP) >= 0.f; }
+	bool isAnyAbove(const obbox &box) const { return intersection(box.maxPointAlongNormal(normal)) >= 0.f; }
+};
+
 }}
 
 //~
