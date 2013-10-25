@@ -113,6 +113,10 @@ int main(int argc, char**argv){
 	std::cout << "\ncontains (0, -2.01, 0) " << obo.contains(vec(0.f, -2.01f, 0.f));
 	std::cout << "\ncontains (0, 5.1, 0) " << obo.contains(vec(0.f, 5.1f, 0.f));
 
+	printVec(obo.closestPoint(vec(0.5f, 100.f, 0.f)), "closest point to (0.5, 100, 0)");
+	printVec(obo.minPointAlongNormal(vec(5.f, 10.f, 0.f).normalized()), "min point along normal (5, 10, 0)");
+	printVec(obo.maxPointAlongNormal(vec(5.f, 10.f, 0.f).normalized()), "maxpoint along normal (5, 10, 0)");
+
 	std::cout << "\nfinished";
 	std::cout << std::flush;
 	
