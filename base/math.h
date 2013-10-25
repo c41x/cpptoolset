@@ -305,6 +305,7 @@ public:
 	vec &setLength(const float &len) { xmm = _mm_mul_ps(_mm_set1_ps(len), _mm_div_ps(xmm, _mm_sqrt_ps(lengthSq()))); return *this; }
 	vec &setDirectionFrom(const vec &v) { __m128 len = _mm_sqrt_ps(lengthSq()); xmm = _mm_mul_ps(len, _mm_div_ps(v.xmm, _mm_sqrt_ps(v.lengthSq()))); return *this; }
 	vec &normalize() { xmm = _mm_div_ps(xmm, _mm_sqrt_ps(lengthSq())); return *this; } // precise version, for fast version use mulps and rsqrt (rsqrt uses internal CPU lookup table to compute result)
+	vec normalized() const { return vec(*this).normalize(); }
 	vec reflection(const vec &normal) const {float x = 2.f * this->dot(normal); return (*this) - normal * x; }
 	float angle(const vec &v) const { return acosf(this->dot(v)); } // angle between vectors in radians (vectors must be normalized)
 	float length() const { return _mm_cvtss_f32(xmmLength()); }

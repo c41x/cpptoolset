@@ -373,49 +373,33 @@ vec obbox::closestPoint(const vec &p) const {
 	ret += axis[0] * _mm_shuffle_ps(t, t, SSE_RSHUFFLE(0, 0, 0, 3));
 	ret += axis[1] * _mm_shuffle_ps(t, t, SSE_RSHUFFLE(1, 1, 1, 3));
 	ret += axis[2] * _mm_shuffle_ps(t, t, SSE_RSHUFFLE(2, 2, 2, 3));
-	return ret;
+	return ret * p.normalized();
 }
 
 vec obbox::minPointAlongNormal(const vec &normal) const {
-	static const __m128 signMask = _mm_set1_ps(-0.f);
 	vec dt = dotAll(normal);
-	__m128 test = _mm_cmple_ps(dt, _mm_setzero_ps()); // create mask (dot <= 0.f)
+	__m128 test = _mm_cmpgt_ps(dt, _mm_setzero_ps()); // create mask (dot > 0.f)
 	
 	vec r = center;
 	
-	// if(d[i] <= 0.f) r += axis[i] * size[i]
-	r -= _mm_mul_ps(
-		_mm_and_ps(test, _mm_shuffle_ps(signMask, signMask, SSE_RSHUFFLE(0, 0, 0, 0))),
-		axis[0] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(0, 0, 0, 3)));
-	r -= _mm_mul_ps(
-		_mm_and_ps(test, _mm_shuffle_ps(signMask, signMask, SSE_RSHUFFLE(1, 1, 1, 1))),
-		axis[1] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(1, 1, 1, 3)));
-	r -= _mm_mul_ps(
-		_mm_and_ps(test, _mm_shuffle_ps(signMask, signMask, SSE_RSHUFFLE(2, 2, 2, 2))),
-		axis[2] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(2, 2, 2, 3)));
-
-	return r;
+	// if(d[i] > 0.f) r -= axis[i] * size[i]
+	r -= _mm_and_ps(test, axis[0] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(0, 0, 0, 3)));
+	r -= _mm_and_ps(test, axis[1] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(1, 1, 1, 3)));
+	r -= _mm_and_ps(test, axis[2] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(2, 2, 2, 3)));
+	return r * normal;
 }
 
 vec obbox::maxPointAlongNormal(const vec &normal) const {
-	static const __m128 signMask = _mm_set1_ps(-0.f);
 	vec dt = dotAll(normal);
 	__m128 test = _mm_cmpgt_ps(dt, _mm_setzero_ps()); // create mask (dot > 0.f)
 	
 	vec r = center;
 	
 	// if(d[i] > 0.f) r += axis[i] * size[i]
-	r -= _mm_mul_ps(
-		_mm_and_ps(test, _mm_shuffle_ps(signMask, signMask, SSE_RSHUFFLE(0, 0, 0, 0))),
-		axis[0] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(0, 0, 0, 3)));
-	r -= _mm_mul_ps(
-		_mm_and_ps(test, _mm_shuffle_ps(signMask, signMask, SSE_RSHUFFLE(1, 1, 1, 1))),
-		axis[1] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(1, 1, 1, 3)));
-	r -= _mm_mul_ps(
-		_mm_and_ps(test, _mm_shuffle_ps(signMask, signMask, SSE_RSHUFFLE(2, 2, 2, 2))),
-		axis[2] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(2, 2, 2, 3)));
-
-	return r;
+	r += _mm_and_ps(test, axis[0] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(0, 0, 0, 3)));
+	r += _mm_and_ps(test, axis[1] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(1, 1, 1, 3)));
+	r += _mm_and_ps(test, axis[2] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(2, 2, 2, 3)));
+	return r * normal;
 }
 
 }}
