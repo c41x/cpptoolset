@@ -633,7 +633,7 @@ public:
 	float intersection(const vec *v, int count) const;
 	float intersection(const sphere &s) const { return distance(s); }
 	float intersection(const aabbox &box) const { vec edges[8]; box.getEdges(edges); return intersection(edges, 8); }
-																	 float intersection(const line &l) const { float ia = intersection(l.a), ib = intersection(l.b); return ia * ib < 0.f ? 0.f : ia; }
+	float intersection(const line &l) const { float ia = intersection(l.a), ib = intersection(l.b); return ia * ib < 0.f ? 0.f : ia; }
 	bool isAnyAbove(const vec *v, int size) const { for(int i = 0; i < size; ++i) if(intersection(v[i]) >= 0.f) return true; return false; }
 	bool isAnyAbove(const aabbox &box) const { __m128 test = _mm_cmpge_ps(normal, _mm_setzero_ps()); vec xtrP = _mm_add_ps(_mm_and_ps(test, box.pmax), _mm_andnot_ps(test, box.pmin)); /* <- max point along normal */ return intersection(xtrP) >= 0.f; }
 	bool isAnyAbove(const obbox &box) const { return intersection(box.maxPointAlongNormal(normal)) >= 0.f; }

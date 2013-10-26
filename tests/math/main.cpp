@@ -117,6 +117,14 @@ int main(int argc, char**argv){
 	printVec(obo.minPointAlongNormal(vec(5.f, 10.f, 0.f).normalized()), "min point along normal (5, 10, 0)");
 	printVec(obo.maxPointAlongNormal(vec(5.f, 10.f, 0.f).normalized()), "maxpoint along normal (5, 10, 0)");
 
+	// test plane
+	plane pl(vec(0.f, 1.f, 0.f), -5.f);
+	std::cout << "\ndistance to (0, 0, 0) : " << pl.distance(vec(0.f, 0.f, 0.f));
+	std::cout << "\ndistance to (0, 10, 0) : " << pl.distance(vec(0.f, 10.f, 0.f));
+	std::cout << "\nis above bbox(-1,-1,-1,1,1,1) : " << pl.isAnyAbove(aabbox(vec(-1.f, -1.f, -1.f), vec(1.f, 1.f, 1.f)));
+	std::cout << "\nis above bbox(8,9,9,10,10,10) : " << pl.isAnyAbove(aabbox(vec(8.f, 9.f, 9.f), vec(10.f, 10.f, 10.f)));
+	std::cout << "\nis above bbox(8,9,0,10,10,10) : " << pl.isAnyAbove(aabbox(vec(8.f, 9.f, 0.f), vec(10.f, 10.f, 10.f)));
+	
 	std::cout << "\nfinished";
 	std::cout << std::flush;
 	
