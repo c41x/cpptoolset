@@ -34,6 +34,9 @@
 
 // reverse shuffle
 #define SSE_RSHUFFLE(VX, VY, VZ, VW) _MM_SHUFFLE(VW, VZ, VY, VX)
+#define SSE_RMASK(MX, MY, MZ, MW) ((__m128)_mm_set_epi32(MW, MZ, MY, MX))
+//#define SSE_RMASK(N, V3, V2, V1, V0) static const _MM_ALIGN16 int _##N[]= {V0, V1, V2, V3};
+//	const vec N = _mm_load_ps((float*)_##N);
 
 namespace granite {
 namespace base {
@@ -286,6 +289,7 @@ public:
 	vec &operator/=(const vec &r){xmm=_mm_div_ps(r.xmm,xmm); return *this;}
 	vec &operator()(const float &x,const float &y,const float &z,const float &w=0.f){xmm=_mm_setr_ps(x,y,z,w); return *this;}
 	vec &operator()(const float &r){xmm=_mm_set1_ps(r); return *this;}
+	vec &operator()(const float *v) { xmm = _mm_loadu_ps(v); return *this; }
 	vec operator-() const { static const __m128 mask = _mm_castsi128_ps(_mm_set1_epi32(0x80000000)); return _mm_xor_ps(xmm, mask); }
 	vec operator+(const vec &r)const{return vec(_mm_add_ps(xmm,r.xmm));}
 	vec operator-(const vec &r)const{return vec(_mm_sub_ps(xmm,r.xmm));}
@@ -317,7 +321,7 @@ public:
 	// xmm stuff 4U
 	vec xmmLength() const { return _mm_sqrt_ps(lengthSq()); }
 	vec xmmDistance(const vec &v) const {return (*this - v).xmmLength(); }
-	vec xmmVec3() const { __m128 t = _mm_shuffle_ps(xmm, xmm, _MM_SHUFFLE(0, 1, 2, 3)); t = _mm_sub_ss(t, t); return _mm_shuffle_ps(t, t, _MM_SHUFFLE(0, 1, 2, 3)); } // zeroes w component
+	vec xmmVec3() const { static const __m128 mask = SSE_RMASK(~0, ~0, ~0, 0); return _mm_and_ps(mask, xmm); } // zeroes w component
 	vec xmmVec3W() const { return _mm_shuffle_ps(xmm, xmm, _MM_SHUFFLE(0, 1, 2, 3)); }
 	vec xmmDot(const vec &v) const { __m128 t = _mm_mul_ps(xmm, v.xmm); __m128 t2 = _mm_hadd_ps(t, t); return _mm_hadd_ps(t2, t2); }
 };
@@ -626,6 +630,7 @@ public:
 	
 	plane &recalcD(const vec &member) { d = -(member.dot(normal)); return *this; }
 	vec getMember() const { return normal * (-d); }
+	vec get() const { __m128 dd = _mm_set_ss(d); return _mm_or_ps(normal.xmmVec3(), _mm_shuffle_ps(dd, dd, SSE_RSHUFFLE(0, 1, 2, 3))); }
 	bool isValid() const { return normal.length() > 0.f; }
 	float distance(const vec &p) const { return p.dot(normal) + d;}
 	float distance(const sphere &s) const { return s.getCenter().dot(normal) + d + s.getRadius(); }
@@ -638,6 +643,71 @@ public:
 	bool isAnyAbove(const aabbox &box) const { __m128 test = _mm_cmpge_ps(normal, _mm_setzero_ps()); vec xtrP = _mm_add_ps(_mm_and_ps(test, box.pmax), _mm_andnot_ps(test, box.pmin)); /* <- max point along normal */ return intersection(xtrP) >= 0.f; }
 	bool isAnyAbove(const obbox &box) const { return intersection(box.maxPointAlongNormal(normal)) >= 0.f; }
 };
+
+class matrix{
+public:
+	/*
+	 * column - major matrix (opengl) 
+	 * x = 11, 12, 13, 14
+	 * y = 21, 22, 23, 24
+	 * z = 31, 32, 33, 34
+	 * t = 41, 42, 43, 44
+	 */
+	
+	vec x, y, z, t;
+	
+    matrix() {}
+	matrix(float i11, float i12, float i13, float i14,
+		   float i21, float i22, float i23, float i24,
+		   float i31, float i32, float i33, float i34,
+		   float i41, float i42, float i43, float i44);
+	matrix(const vec &_x, const vec &_y, const vec &_z, const vec &_t);
+	matrix(const float *v);
+    ~matrix() {}
+
+	matrix &operator()(float i11, float i12, float i13, float i14,
+					   float i21, float i22, float i23, float i24,
+					   float i31, float i32, float i33, float i34,
+					   float i41, float i42, float i43, float i44);
+	matrix &operator()(const vec &_x, const vec &_y, const vec &_z, const vec &_t);
+	matrix &operator()(const float *v);
+	matrix &operator*=(const matrix &m);
+	matrix &operator-=(const matrix &m);
+	matrix &operator+=(const matrix &m);
+	matrix operator*(const matrix &m) const;
+	matrix operator+(const matrix &m) const;
+	matrix operator-(const matrix &m) const;
+	vec operator*(const vec &v) const;
+
+	matrix &translate(const vec &t);
+	matrix &scale(const vec &s);
+	matrix &rotate(const vec &axis, float angle);
+	matrix &setTranslation(const vec &_t);
+	matrix &setScale(const vec &s);
+	matrix &setRotation(const vec &axis, float angle);
+	matrix &identity();
+	matrix &transpose();
+	matrix &setShadow(const plane &p, const vec &lightPos);
+	matrix &setReflect(const plane &p);
+	matrix &lookAt(const vec &eye, const vec &forward, const vec &up);
+	//matrix &setFrustum(const frustum &f);
+	matrix &setFrustum(float left, float right, float bottom, float top, float near, float far);
+	matrix &setFrustum(float fov, float aspect, float near, float far);
+	matrix &setOrtho(float left, float right, float bottom, float top, float near, float far);
+	matrix &inverse();
+	matrix &inverseSimple();
+	matrix &textureProjection(const matrix &lightProjection, const matrix &lightView, const matrix &invModelView);
+
+	vec transform(const vec &v) const;
+	bool isIdentity() const;
+	vec getTranslate() const;
+	vec getScale() const;
+	vec getAxisX() const;
+	vec getAxisY() const;
+	vec getAxisZ() const;
+};
+
+#include "math.inc.h"
 
 }}
 
