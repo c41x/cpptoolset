@@ -1,14 +1,33 @@
 #include <base/base.h>
 
-void printVec(const granite::base::vec4f &v,const std::string &name){
-	std::cout<<"\nvector-print: "<<name<<"("<<v.x<<","<<v.y<<","<<v.z<<","<<v.w<<")";
+using namespace granite::base;
+
+void printVec(const vec4f &v, const std::string &name){
+	std::cout << "\nvector-print: " << name << "(" << v.x << "," << v.y << "," << v.z << "," << v.w << ")";
 }
-void printVec3(const granite::base::vec3f &v,const std::string &name){
-	std::cout<<"\nvector-print: "<<name<<"("<<v.x<<","<<v.y<<","<<v.z<<")";
+
+void printVec3(const vec3f &v, const std::string &name){
+	std::cout << "\nvector-print: " << name << "(" << v.x << "," << v.y << "," << v.z << ")";
+}
+
+void printMatrix(const matrix &m, const std::string &desc){
+	vec4f x = m.x;
+	vec4f y = m.y;
+	vec4f z = m.z;
+	vec4f t = m.t;
+	std::cout << "\n" << desc;
+	std::cout << "\n| " << x.x << ", " << x.y << ", " << x.z << ", " << x.w << " |";
+	std::cout << "\n| " << y.x << ", " << y.y << ", " << y.z << ", " << y.w << " |";
+	std::cout << "\n| " << z.x << ", " << z.y << ", " << z.z << ", " << z.w << " |";
+	std::cout << "\n| " << t.x << ", " << t.y << ", " << t.z << ", " << t.w << " |";
+}
+
+void printBool(bool test, const std::string &desc) {
+	std::cout << "\n" << desc << ": " << test;
 }
 
 int main(int argc, char**argv){
-	using namespace granite::base;
+	std::cout << std::boolalpha;
 	
 	vec t(1.f,2.f,3.f,0.f);
 	vec tt(1.f,3.f,3.f,666.f);
@@ -84,7 +103,6 @@ int main(int argc, char**argv){
 	}
 
 	// test sphere
-	std::cout << std::boolalpha;
 	sphere sp(vec(0.f, 1.f, 0.1f, 4.f));
 	printVec(sp.cr, "sphere data: ");
 	printVec(sp.getCenter(), "sphere center: ");
@@ -124,6 +142,29 @@ int main(int argc, char**argv){
 	std::cout << "\nis above bbox(-1,-1,-1,1,1,1) : " << pl.isAnyAbove(aabbox(vec(-1.f, -1.f, -1.f), vec(1.f, 1.f, 1.f)));
 	std::cout << "\nis above bbox(8,9,9,10,10,10) : " << pl.isAnyAbove(aabbox(vec(8.f, 9.f, 9.f), vec(10.f, 10.f, 10.f)));
 	std::cout << "\nis above bbox(8,9,0,10,10,10) : " << pl.isAnyAbove(aabbox(vec(8.f, 9.f, 0.f), vec(10.f, 10.f, 10.f)));
+
+	// matrix testing
+	{
+		matrix m;
+		m.identity();
+		printMatrix(m, "set to identity");
+		printBool(m.isIdentity(), "is identity");
+		printMatrix(m.setTranslation(vec(1.f, 2.f, 3.f)), "set translation to (1, 2, 3)");
+		printBool(m.isIdentity(), "is above identity?");
+		printMatrix(m.setScale(vec(4.f, 5.f, 6.66f)), "set scale to (4, 5, 6.66)");
+		printVec(m * vec(3.f, 7.f, 10.f), "transform vec (3, 7, 10)");
+		printVec(m * vec(0.f, 0.f, 0.f), "transform vec (0)");
+		printMatrix(m.setScale(vec(2.f, 4.f, 6.f)), "apply new scale (2, 4, 6)");
+		matrix tma = m, t2 = m;
+		printMatrix(m.inverse(), "inverse above");
+		printMatrix(tma.setScale(vec(1.f, 1.f, 1.f)), "set scale to vec(1) to test simple inverse");
+		printMatrix(tma.inverseSimple(), "simple inverse above");
+		printMatrix(t2 * t2, "mul matrix");
+		printMatrix(matrix().setRotation(vec(1.f, 0.f, 0.f), degToRad(180.f)), "setRotation vec(1,0,0), pi");
+		printMatrix(matrix().setRotation2(vec(1.f, 0.f, 0.f), degToRad(180.f)), "setRotation vec(1,0,0), pi");
+		printMatrix(matrix().setRotation(vec(1.f, 1.f, 0.f).normalized(), degToRad(90.f)), "setRotation vec(1,1,0), pi/2");
+		printMatrix(matrix().setRotation2(vec(1.f, 1.f, 0.f).normalized(), degToRad(90.f)), "setRotation vec(1,1,0), pi/2");
+	}
 	
 	std::cout << "\nfinished";
 	std::cout << std::flush;

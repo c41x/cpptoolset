@@ -35,8 +35,6 @@
 // reverse shuffle
 #define SSE_RSHUFFLE(VX, VY, VZ, VW) _MM_SHUFFLE(VW, VZ, VY, VX)
 #define SSE_RMASK(MX, MY, MZ, MW) ((__m128)_mm_set_epi32(MW, MZ, MY, MX))
-//#define SSE_RMASK(N, V3, V2, V1, V0) static const _MM_ALIGN16 int _##N[]= {V0, V1, V2, V3};
-//	const vec N = _mm_load_ps((float*)_##N);
 
 namespace granite {
 namespace base {
@@ -647,7 +645,6 @@ public:
 class matrix{
 public:
 	/*
-	 * column - major matrix (opengl) 
 	 * x = 11, 12, 13, 14
 	 * y = 21, 22, 23, 24
 	 * z = 31, 32, 33, 34
@@ -695,7 +692,7 @@ public:
 	matrix &setFrustum(float fov, float aspect, float near, float far);
 	matrix &setOrtho(float left, float right, float bottom, float top, float near, float far);
 	matrix &inverse();
-	matrix &inverseSimple();
+	matrix &inverseSimple(); // works when only rotation and/or translation is applied
 	matrix &textureProjection(const matrix &lightProjection, const matrix &lightView, const matrix &invModelView);
 
 	vec transform(const vec &v) const;

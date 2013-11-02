@@ -106,26 +106,23 @@ inline vec matrix::operator*(const vec &v) const {
 	r = vec(_mm_shuffle_ps(v, v, SSE_RSHUFFLE(0, 0, 0, 0))) * x;
 	r += vec(_mm_shuffle_ps(v, v, SSE_RSHUFFLE(1, 1, 1, 1))) * y;
 	r += vec(_mm_shuffle_ps(v, v, SSE_RSHUFFLE(2, 2, 2, 2))) * z;
-	r += vec(_mm_shuffle_ps(v, v, SSE_RSHUFFLE(3, 3, 3, 3))) * t;
+	r += t; // ignore w component (always 1.f) - just apply transform
 	return r;
 }
 
 inline matrix &matrix::translate(const vec &_t) {
 	matrix r;
-	r.identity();
 	r.setTranslation(_t);
 	return *this *= r;
 }
 
 inline matrix &matrix::scale(const vec &s) {
 	matrix r;
-	r.identity();
 	r.setScale(s);
 	return *this *= r;
 }
 inline matrix &matrix::rotate(const vec &axis, float angle) {
 	matrix r;
-	r.identity();
 	r.setRotation(axis, angle);
 	return *this *= r;
 }
@@ -133,15 +130,18 @@ inline matrix &matrix::rotate(const vec &axis, float angle) {
 inline matrix &matrix::setTranslation(const vec &_t) {
 	// 12, 13, 14 - (t)
 	static const __m128 maskz = SSE_RMASK(~0, ~0, ~0, 0);
-	static const __m128 maskxyz = SSE_RMASK(0, 0, 0, ~0);
-	t = _mm_or_ps(_mm_and_ps(t, maskxyz), _mm_and_ps(_t, maskz));
+	x(1.f, 0.f, 0.f, 0.f);
+	y(0.f, 1.f, 0.f, 0.f);
+	z(0.f, 0.f, 1.f, 0.f);
+	t = _mm_and_ps(_t, maskz);
 	return *this;
 }
 
 inline matrix &matrix::setScale(const vec &s) {
-	x = _mm_or_ps(_mm_and_ps(s, SSE_RMASK(~0, 0, 0, 0)), _mm_and_ps(x, SSE_RMASK(0, ~0, ~0, ~0)));
-	y = _mm_or_ps(_mm_and_ps(s, SSE_RMASK(0, ~0, 0, 0)), _mm_and_ps(y, SSE_RMASK(~0, 0, ~0, ~0)));
-	z = _mm_or_ps(_mm_and_ps(s, SSE_RMASK(0, 0, ~0, 0)), _mm_and_ps(z, SSE_RMASK(~0, ~0, 0, ~0)));
+	x = _mm_and_ps(s, SSE_RMASK(~0, 0, 0, 0)); 
+	y = _mm_and_ps(s, SSE_RMASK(0, ~0, 0, 0)); 
+	z = _mm_and_ps(s, SSE_RMASK(0, 0, ~0, 0)); 
+	t(0.f, 0.f, 0.f, 1.f);
 	return *this;
 }
 
@@ -150,20 +150,21 @@ inline matrix &matrix::setRotation(const vec &axis, float angle) {
 	const float tc = cosf(angle);
 	const vec xmmtc = _mm_set_ss(tc);
 	const vec co = _mm_set1_ps(1.f - tc); // 1 - cos, 1 - cos, 1 - cos, 1 - cos
-	const vec sA = vec(_mm_set1_ps(sinf(angle))) * axis + _mm_shuffle_ps(xmmtc, xmmtc, SSE_RSHUFFLE(0, 1, 2, 3)); // axisX * sin, axisY * sin, axisZ * sin, cos
-	
+	const vec sA = vec(_mm_set1_ps(sinf(angle))) * axis +
+		_mm_shuffle_ps(xmmtc, xmmtc, SSE_RSHUFFLE(3, 2, 1, 0)); // axisX * sin, axisY * sin, axisZ * sin, cos
+
 	vec rx = axis * _mm_shuffle_ps(axis, axis, SSE_RSHUFFLE(0, 0, 0, 0)) * co +
-		_mm_shuffle_ps(sA, _mm_or_ps(sA, _mm_setr_ps(0.f, -0.f, 0.f, 0.f)), SSE_RSHUFFLE(3, 2, 1, 0));
+		_mm_shuffle_ps(sA, _mm_xor_ps(sA, vec(0.f, -0.f, 0.f, 0.f)), SSE_RSHUFFLE(3, 2, 1, 0));
 	vec ry = vec(_mm_shuffle_ps(axis, axis, SSE_RSHUFFLE(0, 1, 1, 3))) * _mm_shuffle_ps(axis, axis, SSE_RSHUFFLE(1, 1, 2, 3)) * co +
-		_mm_shuffle_ps(_mm_or_ps(sA, _mm_setr_ps(0.f, 0.f, -0.f, 0.f)), sA, SSE_RSHUFFLE(2, 3, 0, 1));
-	vec rz = vec(_mm_shuffle_ps(axis, axis, SSE_RSHUFFLE(0, 1, 2, 3))) * _mm_shuffle_ps(axis, axis, SSE_RSHUFFLE(2, 2, 2, 3)) * co +
-		_mm_shuffle_ps(_mm_or_ps(sA, _mm_setr_ps(-0.f, 0.f, 0.f, 0.f)), sA, SSE_RSHUFFLE(1, 0, 3, 2));
+		_mm_shuffle_ps(_mm_xor_ps(sA, vec(0.f, 0.f, -0.f, 0.f)), sA, SSE_RSHUFFLE(2, 3, 0, 1));
+	vec rz = axis * _mm_shuffle_ps(axis, axis, SSE_RSHUFFLE(2, 2, 2, 3)) * co +
+		_mm_shuffle_ps(_mm_xor_ps(sA, vec(-0.f, 0.f, 0.f, 0.f)), sA, SSE_RSHUFFLE(1, 0, 3, 2));
 
 	static const __m128 wMask = SSE_RMASK(~0, ~0, ~0, 0);
-	static const __m128 rwMask = SSE_RMASK(0, 0, 0, ~0);
-	x = _mm_or_ps(_mm_and_ps(x, rwMask), _mm_and_ps(rx, wMask));
-	y = _mm_or_ps(_mm_and_ps(y, rwMask), _mm_and_ps(ry, wMask));
-	z = _mm_or_ps(_mm_and_ps(z, rwMask), _mm_and_ps(rz, wMask));
+	x = _mm_and_ps(rx, wMask);
+	y = _mm_and_ps(ry, wMask);
+	z = _mm_and_ps(rz, wMask);
+	t(0.f, 0.f, 0.f, 1.f);
 	return *this;
 }
 
@@ -254,82 +255,111 @@ inline matrix &matrix::setOrtho(float left, float right, float bottom, float top
 }
 
 inline matrix &matrix::inverse() {
-	// taken from intel manual 44-24504301
-	__m128 minor0, minor1, minor2, minor3;
-	__m128 row0, row1, row2, row3;
-	__m128 det, tmp1;
+	// taken from XNAMath
+	transpose();
+	vec V00 = _mm_shuffle_ps(z, z,_MM_SHUFFLE(1,1,0,0));
+	vec V10 = _mm_shuffle_ps(t, t,_MM_SHUFFLE(3,2,3,2));
+	vec V01 = _mm_shuffle_ps(x, x,_MM_SHUFFLE(1,1,0,0));
+	vec V11 = _mm_shuffle_ps(y, y,_MM_SHUFFLE(3,2,3,2));
+	vec V02 = _mm_shuffle_ps(z, x,_MM_SHUFFLE(2,0,2,0));
+	vec V12 = _mm_shuffle_ps(t, y,_MM_SHUFFLE(3,1,3,1));
 
-	// transpose
-	_MM_TRANSPOSE4_PS(x, y, z, t);
-	row0 = x;
-	row1 = y;
-	row2 = z;
-	row3 = t;
-		
-	tmp1 = _mm_mul_ps(row2, row3);
-	tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0xB1);
-	minor0 = _mm_mul_ps(row1, tmp1);
-	minor1 = _mm_mul_ps(row0, tmp1);
-	tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0x4E);
-	minor0 = _mm_sub_ps(_mm_mul_ps(row1, tmp1), minor0);
-	minor1 = _mm_sub_ps(_mm_mul_ps(row0, tmp1), minor1);
-	minor1 = _mm_shuffle_ps(minor1, minor1, 0x4E);
-	
-	tmp1 = _mm_mul_ps(row1, row2);
-	tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0xB1);
-	minor0 = _mm_add_ps(_mm_mul_ps(row3, tmp1), minor0);
-	minor3 = _mm_mul_ps(row0, tmp1);
-	tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0x4E);
-	minor0 = _mm_sub_ps(minor0, _mm_mul_ps(row3, tmp1));
-	minor3 = _mm_sub_ps(_mm_mul_ps(row0, tmp1), minor3);
-	minor3 = _mm_shuffle_ps(minor3, minor3, 0x4E);
-	
-	tmp1 = _mm_mul_ps(_mm_shuffle_ps(row1, row1, 0x4E), row3);
-	tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0xB1);
-	row2 = _mm_shuffle_ps(row2, row2, 0x4E);
-	minor0 = _mm_add_ps(_mm_mul_ps(row2, tmp1), minor0);
-	minor2 = _mm_mul_ps(row0, tmp1);
-	tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0x4E);
-	minor0 = _mm_sub_ps(minor0, _mm_mul_ps(row2, tmp1));
-	minor2 = _mm_sub_ps(_mm_mul_ps(row0, tmp1), minor2);
-	minor2 = _mm_shuffle_ps(minor2, minor2, 0x4E);
-	
-	tmp1 = _mm_mul_ps(row0, row1);
-	tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0xB1);
-	minor2 = _mm_add_ps(_mm_mul_ps(row3, tmp1), minor2);
-	minor3 = _mm_sub_ps(_mm_mul_ps(row2, tmp1), minor3);
-	tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0x4E);
-	minor2 = _mm_sub_ps(_mm_mul_ps(row3, tmp1), minor2);
-	minor3 = _mm_sub_ps(minor3, _mm_mul_ps(row2, tmp1));
-	
-	tmp1 = _mm_mul_ps(row0, row3);
-	tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0xB1);
-	minor1 = _mm_sub_ps(minor1, _mm_mul_ps(row2, tmp1));
-	minor2 = _mm_add_ps(_mm_mul_ps(row1, tmp1), minor2);
-	tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0x4E);
-	minor1 = _mm_add_ps(_mm_mul_ps(row2, tmp1), minor1);
-	minor2 = _mm_sub_ps(minor2, _mm_mul_ps(row1, tmp1));
-	
-	tmp1 = _mm_mul_ps(row0, row2);
-	tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0xB1);
-	minor1 = _mm_add_ps(_mm_mul_ps(row3, tmp1), minor1);
-	minor3 = _mm_sub_ps(minor3, _mm_mul_ps(row1, tmp1));
-	tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0x4E);
-	minor1 = _mm_sub_ps(minor1, _mm_mul_ps(row3, tmp1));
-	minor3 = _mm_add_ps(_mm_mul_ps(row1, tmp1), minor3);
-	
-	det = _mm_mul_ps(row0, minor0);
-	det = _mm_add_ps(_mm_shuffle_ps(det, det, 0x4E), det);
-	det = _mm_add_ss(_mm_shuffle_ps(det, det, 0xB1), det);
-	tmp1 = _mm_rcp_ss(det); // change this to _mm_div_ss(_mm_set_ss(1.f), det)?
-	det = _mm_sub_ss(_mm_add_ss(tmp1, tmp1), _mm_mul_ss(det, _mm_mul_ss(tmp1, tmp1)));
-	det = _mm_shuffle_ps(det, det, 0x00);
-	
-	x = _mm_mul_ps(det, minor0);
-	y = _mm_mul_ps(det, minor1);
-	z = _mm_mul_ps(det, minor2);
-	t = _mm_mul_ps(det, minor3);
+	vec D0 = _mm_mul_ps(V00,V10);
+	vec D1 = _mm_mul_ps(V01,V11);
+	vec D2 = _mm_mul_ps(V02,V12);
 
+	V00 = _mm_shuffle_ps(z,z,_MM_SHUFFLE(3,2,3,2));
+	V10 = _mm_shuffle_ps(t,t,_MM_SHUFFLE(1,1,0,0));
+	V01 = _mm_shuffle_ps(x,x,_MM_SHUFFLE(3,2,3,2));
+	V11 = _mm_shuffle_ps(y,y,_MM_SHUFFLE(1,1,0,0));
+	V02 = _mm_shuffle_ps(z,x,_MM_SHUFFLE(3,1,3,1));
+	V12 = _mm_shuffle_ps(t,y,_MM_SHUFFLE(2,0,2,0));
+
+	V00 = _mm_mul_ps(V00,V10);
+	V01 = _mm_mul_ps(V01,V11);
+	V02 = _mm_mul_ps(V02,V12);
+	D0 = _mm_sub_ps(D0,V00);
+	D1 = _mm_sub_ps(D1,V01);
+	D2 = _mm_sub_ps(D2,V02);
+	V11 = _mm_shuffle_ps(D0,D2,_MM_SHUFFLE(1,1,3,1)); // V11 = D0Y,D0W,D2Y,D2Y
+	V00 = _mm_shuffle_ps(y, y,_MM_SHUFFLE(1,0,2,1));
+	V10 = _mm_shuffle_ps(V11,D0,_MM_SHUFFLE(0,3,0,2));
+	V01 = _mm_shuffle_ps(x, x,_MM_SHUFFLE(0,1,0,2));
+	V11 = _mm_shuffle_ps(V11,D0,_MM_SHUFFLE(2,1,2,1));
+	vec V13 = _mm_shuffle_ps(D1,D2,_MM_SHUFFLE(3,3,3,1)); // V13 = D1Y,D1W,D2W,D2W
+	V02 = _mm_shuffle_ps(t, t,_MM_SHUFFLE(1,0,2,1));
+	V12 = _mm_shuffle_ps(V13,D1,_MM_SHUFFLE(0,3,0,2));
+	vec V03 = _mm_shuffle_ps(z, z,_MM_SHUFFLE(0,1,0,2));
+	V13 = _mm_shuffle_ps(V13,D1,_MM_SHUFFLE(2,1,2,1));
+
+	vec C0 = _mm_mul_ps(V00,V10);
+	vec C2 = _mm_mul_ps(V01,V11);
+	vec C4 = _mm_mul_ps(V02,V12);
+	vec C6 = _mm_mul_ps(V03,V13);
+	
+	V11 = _mm_shuffle_ps(D0,D2,_MM_SHUFFLE(0,0,1,0)); // V11 = D0X,D0Y,D2X,D2X
+	V00 = _mm_shuffle_ps(y, y,_MM_SHUFFLE(2,1,3,2));
+	V10 = _mm_shuffle_ps(D0,V11,_MM_SHUFFLE(2,1,0,3));
+	V01 = _mm_shuffle_ps(x, x,_MM_SHUFFLE(1,3,2,3));
+	V11 = _mm_shuffle_ps(D0,V11,_MM_SHUFFLE(0,2,1,2));
+	V13 = _mm_shuffle_ps(D1,D2,_MM_SHUFFLE(2,2,1,0)); // V13 = D1X,D1Y,D2Z,D2Z
+	V02 = _mm_shuffle_ps(t, t,_MM_SHUFFLE(2,1,3,2));
+	V12 = _mm_shuffle_ps(D1,V13,_MM_SHUFFLE(2,1,0,3));
+	V03 = _mm_shuffle_ps(z, z,_MM_SHUFFLE(1,3,2,3));
+	V13 = _mm_shuffle_ps(D1,V13,_MM_SHUFFLE(0,2,1,2));
+
+	V00 = _mm_mul_ps(V00,V10);
+	V01 = _mm_mul_ps(V01,V11);
+	V02 = _mm_mul_ps(V02,V12);
+	V03 = _mm_mul_ps(V03,V13);
+	C0 = _mm_sub_ps(C0,V00);
+	C2 = _mm_sub_ps(C2,V01);
+	C4 = _mm_sub_ps(C4,V02);
+	C6 = _mm_sub_ps(C6,V03);
+
+	V00 = _mm_shuffle_ps(y,y,_MM_SHUFFLE(0,3,0,3));
+	V10 = _mm_shuffle_ps(D0,D2,_MM_SHUFFLE(1,0,2,2)); // V10 = D0Z,D0Z,D2X,D2Y
+	V10 = _mm_shuffle_ps(V10,V10,_MM_SHUFFLE(0,2,3,0));
+	V01 = _mm_shuffle_ps(x,x,_MM_SHUFFLE(2,0,3,1));
+	V11 = _mm_shuffle_ps(D0,D2,_MM_SHUFFLE(1,0,3,0)); // V11 = D0X,D0W,D2X,D2Y
+	V11 = _mm_shuffle_ps(V11,V11,_MM_SHUFFLE(2,1,0,3));
+	V02 = _mm_shuffle_ps(t,t,_MM_SHUFFLE(0,3,0,3));
+	V12 = _mm_shuffle_ps(D1,D2,_MM_SHUFFLE(3,2,2,2)); // V12 = D1Z,D1Z,D2Z,D2W
+	V12 = _mm_shuffle_ps(V12,V12,_MM_SHUFFLE(0,2,3,0));
+	V03 = _mm_shuffle_ps(z,z,_MM_SHUFFLE(2,0,3,1));
+	V13 = _mm_shuffle_ps(D1,D2,_MM_SHUFFLE(3,2,3,0)); // V13 = D1X,D1W,D2Z,D2W
+	V13 = _mm_shuffle_ps(V13,V13,_MM_SHUFFLE(2,1,0,3));
+
+	V00 = _mm_mul_ps(V00,V10);
+	V01 = _mm_mul_ps(V01,V11);
+	V02 = _mm_mul_ps(V02,V12);
+	V03 = _mm_mul_ps(V03,V13);
+	vec C1 = _mm_sub_ps(C0,V00);
+	C0 = _mm_add_ps(C0,V00);
+	vec C3 = _mm_add_ps(C2,V01);
+	C2 = _mm_sub_ps(C2,V01);
+	vec C5 = _mm_sub_ps(C4,V02);
+	C4 = _mm_add_ps(C4,V02);
+	vec C7 = _mm_add_ps(C6,V03);
+	C6 = _mm_sub_ps(C6,V03);
+
+	C0 = _mm_shuffle_ps(C0,C1,_MM_SHUFFLE(3,1,2,0));
+	C2 = _mm_shuffle_ps(C2,C3,_MM_SHUFFLE(3,1,2,0));
+	C4 = _mm_shuffle_ps(C4,C5,_MM_SHUFFLE(3,1,2,0));
+	C6 = _mm_shuffle_ps(C6,C7,_MM_SHUFFLE(3,1,2,0));
+	C0 = _mm_shuffle_ps(C0,C0,_MM_SHUFFLE(3,1,2,0));
+	C2 = _mm_shuffle_ps(C2,C2,_MM_SHUFFLE(3,1,2,0));
+	C4 = _mm_shuffle_ps(C4,C4,_MM_SHUFFLE(3,1,2,0));
+	C6 = _mm_shuffle_ps(C6,C6,_MM_SHUFFLE(3,1,2,0));
+	
+	vec vTemp = C0.xmmDot(x);
+	vTemp = _mm_div_ps(_mm_set1_ps(1.f),vTemp);
+	
+	x = _mm_mul_ps(C0,vTemp);
+	y = _mm_mul_ps(C2,vTemp);
+	z = _mm_mul_ps(C4,vTemp);
+	t = _mm_mul_ps(C6,vTemp);
+	
 	return *this;
 }
 
@@ -369,11 +399,11 @@ inline vec matrix::transform(const vec &v) const {
 }
 
 inline bool matrix::isIdentity() const {
-	__m128 t = _mm_cmpneq_ps(x, vec(1.f, 0.f, 0.f, 0.f));
-	t = _mm_or_ps(t, _mm_cmpneq_ps(y, vec(0.f, 1.f, 0.f, 0.f)));
-	t = _mm_or_ps(t, _mm_cmpneq_ps(z, vec(0.f, 0.f, 1.f, 0.f)));
-	t = _mm_or_ps(t, _mm_cmpneq_ps(t, vec(0.f, 0.f, 0.f, 1.f)));
-	return 0 != _mm_movemask_ps(t);
+	__m128 tmp = _mm_cmpeq_ps(x, vec(1.f, 0.f, 0.f, 0.f));
+	tmp = _mm_and_ps(tmp, _mm_cmpeq_ps(y, vec(0.f, 1.f, 0.f, 0.f)));
+	tmp = _mm_and_ps(tmp, _mm_cmpeq_ps(z, vec(0.f, 0.f, 1.f, 0.f)));
+	tmp = _mm_and_ps(tmp, _mm_cmpeq_ps(t, vec(0.f, 0.f, 0.f, 1.f)));
+	return 0xf == _mm_movemask_ps(tmp);
 }
 
 inline vec matrix::getTranslate() const {
