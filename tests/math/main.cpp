@@ -161,9 +161,7 @@ int main(int argc, char**argv){
 		printMatrix(tma.inverseSimple(), "simple inverse above");
 		printMatrix(t2 * t2, "mul matrix");
 		printMatrix(matrix().setRotation(vec(1.f, 0.f, 0.f), degToRad(180.f)), "setRotation vec(1,0,0), pi");
-		printMatrix(matrix().setRotation2(vec(1.f, 0.f, 0.f), degToRad(180.f)), "setRotation vec(1,0,0), pi");
 		printMatrix(matrix().setRotation(vec(1.f, 1.f, 0.f).normalized(), degToRad(90.f)), "setRotation vec(1,1,0), pi/2");
-		printMatrix(matrix().setRotation2(vec(1.f, 1.f, 0.f).normalized(), degToRad(90.f)), "setRotation vec(1,1,0), pi/2");
 	}
 	
 	std::cout << "\nfinished";

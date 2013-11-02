@@ -429,4 +429,109 @@ inline vec matrix::getAxisZ() const {
 	return z.xmmVec3();
 }
 
+inline frustum::frustum(float _fov, float _aspect, float _znear, float _zfar, const vec &eye, const vec &look, const vec &up) {
+	(*this)(_fov, _aspect, _znear, _zfar, eye, look, up);
+}
+
+inline frustum::frustum(const matrix &MVP) {
+	setMVP(MVP);
+}
+
+inline frustum &frustum::operator()(float _fov, float _aspect, float _znear, float _zfar, const vec &eye, const vec &look, const vec &up)
+{
+	setProjection(_fov, _aspect, _znear, _zfar);
+	setModelView(eye, look, up);
+	return *this;
+}
+
+inline frustum &frustum::setProjection(float _fov, float _aspect, float _znear, float _zfar) {
+	fov = _fov;
+	aspect = _aspect;
+	znear = _znear;
+	zfar = _zfar;
+
+	// calculate near/far widths
+	const float fovAngle = tanf(degToRad(_fov) * .5f);
+	nearHeight = znear * fovAngle;
+	nearWidth = nearHeight * aspect;
+	farHeight = zfar * fovAngle;
+	farWidth = farHeight * aspect;
+
+	return *this;
+}
+
+inline frustum &frustum::setModelView(const vec &eye, const vec &look, const vec &up) {
+	vec x, y, z, farCenter, nearCenter;
+	
+	z = (eye - look).normalize();
+	x = up.cross(z).normalize();
+	y = z.cross(x);
+	nearCenter = eye - z * znear;
+	farCenter = eye - z * zfar;
+
+	points[POINT_NLT] = nearCenter + y * nearHeight - x * nearWidth;
+	points[POINT_NRT] = nearCenter + y * nearHeight + x * nearWidth;
+	points[POINT_NLB] = nearCenter - y * nearHeight - x * nearWidth;
+	points[POINT_NRB] = nearCenter - y * nearHeight + x * nearWidth;
+	
+	points[POINT_FLT] = farCenter + y * farHeight - x * farWidth;
+	points[POINT_FRT] = farCenter + y * farHeight + x * farWidth;
+	points[POINT_FLB] = farCenter - y * farHeight - x * farWidth;
+	points[POINT_FRB] = farCenter - y * farHeight + x * farWidth;
+	
+	planes[PLANE_NEAR](points[POINT_NLT], points[POINT_NRT], points[POINT_NRB]);
+	planes[PLANE_FAR](points[POINT_FLT], points[POINT_FLB], points[POINT_FRB]);
+	planes[PLANE_LEFT](points[POINT_NLT], points[POINT_NLB], points[POINT_FLB]);
+	planes[PLANE_RIGHT](points[POINT_FRT], points[POINT_FRB], points[POINT_NRB]);
+	planes[PLANE_TOP](points[POINT_FRT], points[POINT_NRT], points[POINT_NLT]);
+	planes[PLANE_BOTTOM](points[POINT_FLB], points[POINT_NLB], points[POINT_NRB]);
+	
+	planes[0].normal.normalize();
+	planes[1].normal.normalize();
+	planes[2].normal.normalize();
+	planes[3].normal.normalize();
+	planes[4].normal.normalize();
+	planes[5].normal.normalize();
+	return *this;
+
+}
+
+inline frustum &frustum::setMVP(const matrix &MVP) {
+	// taken from some GPG book edition, from chapter about Frusum Culling
+	planes[PLANE_LEFT](MVP.t - MVP.x);
+	planes[PLANE_RIGHT](MVP.t + MVP.x);
+	planes[PLANE_TOP](MVP.t - MVP.y);
+	planes[PLANE_BOTTOM](MVP.t + MVP.y);
+	planes[PLANE_FAR](MVP.t - MVP.z);
+	planes[PLANE_NEAR](MVP.t + MVP.z);
+	return *this;
+}
+
+inline bool frustum::contains(const vec &p) const {
+	for(int i = 0; i < 6; ++i)
+		if(planes[i].intersection(p) < 0.f)
+			return false;
+	return true;
+}
+
+inline bool frustum::contains(const sphere &s) const {
+	for(int i = 0; i < 6; ++i)
+		if(planes[i].intersection(s) < 0.f)
+			return false;
+}
+
+inline bool frustum::contains(const aabbox &b) const {
+	for(int i = 0; i < 6; ++i)
+		if(!planes[i].isAnyAbove(b))
+			return false;
+	return true;
+}
+
+inline bool frustum::contains(const obbox &b) const {
+	for(int i = 0; i < 6; ++i)
+		if(!planes[i].isAnyAbove(b))
+			return false;
+	return true;
+}
+
 //~

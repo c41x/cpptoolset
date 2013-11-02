@@ -617,6 +617,7 @@ public:
 	plane(const vec &a, const vec &b, const vec &c) { (*this)(a, b, c); }
 	plane(const vec &_normal, const vec &member) { (*this)(_normal, member); }
 	plane(const triangle &tri) { (*this)(tri); }
+	plane(const vec &normalD) { (*this)(normalD); }
 	~plane(){}
 	
 	plane &operator()(float x, float y, float z, float _d) { normal(x, y, z); d = _d; return *this; }
@@ -624,6 +625,7 @@ public:
 	plane &operator()(const vec &a, const vec &b, const vec &c) { normal = (b - a).cross(c - a).normalize(); recalcD(a); return *this; }
 	plane &operator()(const vec &_normal, const vec &member) { normal = _normal; recalcD(member); return *this; }
 	plane &operator()(const triangle &tri) { (*this)(tri.a, tri.b, tri.c); return *this; }
+	plane &operator()(const vec &normalD) { normal = normalD.xmmVec3(); _mm_store_ss(&d, _mm_shuffle_ps(normalD, normalD, SSE_RSHUFFLE(3, 3, 3, 3))); return *this; }
 	plane operator-() const { return plane(-normal, d); }
 	
 	plane &recalcD(const vec &member) { d = -(member.dot(normal)); return *this; }
@@ -641,6 +643,8 @@ public:
 	bool isAnyAbove(const aabbox &box) const { __m128 test = _mm_cmpge_ps(normal, _mm_setzero_ps()); vec xtrP = _mm_add_ps(_mm_and_ps(test, box.pmax), _mm_andnot_ps(test, box.pmin)); /* <- max point along normal */ return intersection(xtrP) >= 0.f; }
 	bool isAnyAbove(const obbox &box) const { return intersection(box.maxPointAlongNormal(normal)) >= 0.f; }
 };
+
+class frustum;
 
 class matrix{
 public:
@@ -702,6 +706,53 @@ public:
 	vec getAxisX() const;
 	vec getAxisY() const;
 	vec getAxisZ() const;
+};
+
+class frustum {
+	enum {
+		PLANE_NEAR = 0,
+		PLANE_LEFT,
+		PLANE_RIGHT,
+		PLANE_TOP,
+		PLANE_BOTTOM,
+		PLANE_FAR
+	};
+	enum {
+		POINT_NLT = 0,
+		POINT_NLB,
+		POINT_NRB,
+		POINT_NRT,
+		POINT_FLT,
+		POINT_FLB,
+		POINT_FRB,
+		POINT_FRT
+	};
+public:
+	plane planes[6];
+	vec points[8];
+	float fov;
+	float aspect;
+	float znear;
+	float zfar;
+	float nearWidth;
+	float nearHeight;
+	float farWidth;
+	float farHeight;
+	
+    frustum(){}
+	frustum(float _fov, float _aspect, float _znear, float _zfar, const vec &eye, const vec &look, const vec &up);
+	frustum(const matrix &MVP);
+    ~frustum(){}
+
+	frustum &operator()(float _fov, float _aspect, float _znear, float _zfar, const vec &eye, const vec &look, const vec &up);
+	frustum &setProjection(float _fov, float _aspect, float _znear, float _zfar);
+	frustum &setModelView(const vec &eye, const vec &look, const vec &up);
+	frustum &setMVP(const matrix &MVP);
+
+	bool contains(const vec &p) const;
+	bool contains(const sphere &s) const;
+	bool contains(const aabbox &b) const;
+	bool contains(const obbox &b) const;
 };
 
 #include "math.inc.h"
