@@ -28,17 +28,17 @@ namespace granite{namespace base{
 
 // 2 iterators for substring positions in string
 struct stringRange{
-		string::const_iterator begin;
-		string::const_iterator end;
-		stringRange(string::const_iterator ibegin,string::const_iterator iend):begin(ibegin),end(iend){}
-		explicit stringRange(const string &s):begin(s.begin()),end(s.end()){}
-		stringRange &operator()(string::const_iterator ibegin,string::const_iterator iend){begin=ibegin;end=iend;return *this;}
-		stringRange &operator()(const string &s){begin=s.begin();end=s.end(); return *this;}
-		size_t ibegin(const string &s)const{return std::distance(s.begin(),begin);}
-		size_t iend(const string &s)const{return std::distance(s.begin(),end);}
-		size_t count()const{return std::distance(begin,end);}
-		string str()const{return string(begin,end);}
-		operator string()const{return string(begin,end);}
+	string::const_iterator begin;
+	string::const_iterator end;
+	stringRange(string::const_iterator ibegin,string::const_iterator iend):begin(ibegin),end(iend){}
+	explicit stringRange(const string &s):begin(s.begin()),end(s.end()){}
+	stringRange &operator()(string::const_iterator ibegin,string::const_iterator iend){begin=ibegin;end=iend;return *this;}
+	stringRange &operator()(const string &s){begin=s.begin();end=s.end(); return *this;}
+	size_t ibegin(const string &s)const{return std::distance(s.begin(),begin);}
+	size_t iend(const string &s)const{return std::distance(s.begin(),end);}
+	size_t count()const{return std::distance(begin,end);}
+	string str()const{return string(begin,end);}
+	operator string()const{return string(begin,end);}
 };
 
 // inlines char fxs:
