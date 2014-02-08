@@ -534,4 +534,98 @@ inline bool frustum::contains(const obbox &b) const {
 	return true;
 }
 
+inline quaternion::quaternion() {}
+
+inline quaternion::quaternion(float w, float x, float y, float z) {
+	wxyz = _mm_set_ps(w, x, y, z);
+}
+
+inline quaternion::quaternion(const vec &_wxyz) : wxyz(_wxyz) {}
+
+inline quaternion::quaternion(const matrix &rotationMatrix) {
+	
+}
+
+inline quaternion::quaternion(const vec &ax, const vec &ay, const vec &az) {
+	
+}
+
+inline quaternion::~quaternion() {}
+
+inline quaternion &quaternion::operator*(float s) { return *this; }
+inline quaternion &quaternion::operator*(const quaternion &q) { return *this; }
+inline quaternion quaternion::operator+(const quaternion &q) const { return quaternion(); }
+inline quaternion quaternion::operator-(const quaternion &q) const { return quaternion(); }
+
+inline quaternion quaternion::operator-() const {
+	quaternion q(*this);
+	return q.negateAxis();
+}
+
+inline quaternion::operator matrix() const {
+	return matrix();
+}
+
+inline quaternion &quaternion::operator()(float w, float x, float y, float z) {
+	wxyz = _mm_setr_ps(w, x, y, z);
+	return *this;
+}
+
+inline quaternion &quaternion::operator()(const matrix &m) {
+	return *this;
+}
+
+inline quaternion &quaternion::operator()(const vec &_wxyz) {
+	wxyz = _wxyz;
+	return *this;
+}
+
+inline quaternion &quaternion::operator()(const vec &ax, const vec &ay, const vec &az) {
+	return *this;
+}
+
+inline matrix quaternion::getMatrix() const {
+	return matrix();
+}
+
+inline float quaternion::length() const {
+	return _mm_cvtss_f32(xmmLength());
+}
+
+inline float quaternion::getRoll() const { return 0.f; }
+inline float quaternion::getPitch() const { return 0.f; }
+inline float quaternion::getYaw() const { return 0.f; }
+inline vec quaternion::getXAxis() const { return vec(); }
+inline vec quaternion::getYAxis() const { return vec(); }
+inline vec quaternion::getZAxis() const { return vec(); }
+
+inline vec quaternion::xmmLength() const {
+	vec t = wxyz * wxyz;
+	t = _mm_hadd_ps(t, t);
+	t = _mm_hadd_ps(t, t);
+	return _mm_sqrt_ps(t);
+}
+	
+inline quaternion &quaternion::identity() {
+	_mm_set_ps(1.f, 0.f, 0.f, 0.f);
+	return *this;
+}
+
+inline quaternion &quaternion::normalize() {
+	wxyz /= xmmLength();
+	return *this;
+}
+
+inline quaternion &quaternion::negateAxis() {
+	static const vec signMask(0.f, -0.f, -0.f, -0.f);
+	wxyz = _mm_xor_ps(wxyz, signMask);
+	return *this;
+}
+
+inline quaternion &quaternion::negateRotation() {
+	static const vec signMask(-0.f, 0.f, 0.f, 0.f);
+	wxyz = _mm_xor_ps(wxyz, signMask);
+	return *this;
+}
+
 //~

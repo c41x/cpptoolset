@@ -755,6 +755,45 @@ public:
 	bool contains(const obbox &b) const;
 };
 
+class quaternion{
+public:
+	vec wxyz; // xmm = w, x, y, z
+	
+    quaternion();
+	quaternion(float w, float x, float y, float z);
+	quaternion(const vec &_wxyz);
+	quaternion(const matrix &rotationMatrix);
+	quaternion(const vec &ax, const vec &ay, const vec &az);
+    ~quaternion();
+
+	quaternion &operator*(float s);
+	quaternion &operator*(const quaternion &q);
+	quaternion operator+(const quaternion &q) const;
+	quaternion operator-(const quaternion &q) const;
+	quaternion operator-() const;
+	operator matrix() const;
+	quaternion &operator()(float w, float x, float y, float z);
+	quaternion &operator()(const matrix &m);
+	quaternion &operator()(const vec &_wxyz);
+	quaternion &operator()(const vec &ax, const vec &ay, const vec &az);
+
+	matrix getMatrix() const;
+	float length() const;
+	float getRoll() const;
+	float getPitch() const;
+	float getYaw() const;
+	vec getXAxis() const;
+	vec getYAxis() const;
+	vec getZAxis() const;
+	vec xmmLength() const;
+	
+	quaternion &identity();
+	quaternion &normalize();
+	quaternion &negateAxis();
+	quaternion &negateRotation();
+	// TODO: quaternion interpolations
+};
+
 #include "math.inc.h"
 
 }}

@@ -17,6 +17,7 @@
 #include "sigslot.h"
 #include "timer.h"
 #include "string.h"
+#include "tokenizer.h"
 
 //~
 
