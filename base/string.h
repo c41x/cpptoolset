@@ -89,6 +89,12 @@ template <typename T>T strToUnsigned(const stringRange &range);
 template <typename T>T strToReal(const stringRange &range);
 bool strToBool(const stringRange &range);
 
+// testing functions
+inline bool isInteger(const stringRange &range);
+inline bool isFloat(const stringRange &range);
+inline bool isInteger(const string &s) { return isInteger(stringRange(s)); };
+inline bool isFloat(const string &s) { return isFloat(stringRange(s)); };
+
 // templated (can not be overloaded thats why template)
 template<typename T>inline T fromStr(const stringRange &range){gassert(false,"conversion from string: unknown type, conversion not specialized"); return T();}
 template<>inline int8 fromStr<int8>(const stringRange &range){return strToSigned<int8>(range);}
@@ -213,6 +219,33 @@ template <typename T>T strToReal(const stringRange &range){
 		gassert(isDigit(*it), "parsing string to real - non numeric character");
 	}
 	return (mant+ret)*sign;
+}
+
+bool isInteger(const stringRange &range) {
+	string::const_iterator it(range.begin);
+	if((*range.begin) == '-')
+		it++;
+	for(; it != range.end; ++it) {
+		if(!isDigit(*it))
+			return false;
+	}
+	return true;
+}
+
+bool isFloat(const stringRange &range) {
+	string::const_iterator it(range.begin);
+	if((*range.begin) == '-')
+		++it;
+	bool dotFound = false;
+	for(; it != range.end; it++) {
+		if(*it=='.' && !dotFound){
+			++it;
+			dotFound = true;
+		}
+		if(!isDigit(*it))
+			return false;
+	}
+	return true;
 }
 
 template <typename T> stringRange signedToStr(const T &i,string &os){
