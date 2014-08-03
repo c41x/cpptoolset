@@ -1,18 +1,18 @@
 /*
- * granite engine 1.0 | 2006-2013 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com 
+ * granite engine 1.0 | 2006-2013 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
  * file: math.inc.h
  * created: 27-10-2013
- * 
+ *
  * description: inlines from math.h
- * 
+ *
  * changelog:
  * - 27-10-2013: file created
  */
 
 inline matrix::matrix(float i11, float i12, float i13, float i14,
-			   float i21, float i22, float i23, float i24,
-			   float i31, float i32, float i33, float i34,
-			   float i41, float i42, float i43, float i44)
+					  float i21, float i22, float i23, float i24,
+					  float i31, float i32, float i33, float i34,
+					  float i41, float i42, float i43, float i44)
 	: x(i11, i12, i13, i14),
 	  y(i21, i22, i23, i24),
 	  z(i31, i32, i33, i34),
@@ -65,7 +65,7 @@ inline matrix &matrix::operator+=(const matrix &m) {
 inline matrix matrix::operator*(const matrix &m) const {
 	matrix r;
 	vec rl;
-	
+
 	rl = x * _mm_shuffle_ps(m.x, m.x, SSE_RSHUFFLE(0, 0, 0, 0));
 	rl += y * _mm_shuffle_ps(m.x, m.x, SSE_RSHUFFLE(1, 1, 1, 1));
 	rl += z * _mm_shuffle_ps(m.x, m.x, SSE_RSHUFFLE(2, 2, 2, 2));
@@ -77,13 +77,13 @@ inline matrix matrix::operator*(const matrix &m) const {
 	rl += z * _mm_shuffle_ps(m.y, m.y, SSE_RSHUFFLE(2, 2, 2, 2));
 	rl += t * _mm_shuffle_ps(m.y, m.y, SSE_RSHUFFLE(3, 3, 3, 3));
 	r.y = rl;
-	
+
 	rl = x * _mm_shuffle_ps(m.z, m.z, SSE_RSHUFFLE(0, 0, 0, 0));
 	rl += y * _mm_shuffle_ps(m.z, m.z, SSE_RSHUFFLE(1, 1, 1, 1));
 	rl += z * _mm_shuffle_ps(m.z, m.z, SSE_RSHUFFLE(2, 2, 2, 2));
 	rl += t * _mm_shuffle_ps(m.z, m.z, SSE_RSHUFFLE(3, 3, 3, 3));
 	r.z = rl;
-	
+
 	rl = x * _mm_shuffle_ps(m.t, m.t, SSE_RSHUFFLE(0, 0, 0, 0));
 	rl += y * _mm_shuffle_ps(m.t, m.t, SSE_RSHUFFLE(1, 1, 1, 1));
 	rl += z * _mm_shuffle_ps(m.t, m.t, SSE_RSHUFFLE(2, 2, 2, 2));
@@ -138,9 +138,9 @@ inline matrix &matrix::setTranslation(const vec &_t) {
 }
 
 inline matrix &matrix::setScale(const vec &s) {
-	x = _mm_and_ps(s, SSE_RMASK(~0, 0, 0, 0)); 
-	y = _mm_and_ps(s, SSE_RMASK(0, ~0, 0, 0)); 
-	z = _mm_and_ps(s, SSE_RMASK(0, 0, ~0, 0)); 
+	x = _mm_and_ps(s, SSE_RMASK(~0, 0, 0, 0));
+	y = _mm_and_ps(s, SSE_RMASK(0, ~0, 0, 0));
+	z = _mm_and_ps(s, SSE_RMASK(0, 0, ~0, 0));
 	t(0.f, 0.f, 0.f, 1.f);
 	return *this;
 }
@@ -195,7 +195,7 @@ inline matrix &matrix::setShadow(const plane &p, const vec &lightPos) {
 inline matrix &matrix::setReflect(const plane &p) {
 	const vec planeND = p.get();
 	const vec mtwo = _mm_set1_ps(-2.f);
-	
+
 	x = mtwo * _mm_shuffle_ps(planeND, planeND, SSE_RSHUFFLE(0, 0, 0, 0)) * planeND + _mm_set_ss(1.f);
 	x = mtwo * _mm_shuffle_ps(planeND, planeND, SSE_RSHUFFLE(1, 1, 1, 1)) * planeND + _mm_setr_ps(0.f, 1.f, 0.f, 0.f);
 	x = mtwo * _mm_shuffle_ps(planeND, planeND, SSE_RSHUFFLE(2, 2, 2, 2)) * planeND + _mm_setr_ps(0.f, 0.f, 1.f, 0.f);
@@ -211,11 +211,11 @@ inline matrix &matrix::lookAt(const vec &eye, const vec &iforward, const vec &iu
 	x = _mm_set_ss(side.dot(eye));
 	x = _mm_shuffle_ps(x, x, SSE_RSHUFFLE(1, 1, 1, 0));
 	x = _mm_or_ps(side, x);
-	
+
 	y = _mm_set_ss(up.dot(eye));
 	y = _mm_shuffle_ps(y, y, SSE_RSHUFFLE(1, 1, 1, 0));
 	y = _mm_or_ps(up, y);
-	
+
 	z = _mm_set_ss(forward.dot(eye));
 	z = _mm_shuffle_ps(z, z, SSE_RSHUFFLE(1, 1, 1, 0));
 	z = _mm_or_ps(forward, z);
@@ -296,7 +296,7 @@ inline matrix &matrix::inverse() {
 	vec C2 = _mm_mul_ps(V01,V11);
 	vec C4 = _mm_mul_ps(V02,V12);
 	vec C6 = _mm_mul_ps(V03,V13);
-	
+
 	V11 = _mm_shuffle_ps(D0,D2,_MM_SHUFFLE(0,0,1,0)); // V11 = D0X,D0Y,D2X,D2X
 	V00 = _mm_shuffle_ps(y, y,_MM_SHUFFLE(2,1,3,2));
 	V10 = _mm_shuffle_ps(D0,V11,_MM_SHUFFLE(2,1,0,3));
@@ -351,15 +351,15 @@ inline matrix &matrix::inverse() {
 	C2 = _mm_shuffle_ps(C2,C2,_MM_SHUFFLE(3,1,2,0));
 	C4 = _mm_shuffle_ps(C4,C4,_MM_SHUFFLE(3,1,2,0));
 	C6 = _mm_shuffle_ps(C6,C6,_MM_SHUFFLE(3,1,2,0));
-	
+
 	vec vTemp = C0.xmmDot(x);
 	vTemp = _mm_div_ps(_mm_set1_ps(1.f),vTemp);
-	
+
 	x = _mm_mul_ps(C0,vTemp);
 	y = _mm_mul_ps(C2,vTemp);
 	z = _mm_mul_ps(C4,vTemp);
 	t = _mm_mul_ps(C6,vTemp);
-	
+
 	return *this;
 }
 
@@ -367,7 +367,7 @@ inline matrix &matrix::inverseSimple() {
 	static const vec wMask = SSE_RMASK(~0, ~0, ~0, 0);
 	static const vec signMask(-0.f, -0.f, -0.f, -0.f);
 	static const vec w1Mask(0.f, 0.f, 0.f, 1.f);
-	
+
 	// inverse 3x3
 	vec x1 = _mm_movelh_ps(_mm_unpacklo_ps(x, y), z); // 0, 4, 8, -
 	vec y1 = _mm_movehl_ps(_mm_movehdup_ps(z), _mm_unpacklo_ps(x, y)); // 1, 5, 9, -
@@ -379,7 +379,7 @@ inline matrix &matrix::inverseSimple() {
 	t = x1 * _mm_xor_ps(signMask, _mm_shuffle_ps(t, t, SSE_RSHUFFLE(0, 0, 0, 0)))
 		+ y1 * _mm_xor_ps(signMask, _mm_shuffle_ps(t, t, SSE_RSHUFFLE(1, 1, 1, 1)))
 		+ z1 * _mm_xor_ps(signMask, _mm_shuffle_ps(t, t, SSE_RSHUFFLE(2, 2, 2, 2)));
-	
+
 	// set w to 1.f
 	t = _mm_or_ps(w1Mask, _mm_and_ps(wMask, t));
 	return *this;
@@ -462,7 +462,7 @@ inline frustum &frustum::setProjection(float _fov, float _aspect, float _znear, 
 
 inline frustum &frustum::setModelView(const vec &eye, const vec &look, const vec &up) {
 	vec x, y, z, farCenter, nearCenter;
-	
+
 	z = (eye - look).normalize();
 	x = up.cross(z).normalize();
 	y = z.cross(x);
@@ -473,19 +473,19 @@ inline frustum &frustum::setModelView(const vec &eye, const vec &look, const vec
 	points[POINT_NRT] = nearCenter + y * nearHeight + x * nearWidth;
 	points[POINT_NLB] = nearCenter - y * nearHeight - x * nearWidth;
 	points[POINT_NRB] = nearCenter - y * nearHeight + x * nearWidth;
-	
+
 	points[POINT_FLT] = farCenter + y * farHeight - x * farWidth;
 	points[POINT_FRT] = farCenter + y * farHeight + x * farWidth;
 	points[POINT_FLB] = farCenter - y * farHeight - x * farWidth;
 	points[POINT_FRB] = farCenter - y * farHeight + x * farWidth;
-	
+
 	planes[PLANE_NEAR](points[POINT_NLT], points[POINT_NRT], points[POINT_NRB]);
 	planes[PLANE_FAR](points[POINT_FLT], points[POINT_FLB], points[POINT_FRB]);
 	planes[PLANE_LEFT](points[POINT_NLT], points[POINT_NLB], points[POINT_FLB]);
 	planes[PLANE_RIGHT](points[POINT_FRT], points[POINT_FRB], points[POINT_NRB]);
 	planes[PLANE_TOP](points[POINT_FRT], points[POINT_NRT], points[POINT_NLT]);
 	planes[PLANE_BOTTOM](points[POINT_FLB], points[POINT_NLB], points[POINT_NRB]);
-	
+
 	planes[0].normal.normalize();
 	planes[1].normal.normalize();
 	planes[2].normal.normalize();
@@ -543,11 +543,11 @@ inline quaternion::quaternion(float w, float x, float y, float z) {
 inline quaternion::quaternion(const vec &_wxyz) : wxyz(_wxyz) {}
 
 inline quaternion::quaternion(const matrix &rotationMatrix) {
-	
+
 }
 
 inline quaternion::quaternion(const vec &ax, const vec &ay, const vec &az) {
-	
+
 }
 
 inline quaternion::~quaternion() {}
@@ -605,7 +605,7 @@ inline vec quaternion::xmmLength() const {
 	t = _mm_hadd_ps(t, t);
 	return _mm_sqrt_ps(t);
 }
-	
+
 inline quaternion &quaternion::identity() {
 	_mm_set_ps(1.f, 0.f, 0.f, 0.f);
 	return *this;
