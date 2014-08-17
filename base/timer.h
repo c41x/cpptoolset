@@ -43,7 +43,7 @@ public:
 	int64 getStartTick()const { return m_start; }
 
 	// reset start time and get result time
-	int64 time() { int64 t = tick(); ret = delta(m_start, t); m_start = t; return ret; }
+	int64 time() { int64 t = tick(); int64 ret = delta(m_start, t); m_start = t; return ret; }
 	double timeS() { int64 t = tick(); double ret = deltaS(m_start, t); m_start = t; return ret; }
 	double timeMs() { int64 t = tick(); double ret = deltaMs(m_start, t); m_start = t; return ret; }
 	double timeUs() { int64 t = tick(); double ret = deltaUs(m_start, t); m_start = t; return ret; }
