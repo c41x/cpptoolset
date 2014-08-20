@@ -1,10 +1,10 @@
 /*
- * granite engine 1.0 | 2006-2014 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com 
+ * granite engine 1.0 | 2006-2014 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
  * file: tokenizer.cpp
  * created: 08-02-2014
- * 
+ *
  * description: String tokenizator utility
- * 
+ *
  * changelog:
  * - 08-02-2014: file created
  */
@@ -47,7 +47,7 @@ void tokenizer::tokenize(const string &input, bool copyInput) {
 								return contains(r.start, c);
 							});
 	};
-	
+
 	// extract tokens
 	bool inToken = false;
 	string::const_iterator tokenBegin = in.cbegin(), next;
@@ -57,12 +57,12 @@ void tokenizer::tokenize(const string &input, bool copyInput) {
 		// find rule if we are not in token
 		if(!inToken) {
 			currentRule = findRule(it);
-			
-			if(currentRule != _rules.cend() || (it + 1) == in.cend()) {
+
+			if(currentRule != _rules.cend() || next == in.cend()) {
 				if(tokenBegin != it) {
 					tokens.push_back({-1, stringRange(tokenBegin, it)});
 				}
-						
+
 				tokenBegin = it;
 				inToken = true;
 				++it;
@@ -74,6 +74,7 @@ void tokenizer::tokenize(const string &input, bool copyInput) {
 			if(it == in.cend()) {
 				if(!currentRule->skip)
 					tokens.push_back({currentRule->id, stringRange(tokenBegin, it)});
+				it--;
 			}
 			else if(!currentRule->checkEnd && !contains(currentRule->start, it)) {
 				if(!currentRule->skip)
