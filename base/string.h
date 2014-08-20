@@ -1,10 +1,10 @@
 /*
- * granite engine 1.0 | 2006-2013 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com 
+ * granite engine 1.0 | 2006-2014 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
  * file: string.h
  * created: 16-01-2013
- * 
+ *
  * description: string utilities & conversions
- * 
+ *
  * changelog:
  * - 16-01-2013: file created
  * - 20-01-2013: added char helper functions
@@ -165,6 +165,21 @@ inline stringRange toStr(const bool &i,string &os){return boolToStr(i,os);}
 stringRange toStr(const string &s,string &os);
 stringRange toStr(const char *s,string &os);
 
+// full string versions
+inline string toStr(const int8 &i) { string r(0, ' '); r.resize(20); return signedToStr<int8>(i, r).str(); }
+inline string toStr(const uint8 &i) { string r(0, ' '); r.resize(20); return unsignedToStr<uint8>(i, r).str(); }
+inline string toStr(const int16 &i) { string r(0, ' '); r.resize(20); return signedToStr<int16>(i, r).str(); }
+inline string toStr(const uint16 &i) { string r(0, ' '); r.resize(20); return unsignedToStr<uint16>(i, r).str(); }
+inline string toStr(const int32 &i) { string r(0, ' '); r.resize(20); return signedToStr<int32>(i, r).str(); }
+inline string toStr(const uint32 &i) { string r(0, ' '); r.resize(20); return unsignedToStr<uint32>(i, r).str(); }
+inline string toStr(const int64 &i) { string r(0, ' '); r.resize(20); return signedToStr<int64>(i, r).str(); }
+inline string toStr(const uint64 &i) { string r(0, ' '); r.resize(20); return unsignedToStr<uint64>(i, r).str(); }
+inline string toStr(const float &i) { string r(0, ' '); r.resize(20); return realToStr<float>(i, r, 7).str(); }
+inline string toStr(const double &i) { string r(0, ' '); r.resize(20); return realToStr<double>(i, r, 13).str(); }
+inline string toStr(const bool &i) { string r(0, ' '); r.resize(20); return boolToStr(i, r).str(); }
+inline string toStr(const string &s) { string r(0, ' '); r.resize(20); return toStr(s, r).str(); }
+inline string toStr(const char *s) { string r(0, ' '); r.resize(20); return toStr(s, r).str(); }
+
 // string building (here just prototypes - for clarity)
 template<typename... Args> string strs(const Args&... args);
 template<typename... Args> string strf(const char *format,const Args&... args);
@@ -290,7 +305,7 @@ template <typename T> stringRange unsignedToStr(const T &u,string &os){
 
 template <typename T> stringRange realToStr(const T &r,string &os,int precision){
 	string::iterator p=os.begin();
-	
+
 	// base ###.
 	uint32 i=uint32(r);
 	i=i<0?-i:i;
