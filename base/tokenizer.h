@@ -7,6 +7,7 @@
  *
  * changelog:
  * - 08-02-2014: file created
+ * - 27-08-2014: immediate mode
  */
 
 #pragma once
@@ -21,6 +22,7 @@ class tokenizer;
 struct token {
 	int id;
 	stringRange value;
+	operator bool() { return id != -2; }
 };
 
 class tokenizer {
@@ -33,9 +35,10 @@ class tokenizer {
 		bool checkEnd;
 	};
 	std::vector<rule> _rules;
+	std::vector<rule>::const_iterator _rule;
+	string::const_iterator _begin, _i, _end;
 
 public:
-	std::vector<token> tokens;
 	string input;
 
     tokenizer() {}
@@ -43,7 +46,8 @@ public:
 
 	void addRule(int id, bool skip, const string &start, const string &exception = "", const string &end = "");
 	void removeRule(int id);
-	void tokenize(const string &input, bool copyInput = false);
+	token begin(const string &input, bool copyInput = true);
+	token next();
 	bool hasInputCopy() const { return input.size(); }
 	void clear();
 };

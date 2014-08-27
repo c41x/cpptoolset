@@ -7,6 +7,7 @@
  *
  * changelog:
  * - 08-02-2014: file created
+ * - 27-08-2014: immediate mode
  */
 
 #include "tokenizer.h"
@@ -14,7 +15,7 @@
 namespace granite { namespace base {
 
 void tokenizer::addRule(int id, bool skip, const string &start, const string &exception, const string &end) {
-	gassert(id >= 0, "rule id that are lower than 0 are reserved");
+	gassert(id >= 0, "rule ids that are lower than 0 are reserved");
 	_rules.push_back({id, skip, start, exception, end, end.size() > 0});
 }
 
@@ -25,17 +26,20 @@ void tokenizer::removeRule(int id) {
 								}), std::end(_rules));
 }
 
-void tokenizer::tokenize(const string &input, bool copyInput) {
-	tokens.clear();
-
-	// copy input string
-	const string *pin = &input;
-	if(copyInput){
-		this->input = input;
-		pin = &this->input;
+token tokenizer::begin(const string &iinput, bool copyInput) {
+	if(copyInput) {
+		input = iinput;
+		_begin = _i = input.cbegin();
+		_end = input.cend();
 	}
-	const string &in = *pin;
+	else {
+		_begin = _i = iinput.cbegin();
+		_end = iinput.cend();
+	}
+	return next();
+}
 
+token tokenizer::next() {
 	// helpers
 	auto contains = [](const string &s, string::const_iterator c) -> bool {
 		return s.cend() != std::find(s.cbegin(), s.cend(), *c);
@@ -48,61 +52,58 @@ void tokenizer::tokenize(const string &input, bool copyInput) {
 							});
 	};
 
-	// extract tokens
-	bool inToken = false;
-	string::const_iterator tokenBegin = in.cbegin(), next;
-	std::vector<rule>::const_iterator currentRule;
-	for(auto it = in.cbegin(); it != in.cend(); ++it) {
-		next = it + 1;
-		// find rule if we are not in token
-		if(!inToken) {
-			currentRule = findRule(it);
+	// reset state
+	string::const_iterator tokenBegin = _i;
+	_rule = _rules.cend();
 
-			if(currentRule != _rules.cend() || next == in.cend()) {
-				if(tokenBegin != it) {
-					tokens.push_back({-1, stringRange(tokenBegin, it)});
+	while(_i != _end) {
+		// find rule if not in token
+		if(_rule == _rules.cend()) {
+			_rule = findRule(_i);
+
+			// flush if found new token and token not empty
+			if(_rule != _rules.cend() && _i != tokenBegin)
+				return {-1, stringRange(tokenBegin, _i)};
+		}
+
+		// we are in token?
+		if(_rule != _rules.cend()) {
+			if(!_rule->checkEnd && _i != tokenBegin) {
+				// reset loop otherwise return token
+				if(_rule->skip) {
+					tokenBegin = _i;
+					_rule = _rules.cend();
+					continue;
 				}
-
-				tokenBegin = it;
-				inToken = true;
-				++it;
+				else return {_rule->id, stringRange(tokenBegin, _i)};
+			}
+			else if(_rule->checkEnd && _i != tokenBegin // check end conditions including escape chars
+					&& contains(_rule->end, _i)
+					&& _i - 1 != _begin && !contains(_rule->exception, _i - 1)) {
+				// reset loop otherwise return token without delimiters
+				if(_rule->skip) {
+					tokenBegin = _i;
+					_rule = _rules.cend();
+					continue;
+				}
+				else return {_rule->id, stringRange(tokenBegin + 1, _i++)};
 			}
 		}
-
-		// process token
-		if(inToken) {
-			if(it == in.cend()) {
-				if(!currentRule->skip)
-					tokens.push_back({currentRule->id, stringRange(tokenBegin, it)});
-				it--;
-			}
-			else if(!currentRule->checkEnd && !contains(currentRule->start, it)) {
-				if(!currentRule->skip)
-					tokens.push_back({currentRule->id, stringRange(tokenBegin, it)});
-				tokenBegin = it--;
-			}
-			else if(currentRule->checkEnd
-					&& contains(currentRule->end, it)
-					&& it != in.cbegin()
-					&& !contains(currentRule->exception, it - 1)) {
-				if(!currentRule->skip)
-					tokens.push_back({currentRule->id, stringRange(tokenBegin + 1, it)});
-				tokenBegin = next;
-			}
-			else if(isLineBreak(*it)) {
-				if(!currentRule->skip)
-					tokens.push_back({currentRule->id, stringRange(tokenBegin, it)});
-				tokenBegin = next;
-			}
-			else continue;
-			inToken = false;
-		}
+		++_i;
 	}
+
+	// return last valid token or invalid token (end of parsing)
+	if(_i != tokenBegin) {
+		if(_rule != _rules.cend() && !_rule->skip)
+			return {_rule->id, stringRange(tokenBegin, _i)};
+		else return {-1, stringRange(tokenBegin, _i)};
+	}
+	else return {-2, stringRange(_begin, _end)};
 }
 
 void tokenizer::clear() {
 	_rules.clear();
-	tokens.clear();
+	input.clear();
 }
 
 }}
