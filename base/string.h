@@ -57,9 +57,9 @@ inline bool isWhiteSpace(char c) { return (c == ' ' || c == '\n' || c == '\t' ||
 inline bool isLineBreak(char c) { return c == '\n' || c == '\r'; }
 inline bool isHex(char c) { return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f'); }
 inline bool isOct(char c) { return c >= '0' && c <= '7'; }
-inline bool isBin(char c) { return (c == '0'||c == '1'); }
-inline char getAlphaToDigit(char c) { return (c-'0'); }
-inline char getDigitToAlpha(char ii) { return (ii+'0'); }
+inline bool isBin(char c) { return (c == '0' || c == '1'); }
+inline char getAlphaToDigit(char c) { return (c - '0'); }
+inline char getDigitToAlpha(char ii) { return (ii + '0'); }
 
 // string utilities
 void lowerCase(string &s);
