@@ -16,6 +16,105 @@
 
 namespace granite { namespace base {
 
+// heap container
+template <typename T> class heap {
+	typedef typename std::vector<T>::iterator data_iterator;
+	typedef struct { data_iterator begin, end; } pointer;
+	typedef typename std::vector<pointer>::iterator pointer_iterator;
+	std::vector<T> data;
+	std::vector<pointer> pointers;
+	data_iterator top;
+
+	data_iterator find_space(size_t count) {
+		for(pointer_iterator p = pointers.begin(); p != pointers.end() - 1; ++p) {
+			pointer_iterator pn = p + 1;
+			if(std::distance(p->end, pn->begin) >= count)
+				return p->end;
+		}
+		return data.end();
+	}
+
+public:
+	heap(size_t heapSize) {
+		data.resize(heapSize);
+		top = data.begin();
+	}
+	~heap() {
+
+	}
+	size_t push(const T &i) {
+		// need to free some space
+		if(top + 1 >= data.end()) {
+			data_iterator fs = find_space(1);
+			if(fs + 1 >= data.end()) {
+				gc();
+				if(top + 1 >= data.end()) {
+					std::cout << "out of memory!" << std::endl;
+					return -1;
+					// out of memory
+				}
+			}
+			else {
+				*fs = i;
+				pointers.push_back({fs, fs + 1});
+				return pointers.size() - 1;
+			}
+		}
+
+		*top = i;
+		pointers.push_back({top, top + 1});
+		++top;
+		return pointers.size() - 1;
+	}
+	void pop(size_t ptr) {
+		const pointer &p = pointers[ptr];
+
+		// if this is pointer in top of the stack -> adjust top pointer
+		if(p.end == top)
+			top = p.begin;
+
+		// erase only pointer, leave garbage in heap
+		pointers.erase(pointers.begin() + ptr);
+	}
+	void gc() {
+		// sort pointers (only comparing begin, they are not overlapping)
+		std::sort(std::begin(pointers), std::end(pointers),
+				  [this](const pointer &l, const pointer &r) {
+					  return l.begin < r.begin;
+				  });
+
+		// rearrange data and shrink vector
+		for(pointer_iterator p = pointers.begin() + 1; p != pointers.end(); ++p) {
+			pointer_iterator pp = p - 1;
+			std::move(p->begin, p->end, pp->end);
+		}
+
+		// adjust top pointer
+		top = pointers.back().end;
+	}
+	void print() {
+		// sort pointers (only comparing begin, they are not overlapping)
+		std::sort(std::begin(pointers), std::end(pointers),
+				  [this](const pointer &l, const pointer &r) {
+					  return l.begin < r.begin;
+				  });
+
+		for(pointer_iterator p = pointers.begin(); p != pointers.end(); ++p) {
+			pointer_iterator np = p + 1;
+			if(np != pointers.end() && std::distance(p->end, np->begin) > 0) {
+				std::cout << " ." << std::distance(p->end, np->begin) << ". ";
+			}
+
+			std::cout << " < ";
+			std::for_each(p->begin, p->end,
+						  [](const T &pp) {
+							  std::cout << pp << " ";
+						  });
+			std::cout << ">";
+		}
+	}
+};
+
 // just data (variant)
 class cell {
 public:

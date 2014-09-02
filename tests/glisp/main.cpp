@@ -15,6 +15,21 @@ void repl() {
 }
 
 int main(int argc, char**argv){
-	repl();
+	heap<string> hp(10);
+	hp.push("abc");
+	hp.push("abcd");
+	hp.push("123");
+	hp.push("666");
+	hp.push("this one is longer");
+	hp.pop(2);
+	hp.push("this one is even longer");
+	hp.push("here we go numbers!");
+	hp.push("3.14");
+	hp.push("6.28");
+	hp.push("2.71");
+	// TODO: hp.push("---------");
+	hp.print();
+
+	//repl();
 	return 0;
 }
