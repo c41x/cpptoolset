@@ -1,2 +1,2 @@
-add_executable(framework_base main.cpp)
+add_executable(framework_base WIN32 main.cpp)
 target_link_libraries(framework_base system)
