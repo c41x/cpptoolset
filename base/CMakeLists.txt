@@ -17,4 +17,4 @@ install(FILES
   string.h
   timer.h
   tokenizer.h
-  DESTINATION include)
+  DESTINATION include_base)

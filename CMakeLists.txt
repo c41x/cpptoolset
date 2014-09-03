@@ -8,9 +8,10 @@ if(CMAKE_COMPILER_IS_GNUCXX)
 endif()
 
 include_directories("${PROJECT_SOURCE_DIR}")
+include_directories("${PROJECT_SOURCE_DIR}/ext/glfw/include")
+link_directories("${PROJECT_SOURCE_DIR}/ext/glfw/build/src")
 
 add_subdirectory(base)
-#add_subdirectory(system)
+add_subdirectory(system)
 #add_subdirectory(engine)
 add_subdirectory(tests)
-

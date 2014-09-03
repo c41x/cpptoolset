@@ -1,0 +1,2 @@
+add_executable(framework_base main.cpp)
+target_link_libraries(framework_base system)
