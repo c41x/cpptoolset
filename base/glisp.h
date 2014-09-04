@@ -15,7 +15,7 @@
 #include "tokenizer.h"
 
 namespace granite { namespace base {
-
+/*
 // heap container
 template <typename T> class heap {
 	typedef typename std::vector<T>::iterator data_iterator;
@@ -23,7 +23,18 @@ template <typename T> class heap {
 	typedef typename std::vector<pointer>::iterator pointer_iterator;
 	std::vector<T> data;
 	std::vector<pointer> pointers;
-	data_iterator top;
+
+	size_t add_pointer_in_order(const pointer &p) {
+		// insert new pointer at upper bound
+		auto insert_pos = pointers.insert(
+			std::upper_bound(std::begin(pointers), std::end(pointers), p,
+							 [](const pointer &t, const pointer &val) {
+								 return t.begin < val.begin;
+							 }), p);
+
+		// return position
+		return std::distance(pointers.begin(), insert_pos);
+	}
 
 	data_iterator find_space(size_t count) {
 		for(pointer_iterator p = pointers.begin(); p != pointers.end() - 1; ++p) {
@@ -37,68 +48,95 @@ template <typename T> class heap {
 public:
 	heap(size_t heapSize) {
 		data.resize(heapSize);
-		top = data.begin();
 	}
+
 	~heap() {
 
 	}
+
 	size_t push(const T &i) {
-		// need to free some space
-		if(top + 1 >= data.end()) {
+		// check if we need to free some space
+		if(pointers.size() > 0 && pointers.back().end + 1 >= data.end()) {
+			std::cout << "finding space for: " << i << std::endl;
 			data_iterator fs = find_space(1);
 			if(fs + 1 >= data.end()) {
+				std::cout << "space not found, performing gargage collect\n";
 				gc();
-				if(top + 1 >= data.end()) {
+				if(pointers.back().end + 1 >= data.end()) {
 					std::cout << "out of memory!" << std::endl;
-					return -1;
+					return 0;
 					// out of memory
 				}
+				std::cout << "gc ok\n";
 			}
 			else {
+				std::cout << "space found!\n";
 				*fs = i;
-				pointers.push_back({fs, fs + 1});
-				return pointers.size() - 1;
+				return add_pointer_in_order({fs, fs + 1});
 			}
 		}
 
-		*top = i;
-		pointers.push_back({top, top + 1});
-		++top;
-		return pointers.size() - 1;
+		if(pointers.size() == 0) {
+			pointers.push_back({data.begin(), data.begin() + 1});
+			data[0] = i;
+			return 0;
+		}
+		else {
+			size_t pos = add_pointer_in_order({pointers.back().end, pointers.back().end + 1});
+			*(pointers.back().begin) = i;
+			return pos;
+		}
 	}
+
+	size_t push(std::vector<T> array) {
+		// check if we need to free some space
+		const size_t count = array.size();
+		if(pointers.size() > 0 && pointers.back().end + count >= data.end()) {
+			std::cout << "finding space for: array" << std::endl;
+			data_iterator fs = find_space(count);
+			if(fs + count >= data.end()) {
+				std::cout << "space not found, performing gargage collect\n";
+				gc();
+				if(pointers.back().end + count >= data.end()) {
+					std::cout << "out of memory!" << std::endl;
+					return 0;
+					// out of memory
+				}
+				std::cout << "gc ok\n";
+			}
+			else {
+				std::cout << "space found!\n";
+				std::move(std::begin(array), std::end(array), fs);
+				return add_pointer_in_order({fs, fs + count});
+			}
+		}
+
+		if(pointers.size() == 0) {
+			pointers.push_back({data.begin(), data.begin() + count});
+			std::move(std::begin(array), std::end(array), std::begin(data));
+			return 0;
+		}
+		else {
+			size_t pos = add_pointer_in_order({pointers.back().end, pointers.back().end + count});
+			std::move(std::begin(array), std::end(array), pointers.back().begin);
+			return pos;
+		}
+	}
+
 	void pop(size_t ptr) {
-		const pointer &p = pointers[ptr];
-
-		// if this is pointer in top of the stack -> adjust top pointer
-		if(p.end == top)
-			top = p.begin;
-
 		// erase only pointer, leave garbage in heap
 		pointers.erase(pointers.begin() + ptr);
 	}
-	void gc() {
-		// sort pointers (only comparing begin, they are not overlapping)
-		std::sort(std::begin(pointers), std::end(pointers),
-				  [this](const pointer &l, const pointer &r) {
-					  return l.begin < r.begin;
-				  });
 
+	void gc() {
 		// rearrange data and shrink vector
 		for(pointer_iterator p = pointers.begin() + 1; p != pointers.end(); ++p) {
 			pointer_iterator pp = p - 1;
 			std::move(p->begin, p->end, pp->end);
 		}
-
-		// adjust top pointer
-		top = pointers.back().end;
 	}
-	void print() {
-		// sort pointers (only comparing begin, they are not overlapping)
-		std::sort(std::begin(pointers), std::end(pointers),
-				  [this](const pointer &l, const pointer &r) {
-					  return l.begin < r.begin;
-				  });
 
+	void print() {
 		for(pointer_iterator p = pointers.begin(); p != pointers.end(); ++p) {
 			pointer_iterator np = p + 1;
 			if(np != pointers.end() && std::distance(p->end, np->begin) > 0) {
@@ -114,6 +152,7 @@ public:
 		}
 	}
 };
+*/
 
 // just data (variant)
 class cell {
@@ -144,6 +183,10 @@ public:
 	string val;
 	fx_t fx;
 
+	//cell(cell &&ms) {
+
+	//}
+
 	cell(type_t t, const string &v) {
 		type = t;
 		val = v;
@@ -158,7 +201,9 @@ public:
 	}
 };
 
-typedef std::vector<cell> cells;
+std::vector<cell> stack;
+std::vector<string> variables;
+size_t stack_top;
 
 // consts
 const cell true_cell(cell::typeIdentifier, "#t");
@@ -168,24 +213,32 @@ const cell nil(cell::typeIdentifier, "nil");
 //- scope (variable container/stack)
 class scope {
 public:
-	typedef std::tuple<string, cell> var_t;
-	std::vector<var_t> variables;
-	scope *outer;
+	size_t stack_bottom;
 
-	scope(scope *outerScope = nullptr) : outer(outerScope) { }
+	scope() {
+		// define stack frame
+		stack_bottom = stack_top;
+	}
+
+	~scope() {
+		// revert stack pointer ("free" memory)
+		stack_top = stack_bottom;
+	}
+
 	cell *get(const string &name) {
-		auto r = std::find_if(std::begin(variables),
-							  std::end(variables),
-							  [&name](const var_t &c){ return std::get<0>(c) == name; });
-		if(r != variables.end())
-			return &std::get<1>(*r);
-		else if(outer)
-			return outer->get(name);
+		// searching backwards on stack will find variable in outer scopes
+		auto r = std::find(variables.rend() - stack_top - 1, variables.rend(), name);
+		if(r != variables.rend())
+			return &stack[std::distance(r, variables.rend() - 1)];
 		else return nullptr; // variable name not found
 	}
-	cell *add(const string &name, const cell &c) {
-		variables.push_back(std::make_tuple(name, c));
-		return &std::get<1>(variables.back());
+
+	cell *push(const string &name, const cell &c) {
+		++stack_top;
+		// resizing stack
+		variables[stack_top] = name;
+		stack[stack_top] = c;
+		return &stack[stack_top];
 	}
 };
 
@@ -199,12 +252,15 @@ cell fx_add(const std::vector<cell> &c) {
 
 //- interpreter core
 void initInterpreter(scope *g) {
-	g->add("nil", nil);
-	g->add("#f", false_cell);
-	g->add("#t", true_cell);
-	g->add("add", cell(cell::typeFunction, &fx_add));
-	g->add("+", cell(cell::typeFunction, &fx_add));
-	g->add("pi", cell(cell::typeInt, "3.14"));
+	stack.resize(1024);
+	variables.resize(1024);
+	stack_top = -1;
+	g->push("nil", nil);
+	g->push("#f", false_cell);
+	g->push("#t", true_cell);
+	g->push("add", cell(cell::typeFunction, &fx_add));
+	g->push("+", cell(cell::typeFunction, &fx_add));
+	g->push("pi", cell(cell::typeInt, "3.14"));
 }
 
 cell eval(cell c, scope *s) {
@@ -229,6 +285,12 @@ cell eval(cell c, scope *s) {
 			bool if_p = eval(c.cdr[1], s).val != "nil";
 			bool else_p = c.cdr.size() > 3;
 			return eval(if_p ? c.cdr[2] : (else_p ? c.cdr[3] : nil), s);
+		}
+		else if(c.cdr[0].val == "defvar") {
+			return *s->push(c.cdr[1].val, eval(c.cdr[2], s));
+		}
+		else if(c.cdr[0].val == "defun") {
+			return *s->push(c.cdr[1].val, cell(cell::typeFunction, c.cdr[2]));
 		}
 	}
 
@@ -263,7 +325,7 @@ cell parse(const string &s) {
 	tok.addRule(tokenString, false, "\"", "\\", "\"");
 
 	cell r;
-	std::stack<cells*> cp;
+	std::stack<std::vector<cell>*> cp;
 
 	for(auto t = tok.begin(s, false); t; t = tok.next()) {
 		if(t.id == tokenOpenPar) {
