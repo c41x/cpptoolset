@@ -15,144 +15,6 @@
 #include "tokenizer.h"
 
 namespace granite { namespace base {
-/*
-// heap container
-template <typename T> class heap {
-	typedef typename std::vector<T>::iterator data_iterator;
-	typedef struct { data_iterator begin, end; } pointer;
-	typedef typename std::vector<pointer>::iterator pointer_iterator;
-	std::vector<T> data;
-	std::vector<pointer> pointers;
-
-	size_t add_pointer_in_order(const pointer &p) {
-		// insert new pointer at upper bound
-		auto insert_pos = pointers.insert(
-			std::upper_bound(std::begin(pointers), std::end(pointers), p,
-							 [](const pointer &t, const pointer &val) {
-								 return t.begin < val.begin;
-							 }), p);
-
-		// return position
-		return std::distance(pointers.begin(), insert_pos);
-	}
-
-	data_iterator find_space(size_t count) {
-		for(pointer_iterator p = pointers.begin(); p != pointers.end() - 1; ++p) {
-			pointer_iterator pn = p + 1;
-			if(std::distance(p->end, pn->begin) >= count)
-				return p->end;
-		}
-		return data.end();
-	}
-
-public:
-	heap(size_t heapSize) {
-		data.resize(heapSize);
-	}
-
-	~heap() {
-
-	}
-
-	size_t push(const T &i) {
-		// check if we need to free some space
-		if(pointers.size() > 0 && pointers.back().end + 1 >= data.end()) {
-			std::cout << "finding space for: " << i << std::endl;
-			data_iterator fs = find_space(1);
-			if(fs + 1 >= data.end()) {
-				std::cout << "space not found, performing gargage collect\n";
-				gc();
-				if(pointers.back().end + 1 >= data.end()) {
-					std::cout << "out of memory!" << std::endl;
-					return 0;
-					// out of memory
-				}
-				std::cout << "gc ok\n";
-			}
-			else {
-				std::cout << "space found!\n";
-				*fs = i;
-				return add_pointer_in_order({fs, fs + 1});
-			}
-		}
-
-		if(pointers.size() == 0) {
-			pointers.push_back({data.begin(), data.begin() + 1});
-			data[0] = i;
-			return 0;
-		}
-		else {
-			size_t pos = add_pointer_in_order({pointers.back().end, pointers.back().end + 1});
-			*(pointers.back().begin) = i;
-			return pos;
-		}
-	}
-
-	size_t push(std::vector<T> array) {
-		// check if we need to free some space
-		const size_t count = array.size();
-		if(pointers.size() > 0 && pointers.back().end + count >= data.end()) {
-			std::cout << "finding space for: array" << std::endl;
-			data_iterator fs = find_space(count);
-			if(fs + count >= data.end()) {
-				std::cout << "space not found, performing gargage collect\n";
-				gc();
-				if(pointers.back().end + count >= data.end()) {
-					std::cout << "out of memory!" << std::endl;
-					return 0;
-					// out of memory
-				}
-				std::cout << "gc ok\n";
-			}
-			else {
-				std::cout << "space found!\n";
-				std::move(std::begin(array), std::end(array), fs);
-				return add_pointer_in_order({fs, fs + count});
-			}
-		}
-
-		if(pointers.size() == 0) {
-			pointers.push_back({data.begin(), data.begin() + count});
-			std::move(std::begin(array), std::end(array), std::begin(data));
-			return 0;
-		}
-		else {
-			size_t pos = add_pointer_in_order({pointers.back().end, pointers.back().end + count});
-			std::move(std::begin(array), std::end(array), pointers.back().begin);
-			return pos;
-		}
-	}
-
-	void pop(size_t ptr) {
-		// erase only pointer, leave garbage in heap
-		pointers.erase(pointers.begin() + ptr);
-	}
-
-	void gc() {
-		// rearrange data and shrink vector
-		for(pointer_iterator p = pointers.begin() + 1; p != pointers.end(); ++p) {
-			pointer_iterator pp = p - 1;
-			std::move(p->begin, p->end, pp->end);
-		}
-	}
-
-	void print() {
-		for(pointer_iterator p = pointers.begin(); p != pointers.end(); ++p) {
-			pointer_iterator np = p + 1;
-			if(np != pointers.end() && std::distance(p->end, np->begin) > 0) {
-				std::cout << " ." << std::distance(p->end, np->begin) << ". ";
-			}
-
-			std::cout << " < ";
-			std::for_each(p->begin, p->end,
-						  [](const T &pp) {
-							  std::cout << pp << " ";
-						  });
-			std::cout << ">";
-		}
-	}
-};
-*/
 
 // just data (variant)
 class cell {
@@ -165,7 +27,8 @@ public:
 		typeInt = 1 << 1,
 		typeFloat = 1 << 2,
 		typeFunction = 1 << 3,
-		typeList = 1 << 4
+		typeLambda = 1 << 4,
+		typeList = 1 << 5
 	};
 
 	// cons (pointers to data)
@@ -251,10 +114,16 @@ cell fx_add(const std::vector<cell> &c) {
 }
 
 //- interpreter core
-void initInterpreter(scope *g) {
+std::stack<scope> call_stack;
+
+void initInterpreter() {
 	stack.resize(1024);
 	variables.resize(1024);
 	stack_top = -1;
+
+	call_stack.push(scope());
+	scope *g = &call_stack.top();
+
 	g->push("nil", nil);
 	g->push("#f", false_cell);
 	g->push("#t", true_cell);
@@ -263,7 +132,8 @@ void initInterpreter(scope *g) {
 	g->push("pi", cell(cell::typeInt, "3.14"));
 }
 
-cell eval(cell c, scope *s) {
+cell eval(cell c) {
+	scope *s = &call_stack.top();
 	if(c.type == cell::typeIdentifier) {
 		cell *v = s->get(c.val);
 		if(!v)  {
@@ -282,24 +152,46 @@ cell eval(cell c, scope *s) {
 		if(c.cdr[0].val == "quote")
 			return c.cdr[1];
 		else if(c.cdr[0].val == "if") {
-			bool if_p = eval(c.cdr[1], s).val != "nil";
+			bool if_p = eval(c.cdr[1]).val != "nil";
 			bool else_p = c.cdr.size() > 3;
-			return eval(if_p ? c.cdr[2] : (else_p ? c.cdr[3] : nil), s);
+			return eval(if_p ? c.cdr[2] : (else_p ? c.cdr[3] : nil));
 		}
 		else if(c.cdr[0].val == "defvar") {
-			return *s->push(c.cdr[1].val, eval(c.cdr[2], s));
+			return *s->push(c.cdr[1].val, eval(c.cdr[2]));
+		}
+		else if(c.cdr[0].val == "lambda") {
+			c.type = cell::typeLambda;
+			return c;
 		}
 		else if(c.cdr[0].val == "defun") {
-			return *s->push(c.cdr[1].val, cell(cell::typeFunction, c.cdr[2]));
+			c.type = cell::typeLambda;
+			string name = c.cdr[1].val;
+			c.cdr.erase(c.cdr.begin() + 1);
+			s->push(name, c);
+			return c;
+		}
+		else {
+			// intrinsic / lambda call
+			cell proc(eval(c.cdr[0]));
+			std::vector<cell> body;
+			for(auto e = c.cdr.begin() + 1; e != c.cdr.end(); ++e) {
+				body.push_back(eval(*e));
+			}
+
+			// call
+			if(proc.type == cell::typeLambda) {
+				call_stack.push(scope());
+				for(size_t i = 0; i < proc.cdr[1].cdr.size(); ++i) // check if size is the same
+					call_stack.top().push(proc.cdr[1].cdr[i].val, body[i]);
+				cell ret = eval(proc.cdr[2]);
+				call_stack.pop();
+				return ret;
+			}
+			else if(proc.type == cell::typeFunction) {
+				return proc.fx(body);
+			}
 		}
 	}
-
-	cell proc(eval(c.cdr[0], s));
-	std::vector<cell> body;
-	for(auto e = c.cdr.begin() + 1; e != c.cdr.end(); ++e) {
-		body.push_back(eval(*e, s));
-	}
-	return proc.fx(body);
 
 	std::cout << "- unknown cell type!" << std::endl;
 	return nil;
@@ -327,6 +219,7 @@ cell parse(const string &s) {
 	cell r;
 	std::stack<std::vector<cell>*> cp;
 
+	//TODO: minimize output (function names?)
 	for(auto t = tok.begin(s, false); t; t = tok.next()) {
 		if(t.id == tokenOpenPar) {
 			if(cp.empty()) {
