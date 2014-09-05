@@ -162,7 +162,7 @@ public:
 		float data[2];
 	}GE_ALIGN_END(16);
 
-	vec2f(const float _x, const float _y) : x(_x), y(-y) {}
+	vec2f(const float _x, const float _y) : x(_x), y(_y) {}
 	vec2f(const float _v) : x(_v), y(_v) {}
 	vec2f(const float *p) { x = *p; y = *(p + 1); }
 	vec2f(){}
@@ -292,7 +292,7 @@ public:
 	vec &operator/=(const float &r) { xmm = _mm_div_ps(vec(r).xmm, xmm); return *this; }
 	vec &operator*=(const vec &r) { xmm = _mm_mul_ps(r.xmm, xmm); return *this; }
 	vec &operator/=(const vec &r) { xmm = _mm_div_ps(r.xmm, xmm); return *this; }
-	vec &operator()(const float &x, const float &y, const float &z, const float &w=0.f) { xmm = _mm_setr_ps(x, y, z, w); return *this; }
+	vec &operator()(const float &x, const float &y, const float &z, const float &w = 0.f) { xmm = _mm_setr_ps(x, y, z, w); return *this; }
 	vec &operator()(const float &r) { xmm = _mm_set1_ps(r); return *this; }
 	vec &operator()(const float *v) { xmm = _mm_loadu_ps(v); return *this; }
 	vec operator-() const { static const __m128 mask = _mm_castsi128_ps(_mm_set1_epi32(0x80000000)); return _mm_xor_ps(xmm, mask); }
@@ -414,7 +414,7 @@ public:
 	triangle2d operator+(const vec2f &t) const { return triangle2d(a + t, b + t, c + t); }
 
 	// fxs
-	triangle2d &scale(const vec2f &p, float s) { return *this; }
+	triangle2d &scale(const vec2f &p, float s) { a += (a - p) * s; b += (b - p) * s; c += (c - p) * s; return *this; }
 	vec2f getMiddle() const { return vec2f(a.x + b.x + c.x, a.y + b.y + c.y) / 3.f; }
 	float getArea() const { return abs((c - a).cross(b - a) * 5.f); }
 	float getPerimeter() const { return (b - a).length() + (c - a).length() + (c - b).length(); }

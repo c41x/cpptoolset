@@ -113,6 +113,14 @@ cell fx_add(const std::vector<cell> &c) {
 	return cell(cell::typeInt, toStr(v));
 }
 
+cell fx_print(const std::vector<cell> &c) {
+	for(const auto &e : c) {
+		std::cout << e.val;
+	}
+	std::cout << std::endl;
+	return c.back();
+}
+
 //- interpreter core
 std::stack<scope> call_stack;
 
@@ -129,6 +137,7 @@ void initInterpreter() {
 	g->push("#t", true_cell);
 	g->push("add", cell(cell::typeFunction, &fx_add));
 	g->push("+", cell(cell::typeFunction, &fx_add));
+	g->push("print", cell(cell::typeFunction, &fx_print));
 	g->push("pi", cell(cell::typeInt, "3.14"));
 }
 
@@ -183,7 +192,9 @@ cell eval(cell c) {
 				call_stack.push(scope());
 				for(size_t i = 0; i < proc.cdr[1].cdr.size(); ++i) // check if size is the same
 					call_stack.top().push(proc.cdr[1].cdr[i].val, body[i]);
-				cell ret = eval(proc.cdr[2]);
+				cell ret;
+				for(size_t i = 2; i < proc.cdr.size(); ++i)
+					ret = eval(proc.cdr[i]);
 				call_stack.pop();
 				return ret;
 			}
