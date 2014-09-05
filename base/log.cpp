@@ -52,7 +52,7 @@ bool init(const string &fileName) {
 	v_pos = v_size = v_processBegin = 0;
 	installSignal();
 
-	v_file.open(fileName, std::ios::out | std::ios::trunc);
+	v_file.open(fileName.c_str(), std::ios::out | std::ios::trunc);
 	return v_file.good();
 }
 
