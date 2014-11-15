@@ -19,5 +19,6 @@
 #include "string.h"
 #include "tokenizer.h"
 #include "glisp.h"
+#include "gstdlib.h"
 
 //~

@@ -17,4 +17,5 @@ install(FILES
   string.h
   timer.h
   tokenizer.h
+  gstdlib.h
   DESTINATION include_base)
