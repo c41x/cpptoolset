@@ -13,97 +13,174 @@
 #include "includes.h"
 #include "math.h"
 #include "tokenizer.h"
+#include "gstdlib.h"
 
 namespace granite { namespace base {
 
-// just data (variant)
+//- 1) just data (variant) -
 class cell {
 public:
-	//- definitions
-	// what is inside
 	enum type_t {
 		typeIdentifier = 0,
-		typeString = 1,
-		typeInt = 1 << 1,
-		typeFloat = 1 << 2,
-		typeFunction = 1 << 3,
-		typeLambda = 1 << 4,
-		typeList = 1 << 5
+		typeInt = 1,
+		typeList = 1 << 1
 	};
 
-	// cons (pointers to data)
-	typedef struct {
-		size_t car;
-		size_t cdr;
-	} cons_t;
-
-	typedef cell (*fx_t)(const std::vector<cell>&);
-
-	//- data (only string)
-	cons_t cons;
 	type_t type;
-	std::vector<cell> cdr;
-	string val;
-	fx_t fx;
+	string s;
+	int i;
 
-	//cell(cell &&ms) {
-
-	//}
-
-	cell(type_t t, const string &v) {
-		type = t;
-		val = v;
-	}
-	cell(type_t t, fx_t proc) {
-		type = t;
-		fx = proc;
-	}
 	cell() {}
-	cell(type_t t) {
-		type = t;
-	}
+	cell(type_t t, const string &v) : type(t), s(v) {}
+	cell(type_t t, int v) : type(t), i(v){}
 };
+typedef std::vector<cell> cells_t;
 
-std::vector<cell> stack;
-std::vector<string> variables;
-size_t stack_top;
+//- 2) parser -
+cells_t parse(const string &s) {
+	// create tokenizer
+	enum tokenType {
+		tokenSymbol = -1,
+		tokenWhiteSpace,
+		tokenOpenPar,
+		tokenClosePar,
+		tokenComment,
+		tokenString
+	};
+
+	tokenizer tok;
+	tok.addRule(tokenWhiteSpace, true, " \t\v\n\r");
+	tok.addRule(tokenOpenPar, false, "(");
+	tok.addRule(tokenClosePar, false, ")");
+	tok.addRule(tokenComment, true, ";", "", "\n\r");
+	tok.addRule(tokenString, false, "\"", "\\", "\"");
+
+	// actual parsing
+	std::stack<std::tuple<size_t, int>> openPars; // index / count
+	cells_t cells;
+
+	for(auto t = tok.begin(s, false); t; t = tok.next()) {
+		if(t.id == tokenOpenPar) {
+			// increase list elements count (list is element too)
+			if(openPars.size() > 0)
+				std::get<1>(openPars.top())++;
+
+			// push new list to stack
+			openPars.push(std::make_tuple(cells.size(), 0));
+
+			// add list to cells (count == 0 for now)
+			cells.push_back(cell(cell::typeList, 0));
+		}
+		else if(t.id == tokenClosePar) {
+			// actualize list elements count and pop stack
+			cells[std::get<0>(openPars.top())].i = std::get<1>(openPars.top());
+			openPars.pop();
+		}
+		else if(t.id == tokenSymbol) {
+			// increase list elements count
+			if(openPars.size() > 0)
+				std::get<1>(openPars.top())++;
+
+			// determine token type and add atom to cells
+			if(isInteger(t.value))
+				cells.push_back(cell(cell::typeInt, fromStr<int>(t.value)));
+			else cells.push_back(cell(cell::typeIdentifier, t.value));
+		}
+	}
+
+	return cells;
+}
+
+string toString(const cells_t &cells) {
+	string r;
+	for(const cell &c : cells) {
+		if(c.type == cell::typeList) {
+			r += "[list:" + toStr(c.i) + "]";
+		}
+		else if(c.type == cell::typeInt) {
+			r += toStr(c.i);
+		}
+		else if(c.type == cell::typeIdentifier) {
+			r += c.s;
+		}
+		r += " ";
+	}
+	return r;
+}
+
+//- dynamic scoping / stack / variable memory -
+typedef std::tuple<string, size_t> var_t;
+typedef std::vector<var_t> vars_t; // name, stack position
+cells_t stack;
+vars_t variables;
+
+vars_t::iterator findVariable(const string &name) {
+	// searching backwards on stack will find variable in outer scopes
+	return std::find_if(variables.rbegin(), variables.rend(),
+						[name](const var_t &e) {
+							return std::get<0>(e) == name;
+						}).base();
+}
+
+// returns variable
+cells_t::iterator getVariable(const string &name) {
+	// find variable
+	auto r = findVariable(name);
+
+	// if variable found -> return iterator
+	if(r != variables.end())
+		return stack.begin() + std::get<1>(*r);
+
+	// variable name not found
+	else return stack.end();
+}
+
+// checks if given iterator / address is valid
+bool isVariableValid(cells_t::iterator i) {
+	return i != stack.end();
+}
+
+bool isVariableValid(vars_t::iterator i) {
+	return i != variables.end();
+}
+
+// push variable and allocate memory
+cells_t::iterator pushVariable(const string &name, size_t count) {
+	// add new variable
+	variables.push_back(std::make_tuple(name, stack.size()));
+
+	// resize stack and return iterator to first allocated element
+	stack.resize(stack.size() + count);
+	return stack.begin() + std::get<1>(variables.back());
+}
+
+// reallocate variable
+cells_t::iterator resizeVariable(const string &name, size_t insertPos, size_t elements) {
+	auto var = findVariable(name);
+	if(isVariableValid(var)) {
+		// move variable positions by offset
+		mapc(var + 1, variables.end(),
+			 [elements](var_t &v) {
+				 return std::make_tuple(std::get<1>(v) += elements);
+			 });
+
+		// resize stack and return variable address
+		auto varMemLocation = stack.begin() + std::get<1>(*var);
+		stack.insert(varMemLocation + insertPos, elements, cell());
+		return varMemLocation;
+	}
+
+	// return invalid variable address
+	return stack.end();
+}
+
+
+/*
 
 // consts
 const cell true_cell(cell::typeIdentifier, "#t");
 const cell false_cell(cell::typeIdentifier, "#f");
 const cell nil(cell::typeIdentifier, "nil");
-
-//- scope (variable container/stack)
-class scope {
-public:
-	size_t stack_bottom;
-
-	scope() {
-		// define stack frame
-		stack_bottom = stack_top;
-	}
-
-	~scope() {
-		// revert stack pointer ("free" memory)
-		stack_top = stack_bottom;
-	}
-
-	cell *get(const string &name) {
-		// searching backwards on stack will find variable in outer scopes
-		auto r = std::find(variables.rend() - stack_top - 1, variables.rend(), name);
-		if(r != variables.rend())
-			return &stack[std::distance(r, variables.rend() - 1)];
-		else return nullptr; // variable name not found
-	}
-
-	cell *push(const string &name, const cell &c) {
-		++stack_top;
-		// resizing stack
-		variables[stack_top] = name;
-		stack[stack_top] = c;
-		return &stack[stack_top];
-	}
-};
 
 //- fx
 cell fx_add(const std::vector<cell> &c) {
@@ -285,5 +362,6 @@ string toString(const cell &c) {
 	}
 	return c.val;
 }
+*/
 
 }}
