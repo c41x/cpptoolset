@@ -263,12 +263,12 @@ bool isFloat(const stringRange &range) {
 	return true;
 }
 
-template <typename T> stringRange signedToStr(const T &i,string &os) {
-	string::iterator p = os.begin() + os.capacity() - 1;
-	if(i == 0){
+template <typename T> stringRange signedToStr(const T &i, string &os) {
+	string::iterator p = os.begin() + os.size() - 1;
+	if(i == 0) {
+		gassert(p >= os.begin(), "string to signed - index out of buffer");
 		*p = '0';
-		gassert(p - 1 >= os.begin(), "string to signed - index out of buffer");
-		return stringRange(p - 1, os.end());
+		return stringRange(p, os.end());
 	}
 	T v = i < 0 ? -i : i;
 	while(v) {
@@ -286,11 +286,11 @@ template <typename T> stringRange signedToStr(const T &i,string &os) {
 }
 
 template <typename T> stringRange unsignedToStr(const T &u, string &os) {
-	string::iterator p = os.begin() + os.capacity() - 1;
+	string::iterator p = os.begin() + os.size() - 1;
 	if(u == 0) {
+		gassert(p >= os.begin(), "string to unsigned - index out of buffer");
 		*p = '0';
-		gassert(p - 1 >= os.begin(), "string to unsigned - index out of buffer");
-		return stringRange(p - 1, os.end());
+		return stringRange(p, os.end());
 	}
 	T v = u;
 	while(v) {

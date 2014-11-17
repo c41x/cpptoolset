@@ -103,14 +103,14 @@ int main(int argc, char**argv){
 	str="i dont need whitespaces any more :|";
 	deleteWhitespaces(str);
 	std::cout<<str<<std::endl;
-	
+
 	str="A value of zero causes the the thread to relinquish the remainder of its time slice to any other thread that is ready to run (the)";
 	str=containsSubstr(str,"zero")?"contains 'zero'":"!contains 'zero'";
 	std::cout<<str<<std::endl;
 	findAndDelete(str,"zero");
 	str=containsSubstr(str,"zero")?"contains 'zero'":"!contains 'zero'";
 	std::cout<<str<<std::endl;
-	
+
 	str="some|parameters|divided|1.0f|by|special|characters"; // empty strings may occur in results!
 	std::vector<string> out;
 	std::vector<stringRange> out2;
@@ -161,7 +161,7 @@ int main(int argc, char**argv){
 	std::cout<<fromStr<bool>("truet")<<std::endl;
 	std::cout<<fromStr<bool>("tru")<<std::endl;
 	std::cout<<fromStr<bool>("false")<<std::endl;
-	
+
 	string buff(0,' ');
 	buff.resize(20);
 	std::cout<<signedToStr<int>(96661,buff).str()<<std::endl;
@@ -186,18 +186,19 @@ int main(int argc, char**argv){
 	std::cout<<toStr(3.1415213642,buff).str()<<std::endl;
 	std::cout<<toStr(false,buff).str()<<std::endl;
 	std::cout<<toStr(true,buff).str()<<std::endl;
+	std::cout<<toStr(0)<<std::endl;
 
 	std::cout<<strs("string"," cat, maybe some float: ",2.71f," or ~PI: ",3.14152112345," integers will work too: ",666,", ",-123456," booleans: ",true,", ",false," int64? no problem: ",123456789012345666ll)<<std::endl;
 	std::cout<<strf("string cat, maybe some float: % or ~PI: % integers will work too: %, % booleans: %, % int64? no problem: %",2.71f,3.14152112345,666,-123456,true,false,123456789012345666ll)<<std::endl;
 	std::cout<<strf("just testing %% operators...%%")<<std::endl;
-	
+
 	// benchmark
 	timer::init();
 	timer t;
 
 	static const unsigned int N=50000;
 	static const unsigned int R=7;
-	
+
 	std::vector<std::string> nums;
     nums.reserve(N);
     for (size_t i=0 ; i<N ; ++i) {
@@ -210,7 +211,7 @@ int main(int argc, char**argv){
         y += toStr(rand()%999999,buff).str();
         nums.push_back(y);
     }
-	
+
 	{
         double tsum = 0.0;
         std::vector<double> timings;
@@ -230,7 +231,7 @@ int main(int argc, char**argv){
         std::cout << std::endl;
         std::cout << tsum << std::endl;
     }
-	
+
 	{
         double tsum = 0.0;
         std::vector<double> timings;
@@ -272,7 +273,7 @@ int main(int argc, char**argv){
         std::cout << std::endl;
         std::cout << tsum << std::endl;
     }
-	
+
 	{
         double tsum = 0.0;
         std::vector<double> timings;
@@ -311,7 +312,7 @@ int main(int argc, char**argv){
         std::cout << std::endl;
         std::cout << tsum << std::endl;
     }
-	
+
     {
         double tsum = 0.0;
         std::vector<double> timings;
@@ -330,6 +331,6 @@ int main(int argc, char**argv){
         std::cout << std::endl;
         std::cout << tsum << std::endl;
     }
-	
+
 	return 0;
 }
