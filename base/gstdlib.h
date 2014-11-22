@@ -21,4 +21,57 @@ void mapc(T_ITERATOR begin, T_ITERATOR end, T_OPERATION op) {
 	}
 }
 
+// ELISP mapcar
+template <typename T_ITERATOR, typename T_OPERATION, typename T_CONTAINER>
+T_CONTAINER mapcar(T_ITERATOR begin, T_ITERATOR end, T_OPERATION op) {
+	T_CONTAINER v;
+	for(T_ITERATOR it = begin; it != end; ++it)
+		v.push_back(op(*it));
+	return v;
+}
+
+// concat
+template <typename T_ITERATOR, typename T_AGG>
+T_AGG concat(T_ITERATOR begin, T_ITERATOR end, T_AGG separator) {
+	T_AGG r;
+
+	// return "" if no elements
+	if(begin == end)
+		return r;
+
+	// return *begin if one element
+	if(std::distance(begin, end) < 2)
+		return *begin;
+
+	// glue all elements
+	for(T_ITERATOR it = begin; it != end; ++it) {
+		r += *it;
+		if(it != std::prev(end))
+			r += separator;
+	}
+	return r;
+}
+
+// ELISP mapconcat
+template <typename T_ITERATOR, typename T_OPERATION, typename T_AGG>
+T_AGG mapconcat(T_ITERATOR begin, T_ITERATOR end, T_OPERATION op, T_AGG separator) {
+	T_AGG r;
+
+	// return "" if no elements
+	if(begin == end)
+		return r;
+
+	// return *begin if one element
+	if(std::distance(begin, end) < 2)
+		return *begin;
+
+	// glue all elements
+	for(T_ITERATOR it = begin; it != end; ++it) {
+		r += op(*it);
+		if(it != std::prev(end))
+			r += separator;
+	}
+	return r;
+}
+
 }}
