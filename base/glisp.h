@@ -44,6 +44,7 @@ public:
 	}
 };
 typedef std::vector<cell> cells_t;
+typedef std::vector<cell>::iterator cell_t;
 
 //- 2) parser -
 cells_t parse(const string &s) {
@@ -101,10 +102,10 @@ cells_t parse(const string &s) {
 }
 
 // counts elements of given cell
-size_t countElements(cells_t::iterator c) {
+size_t countElements(cell_t c) {
 	if(c->type == cell::typeList) {
-		cells_t::iterator i = c + 1;
-		cells_t::iterator delim = c + c->i;
+		cell_t i = c + 1;
+		cell_t delim = c + c->i;
 		while(i <= delim) {
 			if(i->type == cell::typeList)
 				delim += i->i;
@@ -154,7 +155,7 @@ vars_t::iterator findVariable(const string &name) {
 }
 
 // returns variable
-cells_t::iterator getVariable(const string &name) {
+cell_t getVariable(const string &name) {
 	// find variable
 	auto r = findVariable(name);
 
@@ -171,7 +172,7 @@ cells_t::iterator getVariable(const string &name) {
 }
 
 // checks if given iterator / address is valid
-bool isVariableValid(cells_t::iterator i) {
+bool isVariableValid(cell_t i) {
 	return i != stack.end();
 }
 
@@ -180,7 +181,7 @@ bool isVariableValid(vars_t::iterator i) {
 }
 
 // push variable and allocate memory
-cells_t::iterator pushVariable(const string &name, size_t count) {
+cell_t pushVariable(const string &name, size_t count) {
 	// add new variable
 	variables.push_back(std::make_tuple(name, stack.size()));
 
@@ -190,13 +191,22 @@ cells_t::iterator pushVariable(const string &name, size_t count) {
 }
 
 // assign address to memory
-void pushVariable(const string &name, cells_t::iterator addr) {
+void pushVariable(const string &name, cell_t addr) {
 	std::cout << "push variable (" << name << ") addr: " << std::distance(stack.begin(), addr) << std::endl;
 	variables.push_back(std::make_tuple(name, std::distance(stack.begin(), addr)));
 }
 
+// push data on top of stack (copy all addr cell) return data address on stack
+cell_t pushData(cell_t addr) {
+	size_t elemsCount = countElements(addr);
+	size_t whence = stack.size();
+	stack.resize(stack.size() + elemsCount);
+	std::copy(addr, addr + elemsCount, stack.begin() + whence);
+	return stack.begin() + whence;
+}
+
 // reallocate variable
-cells_t::iterator resizeVariable(const string &name, size_t insertPos, size_t elements) {
+cell_t resizeVariable(const string &name, size_t insertPos, size_t elements) {
 	auto var = findVariable(name);
 	if(isVariableValid(var)) {
 		// move variable positions by offset
@@ -215,32 +225,52 @@ cells_t::iterator resizeVariable(const string &name, size_t insertPos, size_t el
 	return stack.end();
 }
 
+// get address (just size_t number - do not use in logic code)
+size_t getAddress(cell_t c) {
+	return std::distance(stack.begin(), c);
+}
+
+// call stack
+std::stack<size_t> callStack;
+
+void pushCallStack() {
+	callStack.push(stack.size());
+}
+
+void popCallStack() {
+	stack.resize(callStack.top());
+	callStack.pop();
+}
+
 //- 4) consts and intrinsics -
 
 
 //- 5) eval -
-size_t addrd(cells_t::iterator i) {
-	return std::distance(stack.begin(), i);
-}
 
+// shortcuts to constants
+cell_t c_nil;
+cell_t c_t;
 
-/*
-void init() {
+// initialize interpreter
+void init(size_t stackSize) {
+	// resize stack
+	stack.reserve(stackSize);
+
+	// constant variables / keywords
 	auto nil = pushVariable("nil", 1);
 	*nil = cell(cell::typeIdentifier, "nil");
+	c_nil = nil;
+	auto t = pushVariable("t", 1);
+	*t = cell(cell::typeIdentifier, "t");
+	c_t = t;
 }
-*/
 
-std::stack<size_t> callStack;
 void tab() {
 	for(size_t i = 0; i < callStack.size(); ++i) {
 		std::cout << "  ";
 	}
 }
-cells_t::iterator eval(cells_t::iterator d) {
-	static bool aaa = false;
-	if(!aaa)
-		stack.reserve(100000);
+cell_t eval(cell_t d) {
 	tab();
 	std::cout << "eval " << string(*d)
 			  << "  > stack " << printStack() << std::endl;
@@ -259,30 +289,27 @@ cells_t::iterator eval(cells_t::iterator d) {
 		// empty list evaluates to nil
 		if(d->i == 0) {
 			// return empty
-			std::cout << "empty list" << std::endl;
+			//std::cout << "empty list" << std::endl;
+			return c_nil;
 		}
 
 		// first argument must be identifier
-		cells_t::iterator fxName = d + 1;
+		cell_t fxName = d + 1;
 		if(fxName->type != cell::typeIdentifier) {
-			// function name must be id
 			std::cout << "function name must be ID" << std::endl;
 		}
 
 		// is fx name built in function
 		if(fxName->s == "defvar") {
 			// 3 elements min!
-			cells_t::iterator varName = d + 2;
-			cells_t::iterator varValue = eval(d + 3);
+			cell_t varName = d + 2;
+			cell_t varValue = eval(d + 3);
 			pushVariable(varName->s, varValue);
 			return varValue;
 		}
 		else if(fxName->s == "quote") {
-			size_t elemsCount = countElements(d + 2);
-			size_t whence = stack.size();
-			stack.resize(stack.size() + elemsCount);
-			std::copy(d + 2, d + 2 + elemsCount, stack.begin() + whence);
-			return stack.begin() + whence;
+			// just copy quote body to stack
+			return pushData(d + 2);
 		}
 		else if(fxName->s == "lambda") {
 			size_t lambdaBodyCount = d->i - 1; // not counting name
@@ -299,10 +326,9 @@ cells_t::iterator eval(cells_t::iterator d) {
 			size_t count = d->i - 1;
 			int res = 0;
 			for(size_t i = 0, j = 0; j < count; ++j) {
-				callStack.push(stack.size());
+				pushCallStack();
 				res += eval(d + 2 + i)->i;
-				stack.resize(callStack.top());
-				callStack.pop();
+				popCallStack();
 
 				if((d + 2 + i)->type == cell::typeList)
 					i += countElements(d + 2 + i);
@@ -318,14 +344,35 @@ cells_t::iterator eval(cells_t::iterator d) {
 
 			return stack.begin() + retPos;
 		}
+		else if(fxName->s == "if") {
+			// test
+			pushCallStack();
+			bool test = eval(d + 2) != c_nil;
+			popCallStack();
+
+			// test and eval
+			if (test)
+				return eval(d + 2 + countElements(d + 2));
+			else return eval(d + 3 + countElements(d + 2));
+		}
+		else if(fxName->s == "=") {
+			cell_t a1 = d + 2;
+			cell_t a2 = d + 3;
+			if(a1->type == cell::typeInt && a2->type == cell::typeInt) {
+				if(a1->i == a2->i)
+					return c_t;
+				else return c_nil;
+			}
+			return c_nil;
+		}
 
 		// get fx address
-		cells_t::iterator fx = getVariable(fxName->s);
+		cell_t fx = getVariable(fxName->s);
 		if(isVariableValid(fx)) {
 			if(fx->type == cell::typeList) {
 				int count = fx->i;
-				cells_t::iterator args = fx + 1;
-				cells_t::iterator args_vals = d + 2;
+				cell_t args = fx + 1;
+				cell_t args_vals = d + 2;
 
 				// bind args
 				// args->i == (d + 2)->i
@@ -338,8 +385,8 @@ cells_t::iterator eval(cells_t::iterator d) {
 
 				// evaluate body
 				int bodyCount = count - 1;
-				cells_t::iterator body = fx + 1 + countElements(fx + 1);
-				cells_t::iterator ret;
+				cell_t body = fx + 1 + countElements(fx + 1);
+				cell_t ret;
 				for(int i = 0, j = 0; j < bodyCount; ++j) {
 					tab();std::cout << " > body eval: " << j << std::endl;
 					tab();std::cout << " > body is: " << std::distance(stack.begin(), body + i)

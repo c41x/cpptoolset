@@ -14,11 +14,12 @@ void repl() {
 	auto code = parse(inp);
 	std::cout << toString(code) << std::endl;
 	auto retAddr = eval(code.begin());
-	std::cout << "return addr: " << addrd(retAddr) << std::endl;
+	std::cout << "return addr: " << getAddress(retAddr) << std::endl;
 	std::cout << printStack() << std::endl;
 }
 
 int main(int argc, char**argv) {
+	init(100000);
 	while(true) {
 		repl();
 	}
