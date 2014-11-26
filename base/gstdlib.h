@@ -63,7 +63,7 @@ T_AGG mapconcat(T_ITERATOR begin, T_ITERATOR end, T_OPERATION op, T_AGG separato
 
 	// return *begin if one element
 	if(std::distance(begin, end) < 2)
-		return *begin;
+		return op(*begin);
 
 	// glue all elements
 	for(T_ITERATOR it = begin; it != end; ++it) {
