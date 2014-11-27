@@ -101,21 +101,6 @@ cells_t parse(const string &s) {
 	return cells;
 }
 
-// counts elements of given cell
-size_t countElements(cell_t c) {
-	if(c->type == cell::typeList) {
-		cell_t i = c + 1;
-		cell_t delim = c + c->i;
-		while(i <= delim) {
-			if(i->type == cell::typeList)
-				delim += i->i;
-			++i;
-		}
-		return std::distance(c, i);
-	}
-	return 1;
-}
-
 string toString(const cells_t &cells) {
 	string r;
 	for(const cell &c : cells) {
@@ -134,6 +119,32 @@ string toString(const cells_t &cells) {
 		r += " ";
 	}
 	return r;
+}
+
+// iterating over lists: first element
+cell_t firstCell(cell_t c) {
+	return c + 1;
+}
+
+// iterating over lists: ++
+cell_t nextCell(cell_t c) {
+	cell_t delim = c;
+	while (c <= delim) {
+		if(c->type == cell::typeList)
+			delim += c->i;
+		++c;
+	}
+	return c;
+}
+
+// iterating over lists: cell after last one
+cell_t lastCell(cell_t c) {
+	return nextCell(c);
+}
+
+// counts elements of given cell
+size_t countElements(cell_t c) {
+	return std::distance(c, lastCell(c));
 }
 
 //- 3) dynamic scoping / stack / variable memory -
@@ -210,10 +221,10 @@ cell_t pushData(cell_t addr) {
 	return whence;
 }
 
-// push one element to stack
+// push one element to stack (carefull with lists!)
 cell_t pushCell(cell c) {
 	stack.push_back(c);
-	return stack.begin() + stack.size();
+	return stack.begin() + stack.size() - 1;
 }
 
 // push cdr of given list (create list without first element)
@@ -228,10 +239,14 @@ cell_t pushCdr(cell_t l) {
 	return whence;
 }
 
-// push car of given list (basically just copy cell to stack)
+// push car of given list (if it is a list -> copy all items)
 cell_t pushCar(cell_t l) {
-	stack.push_back(*l);
-	return stack.begin() + stack.size();
+	// TODO: test
+	cell_t whence = stack.end();
+	size_t elems = countElements(l + 1);
+	stack.resize(stack.size() + elems);
+	std::copy(l + 1, l + 1 + elems, whence);
+	return whence;
 }
 
 // reallocate variable
@@ -267,6 +282,7 @@ void pushCallStack() {
 }
 
 void popCallStack() {
+	// TODO: undefine variables
 	stack.resize(callStack.top());
 	callStack.pop();
 }
@@ -284,6 +300,8 @@ typedef intrinsics_t::iterator intrinsic_t;
 intrinsics_t intrinsics;
 
 cell_t c_message(cell_t c) {
+	// *c - count
+	// *(c + x) - element x
 	std::cout << "*intrinsic* ";
 	std::cout << (c + 1)->i << std::endl;
 	return c;
@@ -341,12 +359,40 @@ void init(size_t stackSize) {
 }
 
 //- 5) eval -
+cell_t eval(cell_t d);
 
 void tab() {
 	for(size_t i = 0; i < callStack.size(); ++i) {
 		std::cout << "  ";
 	}
 }
+
+// helper for evaluating lists, evals all elements and returns last
+cell_t evalreturn(cell_t begin, cell_t end) {
+	for(cell_t i = begin; i != end;) {
+		pushCallStack();
+		cell_t lastResult = eval(i);
+		i = nextCell(i);
+		if(i == end)
+			return lastResult;
+		popCallStack();
+	}
+	std::cout << "eval on empty list?" << std::endl;
+	return begin;
+}
+
+template <typename T_OP>
+cell_t evalmap(cell_t begin, cell_t end, T_OP op) {
+	for(cell_t i = begin; i != end; i = nextCell(i)) {
+		pushCallStack();
+		cell_t lastResult = eval(i);
+		op(lastResult);
+		popCallStack();
+	}
+	std::cout << "eval on empty list?" << std::endl;
+	return begin;
+}
+
 cell_t eval(cell_t d) {
 	tab();
 	std::cout << "eval " << string(*d)
@@ -391,41 +437,26 @@ cell_t eval(cell_t d) {
 			return pushCdr(d);
 		}
 		else if(fxName->s == "+") {
-			tab(); std::cout << "+" << std::endl;
-			// sum
-			size_t count = d->i - 1;
-			int res = 0;
-			for(size_t i = 0, j = 0; j < count; ++j) {
-				pushCallStack();
-				res += eval(d + 2 + i)->i;
-				popCallStack();
+			int sum = 0;
+			evalmap(firstCell(d) + 1, lastCell(d), [&sum](cell_t i){ sum += i->i; });
 
-				if((d + 2 + i)->type == cell::typeList)
-					i += countElements(d + 2 + i);
-				else ++i;
-			}
-
-			// return
-			size_t retPos = stack.size();
-			stack.resize(stack.size() + 1);
-			cell &ret = stack[retPos];
-			ret.type = cell::typeInt;
-			ret.i = res;
-
-			return stack.begin() + retPos;
+			// leave return value on stack
+			return pushCell({cell::typeInt, sum});
 		}
 		// TODO: undef variable / delete variable / test variable
-		// TODO: intrinsic, simple array ops? what kind of functionality needed?
 		else if(fxName->s == "if") {
-			// test
+			// test, we dont need return value - discard it with call stack
 			pushCallStack();
 			bool test = eval(d + 2) != c_nil;
 			popCallStack();
 
 			// test and eval
 			if (test)
-				return eval(d + 2 + countElements(d + 2));
-			else return eval(d + 3 + countElements(d + 2));
+				return eval(lastCell(d + 2));
+			else {
+				cell_t offset = lastCell(lastCell(d + 2)); // else statements offset
+				return evalreturn(offset, lastCell(d));
+			}
 		}
 		else if(fxName->s == "=") {
 			cell_t a1 = d + 2;
@@ -486,15 +517,18 @@ cell_t eval(cell_t d) {
 		else {
 			intrinsic_t i = getIntrinsic(fxName->s);
 			if(isIntrinsicValid(i)) {
-				std::cout << "valid intrinsic: " << std::get<0>(*i) << std::endl;
+				// arguments list address
 				cell_t r = stack.end();
-				pushCell(cell(cell::typeList, d->i - 1)); // save count
-				for(cell_t a = d + 2; a != d + 2 + d->i - 1; ++a) // COMPLEX call!
+
+				// evaluate arguments (leave result on stack)
+				pushCell(cell(cell::typeList, d->i - 1)); // list elements count (not counting name)
+				for(cell_t a = firstCell(d) + 1; a != lastCell(d); a = nextCell(a))
 					eval(a);
-				std::cout << "calling intrinsic" << std::endl;
+
+				// call intrinsic
 				return std::get<1>(*i)(r);
 			}
-			std::cout << "intrinsic not found" << std::endl;
+			std::cout << "intrinsic not found" << std::endl; // not a function?
 		}
 	}
 
