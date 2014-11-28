@@ -423,9 +423,15 @@ cell_t eval(cell_t d) {
 	}
 	else if(d->type == cell::typeIdentifier) {
 		auto addr = getVariable(d->s);
-		if(isVariableValid(addr))
-			return addr;
-		// TODO: nothing on stack?
+		if(isVariableValid(addr)) {
+			// return lists by reference
+			if (addr->type == cell::typeList)
+				return addr;
+
+			// otherwise (it's atom) -> push on stack
+			stack.push_back(*addr);
+			return --stack.end();
+		}
 		// variable not found
 	}
 	else if(d->type == cell::typeList) {
