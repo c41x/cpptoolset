@@ -42,6 +42,11 @@ public:
 		};
 		return strf("type: % | i = % | s = %", type_ts[type], i, s);
 	}
+	const string getStr() const {
+		if (type == typeInt) return strs(i);
+		else if (type == typeIdentifier) return s;
+		return "";
+	}
 };
 typedef std::vector<cell> cells_t;
 typedef std::vector<cell>::iterator cell_t;
@@ -147,6 +152,21 @@ size_t countElements(cell_t c) {
 	return std::distance(c, lastCell(c));
 }
 
+// nice print cell
+string toString(const cell_t c) {
+	if (c->type == cell::typeList) {
+		string s = "(";
+		for (auto i = firstCell(c); i != lastCell(c); i = nextCell(i)) {
+			s += toString(i);
+			if (nextCell(i) != lastCell(c))
+				s += " ";
+		}
+		s += ")";
+		return s;
+	}
+	return c->getStr();
+}
+
 //- 3) dynamic scoping / stack / variable memory -
 typedef std::tuple<string, size_t> var_t;
 typedef std::vector<var_t> vars_t; // name, stack position
@@ -154,7 +174,7 @@ cells_t stack;
 vars_t variables;
 
 string printStack() {
-	return toStr(stack.size()) + " > " + toString(stack);
+	return "stack: " + toStr(stack.size()) + " > " + toString(stack);
 }
 
 vars_t::iterator findVariable(const string &name) {
@@ -191,7 +211,7 @@ cell_t getVariable(const string &name) {
 	// variable name not found
 	std::cout << "variable \"" << name << "\" not found" << std::endl;
 	for(auto v : variables) {
-		std::cout << "> " << std::get<0>(v) << " / " << std::get<1>(v) << std::endl;
+		std::cout << " > " << std::get<0>(v) << " = " << std::get<1>(v) << std::endl;
 	}
 	return stack.end();
 }
@@ -302,15 +322,15 @@ intrinsics_t intrinsics;
 cell_t c_message(cell_t c) {
 	// *c - count
 	// *(c + x) - element x
-	std::cout << "*intrinsic* ";
-	std::cout << (c + 1)->i << std::endl;
+	std::cout << "message: " << (c + 1)->i << std::endl;
 	return c;
 }
 
 cell_t c_mul(cell_t c) {
-	std::cout << "*intrinsic* ";
+	std::cout << "*" << std::endl;
 	int r = 1;
 	for(cell_t i = c + 1; i != c + 1 + c->i; ++i) {
+		std::cout << " > mul: " << i->i << std::endl;
 		r *= i->i;
 	}
 	return pushCell(cell(cell::typeInt, r));
@@ -395,8 +415,7 @@ cell_t evalmap(cell_t begin, cell_t end, T_OP op) {
 
 cell_t eval(cell_t d) {
 	tab();
-	std::cout << "eval " << string(*d)
-			  << "  > stack " << printStack() << std::endl;
+	std::cout << "eval: " << toString(d) << std::endl;
 
 	if(d->type == cell::typeInt) {
 		stack.push_back(*d);
@@ -406,6 +425,7 @@ cell_t eval(cell_t d) {
 		auto addr = getVariable(d->s);
 		if(isVariableValid(addr))
 			return addr;
+		// TODO: nothing on stack?
 		// variable not found
 	}
 	else if(d->type == cell::typeList) {
@@ -473,6 +493,9 @@ cell_t eval(cell_t d) {
 		cell_t fx = getVariable(fxName->s);
 		if(isVariableValid(fx)) {
 			if(fx->type == cell::typeList) {
+				// TODO: ! fix stack
+				// TODO: dynamic scope
+				// TODO: visualize flow
 				int count = fx->i;
 				cell_t args = fx + 1;
 				cell_t args_vals = d + 2;
@@ -486,6 +509,7 @@ cell_t eval(cell_t d) {
 							  << (args_vals + i)->i << std::endl;
 				}
 
+				// TODO: refactor this:
 				// evaluate body
 				int bodyCount = count - 1;
 				cell_t body = fx + 1 + countElements(fx + 1);
@@ -522,8 +546,11 @@ cell_t eval(cell_t d) {
 
 				// evaluate arguments (leave result on stack)
 				pushCell(cell(cell::typeList, d->i - 1)); // list elements count (not counting name)
-				for(cell_t a = firstCell(d) + 1; a != lastCell(d); a = nextCell(a))
+				std::cout << printStack() << std::endl;
+				for(cell_t a = firstCell(d) + 1; a != lastCell(d); a = nextCell(a)) {
 					eval(a);
+					std::cout << printStack() << std::endl;
+				}
 
 				// call intrinsic
 				return std::get<1>(*i)(r);
