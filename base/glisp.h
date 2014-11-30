@@ -379,7 +379,7 @@ void init(size_t stackSize) {
 }
 
 //- 5) eval -
-cell_t eval(cell_t d);
+cell_t eval(cell_t d, bool temporary = false);
 
 void tab() {
 	for(size_t i = 0; i < callStack.size(); ++i) {
@@ -402,33 +402,41 @@ cell_t evalreturn(cell_t begin, cell_t end) {
 }
 
 template <typename T_OP>
-cell_t evalmap(cell_t begin, cell_t end, T_OP op) {
+void evalmap(cell_t begin, cell_t end, T_OP op) {
 	for(cell_t i = begin; i != end; i = nextCell(i)) {
 		pushCallStack();
 		cell_t lastResult = eval(i);
 		op(lastResult);
 		popCallStack();
 	}
-	std::cout << "eval on empty list?" << std::endl;
-	return begin;
 }
 
-cell_t eval(cell_t d) {
+// TODO: hint - iterator offset
+cell_t eval(cell_t d, bool temporary) {
 	tab();
 	std::cout << "eval: " << toString(d) << std::endl;
 
 	if(d->type == cell::typeInt) {
+		// when temporary is true - return value (it's on input array!)
+		if (temporary)
+			return d;
+
+		// leave it on stack
 		stack.push_back(*d);
 		return --stack.end();
 	}
 	else if(d->type == cell::typeIdentifier) {
 		auto addr = getVariable(d->s);
 		if(isVariableValid(addr)) {
-			// return lists by reference
-			if (addr->type == cell::typeList)
+			// return temporary result
+			if (temporary)
 				return addr;
 
-			// otherwise (it's atom) -> push on stack
+			// leave list on stack
+			if (addr->type == cell::typeList)
+				return pushData(d);
+
+			// it's an atom
 			stack.push_back(*addr);
 			return --stack.end();
 		}
@@ -469,11 +477,10 @@ cell_t eval(cell_t d) {
 			// leave return value on stack
 			return pushCell({cell::typeInt, sum});
 		}
-		// TODO: undef variable / delete variable / test variable
 		else if(fxName->s == "if") {
 			// test, we dont need return value - discard it with call stack
 			pushCallStack();
-			bool test = eval(d + 2) != c_nil;
+			bool test = eval(d + 2, true) != c_nil;
 			popCallStack();
 
 			// test and eval
@@ -499,47 +506,23 @@ cell_t eval(cell_t d) {
 		cell_t fx = getVariable(fxName->s);
 		if(isVariableValid(fx)) {
 			if(fx->type == cell::typeList) {
-				// TODO: ! fix stack
-				// TODO: dynamic scope
-				// TODO: visualize flow
-				int count = fx->i;
+				// [list:][list:]<arg><arg>[list:]<body><body>[list:]<body>...
+				// evaluate and bind args
 				cell_t args = fx + 1;
-				cell_t args_vals = d + 2;
-
-				// bind args
-				// args->i == (d + 2)->i
+				cell_t args_vals = d + 2; // skip list and fx name
+				cell_t args_vals_i = args_vals;
 				for(int i = 0; i < args->i; ++i) {
-					auto v = eval(args_vals + i);
+					auto v = eval(args_vals_i);
+					args_vals_i = nextCell(args_vals_i);
 					pushVariable((args + i + 1)->s, v);
+
 					std::cout << (args + i + 1)->s << " = "
 							  << (args_vals + i)->i << std::endl;
 				}
 
-				// TODO: refactor this:
 				// evaluate body
-				int bodyCount = count - 1;
-				cell_t body = fx + 1 + countElements(fx + 1);
-				cell_t ret;
-				for(int i = 0, j = 0; j < bodyCount; ++j) {
-					tab();std::cout << " > body eval: " << j << std::endl;
-					tab();std::cout << " > body is: " << std::distance(stack.begin(), body + i)
-									<< std::endl;
-					if(j != count - 1)
-						;//callStack.push(stack.size());
-
-					ret = eval(body + i);
-					tab();std::cout << " >" << string(*ret) << std::endl;
-
-					if(j != count - 1) {
-						//stack.resize(callStack.top());
-						//callStack.pop();
-					}
-
-					if((body + i)->type == cell::typeList)
-						i += countElements(body + i);
-					else ++i;
-				}
-				return ret;
+				cell_t body = nextCell(args);
+				return evalreturn(body, lastCell(fx));
 			}
 			std::cout << "not function!" << std::endl;
 			return fx;
@@ -570,3 +553,7 @@ cell_t eval(cell_t d) {
 }
 
 }}
+
+// TODO: dynamic scope
+// TODO: undef variable / delete variable / test variable
+// TODO: progn
