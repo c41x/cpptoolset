@@ -492,7 +492,7 @@ cell_t eval(cell_t d, bool temporary) {
 			}
 		}
 		else if(fxName->s == "=") {
-			// TODO: refactor (eval all args)
+			// d->i must be > 2
 			cell_t a1 = eval(d + 2);
 			cell_t a2 = eval(d + 3);
 			if(a1->type == cell::typeInt && a2->type == cell::typeInt) {
@@ -540,11 +540,8 @@ cell_t eval(cell_t d, bool temporary) {
 
 				// evaluate arguments (leave result on stack)
 				pushCell(cell(cell::typeList, d->i - 1)); // list elements count (not counting name)
-				std::cout << printStack() << std::endl;
-				for(cell_t a = firstCell(d) + 1; a != lastCell(d); a = nextCell(a)) {
+				for(cell_t a = firstCell(d) + 1; a != lastCell(d); a = nextCell(a))
 					eval(a);
-					std::cout << printStack() << std::endl;
-				}
 
 				// call intrinsic
 				return std::get<1>(*i)(r);
