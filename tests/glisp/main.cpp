@@ -25,3 +25,5 @@ int main(int argc, char**argv) {
 	}
 	return 0;
 }
+//(defvar l (lambda (a bc ) (+ a bc (* 2 bc) 1000)))
+//(if t (progn (message 11) (message 22)) (message 33))
