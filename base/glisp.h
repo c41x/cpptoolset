@@ -417,7 +417,7 @@ cell_t eval(cell_t d, bool temporary) {
 	std::cout << "eval: " << toString(d) << std::endl;
 
 	if(d->type == cell::typeInt) {
-		// when temporary is true - return value (it's on input array!)
+		// when temporary is true - return value directly (it's in input array!)
 		if (temporary)
 			return d;
 
@@ -492,14 +492,19 @@ cell_t eval(cell_t d, bool temporary) {
 			}
 		}
 		else if(fxName->s == "=") {
-			cell_t a1 = d + 2;
-			cell_t a2 = d + 3;
+			// TODO: refactor (eval all args)
+			cell_t a1 = eval(d + 2);
+			cell_t a2 = eval(d + 3);
 			if(a1->type == cell::typeInt && a2->type == cell::typeInt) {
 				if(a1->i == a2->i)
 					return c_t;
 				else return c_nil;
 			}
 			return c_nil;
+		}
+		else if (fxName->s == "progn") {
+			// d->i must be > 1
+			return evalreturn(d + 2, lastCell(d));
 		}
 
 		// get fx address
@@ -556,4 +561,4 @@ cell_t eval(cell_t d, bool temporary) {
 
 // TODO: dynamic scope
 // TODO: undef variable / delete variable / test variable
-// TODO: progn
+// TODO: let, local variables
