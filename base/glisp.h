@@ -228,7 +228,8 @@ cell_t pushVariable(const string &name, size_t count) {
 
 // assign address to memory
 void pushVariable(const string &name, cell_t addr) {
-	std::cout << "push variable (" << name << ") addr: " << std::distance(stack.begin(), addr) << std::endl;
+	std::cout << "push variable (" << name << ") addr: " << std::distance(stack.begin(), addr)
+			  << " value: " << addr->getStr() << std::endl;
 	variables.push_back(std::make_tuple(name, std::distance(stack.begin(), addr)));
 }
 
@@ -305,6 +306,16 @@ void popCallStack() {
 	// TODO: undefine variables
 	stack.resize(callStack.top());
 	callStack.pop();
+}
+
+// pops call stack and leaves given cell at bottom of current stack frame
+cell_t popCallStackLeaveData(cell_t addr) {
+	popCallStack();
+	size_t elemsCount = countElements(addr);
+	cell_t whence = stack.begin() + callStack.top();
+	std::copy(addr, addr + elemsCount, whence);
+	callStack.top() += elemsCount;
+	return whence;
 }
 
 //- 4) initialization consts and intrinsics -
@@ -506,6 +517,20 @@ cell_t eval(cell_t d, bool temporary) {
 			// d->i must be > 1
 			return evalreturn(d + 2, lastCell(d));
 		}
+		else if (fxName->s == "let") {
+			// evaluate and push variables
+			pushCallStack();
+			cell_t args = d + 2;
+			for (cell_t a = firstCell(args); a != lastCell(args); a = nextCell(a)) {
+				cell_t val = eval(a + 2);
+				pushVariable((a + 1)->s, val);
+			}
+
+			// evaluate function body
+			cell_t ret = popCallStackLeaveData(evalreturn(nextCell(args), lastCell(d)));
+			popCallStack();
+			return ret;
+		}
 
 		// get fx address
 		cell_t fx = getVariable(fxName->s);
@@ -558,4 +583,4 @@ cell_t eval(cell_t d, bool temporary) {
 
 // TODO: dynamic scope
 // TODO: undef variable / delete variable / test variable
-// TODO: let, local variables
+// TODO: resizable memory (add-to-list etc.)
