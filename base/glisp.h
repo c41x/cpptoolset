@@ -177,6 +177,12 @@ string printStack() {
 	return "stack: " + toStr(stack.size()) + " > " + toString(stack);
 }
 
+void printVariables() {
+	std::cout << "defined variables" << std::endl;
+	for (auto &v : variables)
+		std::cout << std::get<0>(v) << " = " << stack[std::get<1>(v)].getStr() << std::endl;
+}
+
 vars_t::iterator findVariable(const string &name) {
 	// searching backwards on stack will find variable in outer scopes
 	auto r = std::find_if(variables.rbegin(), variables.rend(),
@@ -338,7 +344,6 @@ cell_t c_message(cell_t c) {
 }
 
 cell_t c_mul(cell_t c) {
-	std::cout << "*" << std::endl;
 	int r = 1;
 	for(cell_t i = c + 1; i != c + 1 + c->i; ++i) {
 		std::cout << " > mul: " << i->i << std::endl;
@@ -525,6 +530,7 @@ cell_t eval(cell_t d, bool temporary) {
 				cell_t val = eval(a + 2);
 				pushVariable((a + 1)->s, val);
 			}
+			printVariables();
 
 			// evaluate function body
 			cell_t ret = popCallStackLeaveData(evalreturn(nextCell(args), lastCell(d)));
@@ -545,10 +551,8 @@ cell_t eval(cell_t d, bool temporary) {
 					auto v = eval(args_vals_i);
 					args_vals_i = nextCell(args_vals_i);
 					pushVariable((args + i + 1)->s, v);
-
-					std::cout << (args + i + 1)->s << " = "
-							  << (args_vals + i)->i << std::endl;
 				}
+				printVariables();
 
 				// evaluate body
 				cell_t body = nextCell(args);
@@ -567,6 +571,7 @@ cell_t eval(cell_t d, bool temporary) {
 				pushCell(cell(cell::typeList, d->i - 1)); // list elements count (not counting name)
 				for(cell_t a = firstCell(d) + 1; a != lastCell(d); a = nextCell(a))
 					eval(a);
+				printVariables();
 
 				// call intrinsic
 				return std::get<1>(*i)(r);
