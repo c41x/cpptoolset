@@ -17,7 +17,7 @@
 
 namespace granite { namespace base {
 
-//- 1) just data (variant) -
+//- just data (variant) -
 class cell {
 public:
 	enum type_t {
@@ -51,7 +51,7 @@ public:
 typedef std::vector<cell> cells_t;
 typedef std::vector<cell>::iterator cell_t;
 
-//- 2) parser -
+//- parser -
 cells_t parse(const string &s) {
 	// create tokenizer
 	enum tokenType {
@@ -167,7 +167,7 @@ string toString(const cell_t c) {
 	return c->getStr();
 }
 
-//- 3) dynamic scoping / stack / variable memory -
+//- dynamic scoping / stack / variable memory -
 typedef std::tuple<string, size_t> var_t;
 typedef std::vector<var_t> vars_t; // name, stack position
 cells_t stack;
@@ -324,7 +324,7 @@ cell_t popCallStackLeaveData(cell_t addr) {
 	return whence;
 }
 
-//- 4) initialization consts and intrinsics -
+//- initialization consts and intrinsics -
 
 // shortcuts to constants
 cell_t c_nil;
@@ -394,7 +394,7 @@ void init(size_t stackSize) {
 	addIntrinsic("message", &c_message);
 }
 
-//- 5) eval -
+//- eval -
 cell_t eval(cell_t d, bool temporary = false);
 
 void tab() {
