@@ -173,16 +173,6 @@ typedef std::vector<var_t> vars_t; // name, stack position
 cells_t stack;
 vars_t variables;
 
-string printStack() {
-	return "stack: " + toStr(stack.size()) + " > " + toString(stack);
-}
-
-void printVariables() {
-	std::cout << "defined variables" << std::endl;
-	for (auto &v : variables)
-		std::cout << std::get<0>(v) << " = " << stack[std::get<1>(v)].getStr() << std::endl;
-}
-
 vars_t::iterator findVariable(const string &name) {
 	// searching backwards on stack will find variable in outer scopes
 	auto r = std::find_if(variables.rbegin(), variables.rend(),
@@ -193,7 +183,13 @@ vars_t::iterator findVariable(const string &name) {
 	// return proper invalid pointer
 	if(r == variables.rend())
 		return variables.end();
-	return std::prev(r.base());
+		return std::prev(r.base());
+	/* TODO: test
+	return find_if_backwards(variables.begin(), variables.end(),
+							 [name](const var_t &e) {
+								 return std::get<0>(e) == name;
+							 });
+	*/
 }
 
 // checks if given iterator / address is valid
@@ -304,23 +300,80 @@ size_t getAddress(cell_t c) {
 // call stack
 std::stack<size_t> callStack;
 
+void tab() {
+	for(size_t i = 0; i < callStack.size(); ++i) {
+		std::cout << "  ";
+	}
+}
+
+string printStack() {
+	return "stack: " + toStr(stack.size()) + " > " + toString(stack);
+}
+
+void printVariables() {
+	std::cout << "defined variables(" << variables.size() << ")" << std::endl;
+	for (auto &v : variables) {
+		std::cout << std::get<0>(v) << " = " << stack[std::get<1>(v)].getStr() << std::endl;
+	}
+}
+
+void printCallStack() {
+	auto ccal = callStack;
+	std::vector<size_t> cs;
+	while (ccal.size() > 0) {
+		cs.insert(cs.begin(), ccal.top());
+		ccal.pop();
+	}
+
+	std::cout << "call stack: ";
+	for (auto s : cs) {
+		std::cout << s << " ";
+	}
+	std::cout << " | " << printStack() << std::endl;
+}
+
 void pushCallStack() {
 	callStack.push(stack.size());
 }
 
+void popVariablesAbove(size_t addr) {
+	// no variables defined with address above given (warning - asserting that variables is not empty)
+	if (addr <= std::get<1>(variables.back())) {
+		// there are some variables above addr find last (should always delete sth)
+		variables.erase(find_if_backwards(variables.begin(), variables.end(),
+										  [&addr](var_t var) {
+											  return addr >= std::get<1>(var);
+										  }), variables.end());
+	}
+}
+
 void popCallStack() {
-	// TODO: undefine variables
+	// delete variables
+	popVariablesAbove(callStack.top());
+
+	// "free" data
 	stack.resize(callStack.top());
 	callStack.pop();
+
+	printVariables();
+	printCallStack();
 }
 
 // pops call stack and leaves given cell at bottom of current stack frame
 cell_t popCallStackLeaveData(cell_t addr) {
-	popCallStack();
+	callStack.pop();
+
+	// copy data
 	size_t elemsCount = countElements(addr);
 	cell_t whence = stack.begin() + callStack.top();
 	std::copy(addr, addr + elemsCount, whence);
+
+	// adjust previous stack (add addr to last call stack)
+	popVariablesAbove(callStack.top());
 	callStack.top() += elemsCount;
+
+	// remove unused data
+	stack.resize(callStack.top());
 	return whence;
 }
 
@@ -396,12 +449,6 @@ void init(size_t stackSize) {
 
 //- eval -
 cell_t eval(cell_t d, bool temporary = false);
-
-void tab() {
-	for(size_t i = 0; i < callStack.size(); ++i) {
-		std::cout << "  ";
-	}
-}
 
 // helper for evaluating lists, evals all elements and returns last
 cell_t evalreturn(cell_t begin, cell_t end) {
@@ -530,7 +577,6 @@ cell_t eval(cell_t d, bool temporary) {
 				cell_t val = eval(a + 2);
 				pushVariable((a + 1)->s, val);
 			}
-			printVariables();
 
 			// evaluate function body
 			cell_t ret = popCallStackLeaveData(evalreturn(nextCell(args), lastCell(d)));
