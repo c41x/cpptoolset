@@ -307,7 +307,8 @@ size_t getAddress(cell_t c) {
 }
 
 // call stack
-std::stack<size_t> callStack;
+typedef std::stack<size_t> call_stack_t;
+call_stack_t callStack;
 
 void tab() {
 	for(size_t i = 0; i < callStack.size(); ++i) {
@@ -657,5 +658,4 @@ cell_t eval(cell_t d, bool temporary) {
 
 }}
 
-// TODO: dynamic scope (checking variable name)
 // TODO: resizable memory (add-to-list etc.)
