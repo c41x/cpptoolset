@@ -74,4 +74,24 @@ T_AGG mapconcat(T_ITERATOR begin, T_ITERATOR end, T_OPERATION op, T_AGG separato
 	return r;
 }
 
+// same as std::find_if but performes search backward
+// using reverse iterators is annoying and std::end is overkill
+template <typename T_ITERATOR, typename T_OPERATION>
+T_ITERATOR find_if_backwards(T_ITERATOR begin, T_ITERATOR end, T_OPERATION pred) {
+	// empty sequence
+	if (begin == end)
+		return end;
+
+	// search for first match
+	for (auto it = end - 1;; --it) {
+		if (pred(*it))
+			return it;
+		if (it == begin)
+			break;
+	}
+
+	// not found
+	return end;
+}
+
 }}

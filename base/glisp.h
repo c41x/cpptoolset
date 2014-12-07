@@ -174,22 +174,10 @@ cells_t stack;
 vars_t variables;
 
 vars_t::iterator findVariable(const string &name) {
-	// searching backwards on stack will find variable in outer scopes
-	auto r = std::find_if(variables.rbegin(), variables.rend(),
-						  [name](const var_t &e) {
-							  return std::get<0>(e) == name;
-						  });
-
-	// return proper invalid pointer
-	if(r == variables.rend())
-		return variables.end();
-		return std::prev(r.base());
-	/* TODO: test
 	return find_if_backwards(variables.begin(), variables.end(),
 							 [name](const var_t &e) {
 								 return std::get<0>(e) == name;
 							 });
-	*/
 }
 
 // checks if given iterator / address is valid
@@ -279,7 +267,7 @@ cell_t resizeVariable(const string &name, size_t insertPos, size_t elements) {
 		// move variable positions by offset
 		mapc(var + 1, variables.end(),
 			 [elements](var_t &v) {
-				 return std::make_tuple(std::get<1>(v) += elements);
+				 std::get<1>(v) += elements;
 			 });
 
 		// resize stack and return variable address
@@ -290,6 +278,27 @@ cell_t resizeVariable(const string &name, size_t insertPos, size_t elements) {
 
 	// return invalid variable address
 	return stack.end();
+}
+
+// remove variable permanently (make void)
+void removeVariable(const string &name) {
+	auto var = findVariable(name);
+	if (isVariableValid(var)) {
+		cell_t addr = stack.begin() + std::get<1>(*var);
+		size_t offset = countElements(addr);
+
+		// offset variables
+		mapc(var + 1, variables.end(),
+			 [offset](var_t &v) {
+				 std::get<1>(v) -= offset;
+			 });
+
+		// free data
+		stack.erase(addr, addr + offset);
+
+		// erase variable from index
+		variables.erase(var);
+	}
 }
 
 // get address (just size_t number - do not use in logic code)
@@ -526,6 +535,10 @@ cell_t eval(cell_t d, bool temporary) {
 			return varValue;
 		}
 		else if(fxName->s == "quote") {
+			// return back source, caller will only fetch data
+			if (temporary)
+				return d + 2;
+
 			// just copy quote body to stack
 			return pushData(d + 2);
 		}
@@ -556,6 +569,7 @@ cell_t eval(cell_t d, bool temporary) {
 		}
 		else if(fxName->s == "=") {
 			// d->i must be > 2
+			// TODO: make temporary?, push, pop call stack? -
 			cell_t a1 = eval(d + 2);
 			cell_t a2 = eval(d + 3);
 			if(a1->type == cell::typeInt && a2->type == cell::typeInt) {
@@ -582,6 +596,17 @@ cell_t eval(cell_t d, bool temporary) {
 			cell_t ret = popCallStackLeaveData(evalreturn(nextCell(args), lastCell(d)));
 			popCallStack();
 			return ret;
+		}
+		else if (fxName->s == "boundp") {
+			// eval(d + 2) must be ID
+			return isVariableValid(findVariable(eval(d + 2, true)->s)) ? c_t : c_nil;
+		}
+		else if (fxName->s == "unbound") {
+			// eval(d + 2) must be ID
+			removeVariable(eval(d + 2, true)->s);
+
+			// return argument back
+			return pushData(d + 2);
 		}
 
 		// get fx address
@@ -632,6 +657,5 @@ cell_t eval(cell_t d, bool temporary) {
 
 }}
 
-// TODO: dynamic scope
-// TODO: undef variable / delete variable / test variable
+// TODO: dynamic scope (checking variable name)
 // TODO: resizable memory (add-to-list etc.)
