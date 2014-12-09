@@ -316,7 +316,7 @@ void tab() {
 }
 
 string printStack() {
-	return "stack: " + toStr(stack.size()) + " > " + toString(stack);
+	std::cout << "stack: " + toStr(stack.size()) + " > " + toString(stack) << std::endl;
 }
 
 void printVariables() {
@@ -338,7 +338,7 @@ void printCallStack() {
 	for (auto s : cs) {
 		std::cout << s << " ";
 	}
-	std::cout << " | " << printStack() << std::endl;
+	printStack();
 }
 
 void pushCallStack() {
