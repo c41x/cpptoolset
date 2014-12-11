@@ -60,44 +60,63 @@ cells_t parse(const string &s) {
 		tokenOpenPar,
 		tokenClosePar,
 		tokenComment,
-		tokenString
+		tokenString,
+		tokenQuote
 	};
 
+	// define rules
 	tokenizer tok;
 	tok.addRule(tokenWhiteSpace, true, " \t\v\n\r");
 	tok.addRule(tokenOpenPar, false, "(");
 	tok.addRule(tokenClosePar, false, ")");
 	tok.addRule(tokenComment, true, ";", "", "\n\r");
 	tok.addRule(tokenString, false, "\"", "\\", "\"");
+	tok.addRule(tokenQuote, false, "\'");
 
 	// actual parsing
-	std::stack<std::tuple<size_t, int>> openPars; // index / count
+	std::stack<std::tuple<size_t, bool>> openPars; // index, quote
 	cells_t cells;
 
-	for(auto t = tok.begin(s, false); t; t = tok.next()) {
-		if(t.id == tokenOpenPar) {
-			// increase list elements count (list is element too)
-			if(openPars.size() > 0)
-				std::get<1>(openPars.top())++;
+	// helpers
+	auto onNewElement = [&openPars, &cells]() {
+		// it's quote - check delimiter and terminate (quote always has 2 elements)
+		// and we need to terminate it then
+		if (openPars.size() > 0
+			&& std::get<1>(openPars.top())
+			&& cells[std::get<0>(openPars.top())].i > 1)
+			openPars.pop();
+
+		// increase list elements count
+		if (openPars.size() > 0)
+			cells[std::get<0>(openPars.top())].i++;
+	};
+
+	// tokenizer loop
+	for (auto t = tok.begin(s, false); t; t = tok.next()) {
+		if (t.id == tokenOpenPar || t.id == tokenQuote) {
+			// add new element (list is element too)
+			onNewElement();
 
 			// push new list to stack
-			openPars.push(std::make_tuple(cells.size(), 0));
+			openPars.push(std::make_tuple(cells.size(), t.id == tokenQuote));
 
-			// add list to cells (count == 0 for now)
-			cells.push_back(cell(cell::typeList, 0));
+			// add list to cells (initialize count value)
+			cells.push_back(cell(cell::typeList, t.id == tokenQuote ? 1 : 0));
+
+			// add 'quote' id if needed
+			if (t.id == tokenQuote)
+				cells.push_back({cell::typeIdentifier, "quote"});
 		}
-		else if(t.id == tokenClosePar) {
-			// actualize list elements count and pop stack
-			cells[std::get<0>(openPars.top())].i = std::get<1>(openPars.top());
+		else if (t.id == tokenClosePar) {
+			// just pop pars stack
 			openPars.pop();
 		}
-		else if(t.id == tokenSymbol) {
-			// increase list elements count
-			if(openPars.size() > 0)
-				std::get<1>(openPars.top())++;
+		else if (t.id == tokenSymbol) {
+			// adds new element
+			onNewElement();
 
 			// determine token type and add atom to cells
-			if(isInteger(t.value))
+			if (isInteger(t.value))
 				cells.push_back(cell(cell::typeInt, fromStr<int>(t.value)));
 			else cells.push_back(cell(cell::typeIdentifier, t.value));
 		}
@@ -658,4 +677,10 @@ cell_t eval(cell_t d, bool temporary) {
 
 }}
 
+// TODO: lists management
 // TODO: resizable memory (add-to-list etc.)
+// TODO: loops? mapping functions
+// TODO: non standard types
+// TODO: cons? assoc
+// TODO: cond
+// TODO: defun
