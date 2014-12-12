@@ -405,7 +405,7 @@ cell_t popCallStackLeaveData(cell_t addr) {
 	// copy data
 	size_t elemsCount = countElements(addr);
 	cell_t whence = stack.begin() + callStack.top();
-	std::copy(addr, addr + elemsCount, whence);
+	std::copy(addr, addr + elemsCount, whence); // safe, not overlapping (src > dst)
 
 	// adjust previous stack (add addr to last call stack)
 	popVariablesAbove(callStack.top());
@@ -531,7 +531,7 @@ cell_t eval(cell_t d, bool temporary) {
 
 			// leave list on stack
 			if (addr->type == cell::typeList)
-				return pushData(d);
+				return pushData(addr);
 
 			// it's an atom
 			stack.push_back(*addr);
@@ -645,6 +645,28 @@ cell_t eval(cell_t d, bool temporary) {
 				eval(e);
 
 			return ret;
+		}
+		else if (fxName->s == "car") {
+			// d->i must be > 1
+			if (temporary) // TODO: auto push/pop when temporary
+				return d + 2;
+
+			// leave first element on stack
+			auto r = eval(d + 2);
+			if (r->type == cell::typeList) {
+				if (r->i > 0) {
+					// shift 1 element left << (overwrite [list:]) discard rest
+					auto myList = r + 1;
+					stack.erase(std::copy(myList, myList + countElements(myList), r),
+								stack.end());
+				}
+				else {
+					// we've got list with no elements - discard r and return nil
+					stack.erase(r, stack.end());
+					return c_nil;
+				}
+			}
+			return r;
 		}
 
 		// get fx address
