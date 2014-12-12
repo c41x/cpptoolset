@@ -192,6 +192,10 @@ typedef std::vector<var_t> vars_t; // name, stack position
 cells_t stack;
 vars_t variables;
 
+// shortcuts to constants
+cell_t c_nil;
+cell_t c_t;
+
 vars_t::iterator findVariable(const string &name) {
 	return find_if_backwards(variables.begin(), variables.end(),
 							 [name](const var_t &e) {
@@ -259,14 +263,17 @@ cell_t pushCell(cell c) {
 
 // push cdr of given list (create list without first element)
 cell_t pushCdr(cell_t l) {
-	size_t elemsCount = countElements(l);
-	size_t elemsCountFirst = countElements(l + 1);
-	size_t realElemsCount = elemsCount - elemsCountFirst;
 	cell_t whence = stack.end();
-	stack.push_back(cell(cell::typeList, l->i - 1)); // logical elements without first element
-	stack.resize(stack.size() + realElemsCount - 1);
-	std::copy(l + 1 + elemsCountFirst, l + elemsCount, whence + 1);
-	return whence;
+	size_t elemsCount = countElements(l);
+	if (elemsCount > 0) {
+		size_t elemsCountFirst = countElements(l + 1);
+		size_t realElemsCount = elemsCount - elemsCountFirst;
+		stack.push_back(cell(cell::typeList, l->i - 1)); // logical elements without first element
+		stack.resize(stack.size() + realElemsCount - 1);
+		std::copy(l + 1 + elemsCountFirst, l + elemsCount, whence + 1);
+		return whence;
+	}
+	return c_nil;
 }
 
 // push car of given list (if it is a list -> copy all items)
@@ -274,9 +281,12 @@ cell_t pushCar(cell_t l) {
 	// TODO: test
 	cell_t whence = stack.end();
 	size_t elems = countElements(l + 1);
-	stack.resize(stack.size() + elems);
-	std::copy(l + 1, l + 1 + elems, whence);
-	return whence;
+	if (elems > 0) {
+		stack.resize(stack.size() + elems);
+		std::copy(l + 1, l + 1 + elems, whence);
+		return whence;
+	}
+	return c_nil;
 }
 
 // reallocate variable
@@ -335,7 +345,7 @@ void tab() {
 	}
 }
 
-string printStack() {
+void printStack() {
 	std::cout << "stack: " + toStr(stack.size()) + " > " + toString(stack) << std::endl;
 }
 
@@ -407,11 +417,6 @@ cell_t popCallStackLeaveData(cell_t addr) {
 }
 
 //- initialization consts and intrinsics -
-
-// shortcuts to constants
-cell_t c_nil;
-cell_t c_t;
-
 typedef std::function<cell_t(cell_t)> intrinsic_fx_t;
 typedef std::tuple<string, intrinsic_fx_t> intrinsic_tuple_t;
 typedef std::vector<intrinsic_tuple_t> intrinsics_t;
@@ -627,6 +632,19 @@ cell_t eval(cell_t d, bool temporary) {
 
 			// return argument back
 			return pushData(d + 2);
+		}
+		else if (fxName->s == "list") {
+			// empty list evaluates to nil
+			if (d->i < 2)
+				return c_nil;
+
+			// create list and eval its elements
+			auto ret = stack.begin() + stack.size();
+			stack.push_back({cell::typeList, d->i - 1});
+			for (cell_t e = d + 2; e != lastCell(d); e = nextCell(e))
+				eval(e);
+
+			return ret;
 		}
 
 		// get fx address
