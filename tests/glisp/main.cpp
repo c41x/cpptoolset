@@ -13,19 +13,22 @@ void repl() {
 	std::getline(std::cin, inp);
 	auto code = parse(inp);
 	std::cout << toString(code) << std::endl;
-	auto retAddr = eval(code.begin());
+	auto retAddr = eval(code.begin(), true);
 	std::cout << "return addr: " << getAddress(retAddr) << std::endl;
-	std::cout << printStack() << std::endl;
+	printStack();
 }
 
 int main(int argc, char**argv) {
 	init(100000);
+	pushCallStack();
 	while(true) {
 		repl();
 	}
+	popCallStack();
 	return 0;
 }
 // (defvar l (lambda (a bc ) (+ a bc (* 2 bc) 1000)))
 // (if t (progn (message 11) (message 22)) (message 33))
 // (let ((a 10) (b 20)) (+ a a) (+ b b))
 // let* test: (let ((a 10) (b (* a 20))) b)
+// (car '(aa bb cc))

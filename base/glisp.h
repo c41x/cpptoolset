@@ -407,8 +407,10 @@ cell_t popCallStackLeaveData(cell_t addr) {
 	cell_t whence = stack.begin() + callStack.top();
 	std::copy(addr, addr + elemsCount, whence); // safe, not overlapping (src > dst)
 
-	// adjust previous stack (add addr to last call stack)
+	// undefine all variables on this stack frame
 	popVariablesAbove(callStack.top());
+
+	// adjust previous stack (add addr to last call stack)
 	callStack.top() += elemsCount;
 
 	// remove unused data
@@ -648,26 +650,53 @@ cell_t eval(cell_t d, bool temporary) {
 		}
 		else if (fxName->s == "car") {
 			// d->i must be > 1
-			if (temporary) // TODO: auto push/pop when temporary
-				return d + 2;
+			auto arg = d + 2;
 
-			// leave first element on stack
-			auto r = eval(d + 2);
-			if (r->type == cell::typeList) {
-				if (r->i > 0) {
-					// shift 1 element left << (overwrite [list:]) discard rest
-					auto myList = r + 1;
-					stack.erase(std::copy(myList, myList + countElements(myList), r),
-								stack.end());
+			// we could return temporary only if arg is not list
+			if (temporary && arg->type != cell::typeList) {
+				auto l = eval(arg, true);
+				if (l->type == cell::typeList) {
+					if (l->i > 0)
+						return l + 1;
+					else return c_nil;
 				}
-				else {
-					// we've got list with no elements - discard r and return nil
-					stack.erase(r, stack.end());
-					return c_nil;
-				}
+				return l;
 			}
+
+			// leave whole list on stack
+			pushCallStack();
+			auto r = eval(arg);
+			if (r->type == cell::typeList) {
+				if (r->i > 0)
+					return popCallStackLeaveData(r + 1);
+
+				// we've got list with no elements - discard r and return nil
+				popCallStack();
+				return c_nil;
+			}
+			popCallStack();
 			return r;
 		}
+		/*
+		else if (fxName->s == "nth") {
+			// d->i > N
+			// calc N
+			pushCallStack();
+			int n = eval(d + 2, true)->i;
+			popCallStack();
+
+			// find address
+			cell_t nth = firstCell(d + 3);
+			if (nth->type != cell::typeList)
+				return c_nil; // error?
+			// nth->i must be < N
+			for (; nth != lastCell(d + 3); nth = nextCell(nth));
+
+			// return temporary result
+			if (temporary)
+				return nth;
+		}
+		*/
 
 		// get fx address
 		cell_t fx = getVariable(fxName->s);
