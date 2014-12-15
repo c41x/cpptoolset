@@ -386,6 +386,26 @@ void popVariablesAbove(size_t addr) {
 	}
 }
 
+void popVariablesInRange(size_t begin, size_t end) {
+	// TODO: test
+	// check range
+	if (end <= std::get<1>(variables.back())) {
+		// check find_if - it must find at leat 1 element to perform erase
+		variables.erase(find_if_backwards(variables.begin(), variables.end(),
+										  [&begin, &end](var_t var) {
+											  return begin <= std::get<1>(var) &&
+												  end > std::get<1>(var);
+										  }));
+	}
+}
+
+void eraseCell(cell_t addr) {
+	// TODO: test
+	cell_t e = addr + countElements(addr);
+	//popVariablesInRange(std::distance(stack.begin(), addr), std::distance(stack.begin(), e));
+	stack.erase(addr, e);
+}
+
 void popCallStack() {
 	// delete variables
 	popVariablesAbove(callStack.top());
@@ -411,11 +431,17 @@ cell_t popCallStackLeaveData(cell_t addr) {
 	popVariablesAbove(callStack.top());
 
 	// adjust previous stack (add addr to last call stack)
-	callStack.top() += elemsCount;
+	callStack.top() += elemsCount; // TODO: ?
 
 	// remove unused data
 	stack.resize(callStack.top());
 	return whence;
+}
+
+// pops call stack and leaves stack untouched
+cell_t popCallStackLeaveData() { // TODO: test
+	callStack.pop();
+	return stack.begin() + callStack.top();
 }
 
 //- initialization consts and intrinsics -
@@ -677,6 +703,26 @@ cell_t eval(cell_t d, bool temporary) {
 			popCallStack();
 			return r;
 		}
+		else if (fxName->s == "cdr") {
+			// d->i > 1
+			auto arg = d + 2;
+
+			// we cant return temporary result
+			pushCallStack();
+			auto r = eval(arg);
+			if (r->type == cell::typeList) {
+				if (r->i > 1) {
+					eraseCell(r + 1);
+					return popCallStackLeaveData();
+				}
+
+				// empty list
+				popCallStack();
+				return c_nil;
+			}
+			popCallStack();
+			return r;
+		}
 		/*
 		else if (fxName->s == "nth") {
 			// d->i > N
@@ -708,7 +754,7 @@ cell_t eval(cell_t d, bool temporary) {
 				cell_t args_vals = d + 2; // skip list and fx name
 				cell_t args_vals_i = args_vals;
 				for(int i = 0; i < args->i; ++i) {
-					auto v = eval(args_vals_i);
+					auto v = eval(args_vals_i); // TODO: temporary and push/pop CS
 					args_vals_i = nextCell(args_vals_i);
 					pushVariable((args + i + 1)->s, v);
 				}
