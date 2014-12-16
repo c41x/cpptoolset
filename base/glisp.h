@@ -73,6 +73,8 @@ cells_t parse(const string &s) {
 	tok.addRule(tokenString, false, "\"", "\\", "\"");
 	tok.addRule(tokenQuote, false, "\'");
 
+	// TODO: ' BUG on let
+
 	// actual parsing
 	std::stack<std::tuple<size_t, bool>> openPars; // index, quote
 	cells_t cells;
@@ -242,7 +244,7 @@ cell_t pushVariable(const string &name, size_t count) {
 // assign address to memory
 void pushVariable(const string &name, cell_t addr) {
 	std::cout << "push variable (" << name << ") addr: " << std::distance(stack.begin(), addr)
-			  << " value: " << addr->getStr() << std::endl;
+			  << " value: " << toString(addr) << std::endl;
 	variables.push_back(std::make_tuple(name, std::distance(stack.begin(), addr)));
 }
 
@@ -522,8 +524,9 @@ cell_t evalreturn(cell_t begin, cell_t end) {
 			return lastResult;
 		popCallStack();
 	}
-	std::cout << "eval on empty list?" << std::endl;
-	return begin;
+
+	// return nil when evaluating empty list
+	return c_nil;
 }
 
 template <typename T_OP>
@@ -646,6 +649,7 @@ cell_t eval(cell_t d, bool temporary) {
 			}
 
 			// evaluate function body
+			// TODO: pop nil when empty list!
 			cell_t ret = popCallStackLeaveData(evalreturn(nextCell(args), lastCell(d)));
 			popCallStack();
 			return ret;
