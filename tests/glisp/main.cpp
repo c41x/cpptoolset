@@ -30,6 +30,6 @@ int main(int argc, char**argv) {
 // (defvar l (lambda (a bc ) (+ a bc (* 2 bc) 1000)))
 // (if t (progn (message 11) (message 22)) (message 33))
 // (let ((a 10) (b 20)) (+ a a) (+ b b))
-// TODO: let with lists fails: (let ((a '(a b c))) a) | it's ' parse bug
+// (let ((a '(a b c))) a)
 // let* test: (let ((a 10) (b (* a 20))) b)
 // (car '(aa bb cc))
