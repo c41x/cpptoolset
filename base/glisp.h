@@ -80,13 +80,18 @@ cells_t parse(const string &s) {
 	cells_t cells;
 
 	// helpers
-	auto onNewElement = [&openPars, &cells]() {
+	auto checkQuoteDelim = [&openPars, &cells]() {
 		// it's quote - check delimiter and terminate (quote always has 2 elements)
 		// and we need to terminate it then
 		if (openPars.size() > 0
 			&& std::get<1>(openPars.top())
 			&& cells[std::get<0>(openPars.top())].i > 1)
 			openPars.pop();
+	};
+
+	auto onNewElement = [&openPars, &cells, &checkQuoteDelim]() {
+		// check if we need to terminate quote
+		checkQuoteDelim();
 
 		// increase list elements count
 		if (openPars.size() > 0)
@@ -110,8 +115,9 @@ cells_t parse(const string &s) {
 				cells.push_back({cell::typeIdentifier, "quote"});
 		}
 		else if (t.id == tokenClosePar) {
-			// just pop pars stack
+			// just pop pars stack and check ' term
 			openPars.pop();
+			checkQuoteDelim();
 		}
 		else if (t.id == tokenSymbol) {
 			// adds new element
