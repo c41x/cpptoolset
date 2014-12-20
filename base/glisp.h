@@ -73,8 +73,6 @@ cells_t parse(const string &s) {
 	tok.addRule(tokenString, false, "\"", "\\", "\"");
 	tok.addRule(tokenQuote, false, "\'");
 
-	// TODO: ' BUG on let
-
 	// actual parsing
 	std::stack<std::tuple<size_t, bool>> openPars; // index, quote
 	cells_t cells;
