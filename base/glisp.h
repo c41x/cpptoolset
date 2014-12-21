@@ -653,9 +653,7 @@ cell_t eval(cell_t d, bool temporary) {
 			}
 
 			// evaluate function body
-			// TODO: pop nil when empty list!
 			cell_t ret = popCallStackLeaveData(evalreturn(nextCell(args), lastCell(d)));
-			popCallStack();
 			return ret;
 		}
 		else if (fxName->s == "boundp") {
