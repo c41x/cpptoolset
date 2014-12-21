@@ -653,8 +653,7 @@ cell_t eval(cell_t d, bool temporary) {
 			}
 
 			// evaluate function body
-			cell_t ret = popCallStackLeaveData(evalreturn(nextCell(args), lastCell(d)));
-			return ret;
+			return popCallStackLeaveData(evalreturn(nextCell(args), lastCell(d)));
 		}
 		else if (fxName->s == "boundp") {
 			// eval(d + 2) must be ID
@@ -686,7 +685,7 @@ cell_t eval(cell_t d, bool temporary) {
 
 			// we could return temporary only if arg is not list
 			if (temporary && arg->type != cell::typeList) {
-				auto l = eval(arg, true);
+				auto l = eval(arg, true); // guaranteed not to leave anything on stack
 				if (l->type == cell::typeList) {
 					if (l->i > 0)
 						return l + 1;
@@ -729,7 +728,6 @@ cell_t eval(cell_t d, bool temporary) {
 			popCallStack();
 			return r;
 		}
-		/*
 		else if (fxName->s == "nth") {
 			// d->i > N
 			// calc N
@@ -738,17 +736,18 @@ cell_t eval(cell_t d, bool temporary) {
 			popCallStack();
 
 			// find address
-			cell_t nth = firstCell(d + 3);
+			pushCallStack();
+			cell_t nth = eval(d + 3);
 			if (nth->type != cell::typeList)
 				return c_nil; // error?
-			// nth->i must be < N
-			for (; nth != lastCell(d + 3); nth = nextCell(nth));
 
-			// return temporary result
-			if (temporary)
-				return nth;
+			// nth->i must be < N
+			for (nth = firstCell(nth); nth != lastCell(d + 3) && n-- > 0; nth = nextCell(nth));
+
+			// return result
+			popCallStackLeaveData(nth);
+			return nth;
 		}
-		*/
 
 		// get fx address
 		cell_t fx = getVariable(fxName->s);
@@ -805,3 +804,5 @@ cell_t eval(cell_t d, bool temporary) {
 // TODO: cons? assoc
 // TODO: cond
 // TODO: defun
+// TODO: resolve "nil"
+// TODO: temporary data sweep
