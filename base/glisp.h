@@ -679,6 +679,13 @@ cell_t eval(cell_t d, bool temporary) {
 
 			return ret;
 		}
+		else if (fxName->s == "listp") {
+			// d->i > 1
+			pushCallStack();
+			auto ret = eval(d + 2, true)->type != cell::typeList ? c_nil : c_t;
+			popCallStack();
+			return ret;
+		}
 		else if (fxName->s == "car") {
 			// d->i must be > 1
 			auto arg = d + 2;
