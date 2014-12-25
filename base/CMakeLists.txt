@@ -3,7 +3,8 @@ add_library(base
   math.cpp
   string.cpp
   timer.cpp
-  tokenizer.cpp)
+  tokenizer.cpp
+  glisp.cpp)
 
 install(TARGETS base DESTINATION bin)
 
