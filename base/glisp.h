@@ -34,19 +34,8 @@ public:
 	cell(type_t t, const string &v) : type(t), s(v) {}
 	cell(type_t t, int v) : type(t), i(v){}
 
-	operator string() const {
-		const char *type_ts[] = {
-			"id",
-			"int",
-			"list"
-		};
-		return strf("type: % | i = % | s = %", type_ts[type], i, s);
-	}
-	const string getStr() const {
-		if (type == typeInt) return strs(i);
-		else if (type == typeIdentifier) return s;
-		return "";
-	}
+	operator string() const;
+	const string getStr() const;
 };
 
 typedef std::vector<cell> cells_t;

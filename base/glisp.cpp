@@ -13,6 +13,21 @@
 
 namespace granite { namespace base {
 
+cell::operator string() const {
+	const char *type_ts[] = {
+		"id",
+		"int",
+		"list"
+	};
+	return strf("type: % | i = % | s = %", type_ts[type], i, s);
+}
+
+const string cell::getStr() const {
+	if (type == typeInt) return strs(i);
+	else if (type == typeIdentifier) return s;
+	return "";
+}
+
 namespace detail {
 
 //- parser -
