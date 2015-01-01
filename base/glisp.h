@@ -75,5 +75,4 @@ public:
 // TODO: cons? assoc
 // TODO: cond
 // TODO: defun
-// TODO: resolve "nil"
 // TODO: temporary data sweep

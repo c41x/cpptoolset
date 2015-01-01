@@ -588,7 +588,8 @@ cell_t eval(cell_t d, bool temporary) {
 		else if(fxName->s == "if") {
 			// test, we dont need return value - discard it with call stack
 			pushCallStack();
-			bool test = eval(d + 2, true) != c_nil;
+			cell_t testi = eval(d + 2, true);
+			bool test = testi->s != "nil" || testi->type != cell::typeIdentifier;
 			popCallStack();
 
 			// test and eval
