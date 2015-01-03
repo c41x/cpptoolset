@@ -432,22 +432,21 @@ intrinsics_t intrinsics;
 cell_t c_message(cell_t c) {
 	// *c - count
 	// *(c + x) - element x
-	std::cout << "message: " << (c + 1)->i << std::endl;
+	std::cout << "> message: " << (c + 1)->i << std::endl;
 	return c;
 }
 
 cell_t c_mul(cell_t c) {
 	int r = 1;
 	for(cell_t i = c + 1; i != c + 1 + c->i; ++i) {
-		std::cout << " > mul: " << i->i << std::endl;
 		r *= i->i;
 	}
+	std::cout << " > mul: " << r << std::endl;
 	return pushCell(cell(cell::typeInt, r));
 }
 
 // search for intrinsic address
 intrinsic_t getIntrinsic(const string &name) {
-	std::cout << "get intrinsic: " << name << std::endl;
 	return std::find_if(std::begin(intrinsics), std::end(intrinsics),
 						[name](intrinsic_tuple_t &e) {
 							return name == std::get<0>(e);
