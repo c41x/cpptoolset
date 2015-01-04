@@ -1,5 +1,5 @@
 /*
- * granite engine 1.0 | 2006-2014 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
+ * granite engine 1.0 | 2006-2015 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
  * file: glisp
  * created: 29-08-2014
  *
@@ -21,9 +21,9 @@ namespace granite { namespace base {
 class cell {
 public:
 	enum type_t {
-		typeIdentifier = 0,
-		typeInt = 1,
-		typeList = 1 << 1
+		typeIdentifier,
+		typeInt,
+		typeList
 	};
 
 	type_t type;
@@ -75,4 +75,4 @@ public:
 // TODO: cons? assoc
 // TODO: cond
 // TODO: defun
-// TODO: temporary data sweep
+//-> TODO: temporary data sweep

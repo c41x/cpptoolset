@@ -1,5 +1,5 @@
 /*
- * granite engine 1.0 | 2006-2014 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
+ * granite engine 1.0 | 2006-2015 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
  * file: glisp
  * created: 29-08-2014
  *
@@ -426,6 +426,40 @@ cell_t popCallStackLeaveData() { // TODO: test
 	return stack.begin() + callStack.top();
 }
 
+// TODO: tests
+// removes unused (unbound) data from stack
+void sweepStack() {
+	size_t stackTopOffset = callStack.top();
+	cell_t stackTop = stack.begin() + stackTopOffset;
+
+	// searches for first variable in stack frame
+	auto findFirstVar = [&stackTopOffset /*capture variables*/]() -> vars_t::iterator {
+		return find_if_backwards(variables.begin(), variables.end(),
+								 [&stackTopOffset](const var_t &var) {
+									 return std::get<1>(var) <= stackTopOffset;
+								 });
+	};
+
+	// relocate all variables to beginning of stack
+	auto varTop = findFirstVar();
+	while (varTop != variables.end()) {
+		size_t &srcAddrOffset = std::get<1>(*varTop);
+		auto srcAddr = stack.begin() + srcAddrOffset;
+		size_t elements = countElements(srcAddr);
+
+		// change variable address
+		srcAddrOffset -= srcAddrOffset - stackTopOffset;
+
+		// relocate variable to stack begin and adjust stack top pointer
+		std::copy(srcAddr, srcAddr + elements, stackTop);
+		stackTop += elements;
+		stackTopOffset += elements;
+
+		// continue searching
+		varTop = findFirstVar();
+	}
+}
+
 //- initialization consts and intrinsics -
 intrinsics_t intrinsics;
 
@@ -577,14 +611,14 @@ cell_t eval(cell_t d, bool temporary) {
 			// copy cdr of lambda, first element is "lambda" identifier, we dont need it
 			return pushCdr(d);
 		}
-		else if(fxName->s == "+") {
+		else if (fxName->s == "+") {
 			int sum = 0;
 			evalmap(firstCell(d) + 1, lastCell(d), [&sum](cell_t i){ sum += i->i; });
 
 			// leave return value on stack
 			return pushCell({cell::typeInt, sum});
 		}
-		else if(fxName->s == "if") {
+		else if (fxName->s == "if") {
 			// test, we dont need return value - discard it with call stack
 			pushCallStack();
 			cell_t testi = eval(d + 2, true);
@@ -599,16 +633,17 @@ cell_t eval(cell_t d, bool temporary) {
 				return evalreturn(offset, lastCell(d));
 			}
 		}
-		else if(fxName->s == "=") {
+		else if (fxName->s == "=") {
 			// d->i must be > 2
-			// TODO: make temporary?, push, pop call stack? -
+			pushCallStack();
 			cell_t a1 = eval(d + 2);
 			cell_t a2 = eval(d + 3);
-			if(a1->type == cell::typeInt && a2->type == cell::typeInt) {
-				if(a1->i == a2->i)
-					return c_t;
-				else return c_nil;
+			if (a1->type == cell::typeInt && a2->type == cell::typeInt) {
+				bool t = a1->i == a2->i;
+				popCallStack();
+				return t ? c_t : c_nil;
 			}
+			popCallStack();
 			return c_nil;
 		}
 		else if (fxName->s == "progn") {
