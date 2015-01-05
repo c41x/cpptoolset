@@ -599,7 +599,7 @@ cell_t eval(cell_t d, bool temporary) {
 			cell_t varName = d + 2;
 			cell_t varValue = eval(d + 3);
 			pushVariable(varName->s, varValue);
-			return varValue;
+			return pushCell(*varName);
 		}
 		else if(fxName->s == "quote") {
 			// return back source, caller will only fetch data
