@@ -830,6 +830,7 @@ void lisp::eval(const string &s) {
 	auto retAddr = detail::eval(code.begin(), true);
 	std::cout << "return addr: " << detail::getAddress(retAddr) << std::endl;
 	detail::printStack();
+	std::cout << "sweep..." << std::endl;
 	detail::sweepStack();
 	detail::printStack();
 }
