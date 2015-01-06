@@ -764,6 +764,18 @@ cell_t eval(cell_t d, bool temporary) {
 			popCallStackLeaveData(nth);
 			return nth;
 		}
+		else if (fxName->s == "defun") {
+			// d->i > 4
+			cell_t fnName = d + 2;
+
+			// just put list (lambda) on stack
+			cell_t va = pushCell({cell::typeList, d->i - 2}); // without "defun" and <fnName>
+			stack.insert(stack.end(), d + 3, lastCell(d)); // copy args and body
+			pushVariable(fnName->s, va);
+
+			// return function id
+			return pushCell(*fnName);
+		}
 
 		// get fx address
 		cell_t fx = getVariable(fxName->s);
@@ -828,7 +840,8 @@ void lisp::eval(const string &s) {
 	auto code = detail::parse(s);
 	std::cout << detail::toString(code) << std::endl;
 	auto retAddr = detail::eval(code.begin(), true);
-	std::cout << "return addr: " << detail::getAddress(retAddr) << std::endl;
+	std::cout << "return addr: " << detail::getAddress(retAddr)
+			  << " | " << detail::toString(retAddr) << std::endl;
 	detail::printStack();
 	std::cout << "sweep..." << std::endl;
 	detail::sweepStack();
