@@ -553,7 +553,7 @@ cell_t eval(cell_t d, bool temporary) {
 	tab();
 	std::cout << "eval: " << toString(d) << std::endl;
 
-	if(d->type == cell::typeInt) {
+	if (d->type == cell::typeInt) {
 		// when temporary is true - return value directly (it's in input array!)
 		if (temporary)
 			return d;
@@ -562,9 +562,9 @@ cell_t eval(cell_t d, bool temporary) {
 		stack.push_back(*d);
 		return --stack.end();
 	}
-	else if(d->type == cell::typeIdentifier) {
+	else if (d->type == cell::typeIdentifier) {
 		auto addr = getVariable(d->s);
-		if(isVariableValid(addr)) {
+		if (isVariableValid(addr)) {
 			// return temporary result
 			if (temporary)
 				return addr;
@@ -579,27 +579,27 @@ cell_t eval(cell_t d, bool temporary) {
 		}
 		// variable not found
 	}
-	else if(d->type == cell::typeList) {
+	else if (d->type == cell::typeList) {
 		// empty list evaluates to nil
-		if(d->i == 0)
+		if (d->i == 0)
 			return c_nil;
 
 		// first argument must be identifier
 		// TODO: or lambda/list
 		cell_t fxName = d + 1;
-		if(fxName->type != cell::typeIdentifier) {
+		if (fxName->type != cell::typeIdentifier) {
 			std::cout << "function name must be ID" << std::endl;
 		}
 
 		// is fx name built in function
-		if(fxName->s == "defvar") {
+		if (fxName->s == "defvar") {
 			// 3 elements min!
 			cell_t varName = d + 2;
 			cell_t varValue = eval(d + 3);
 			pushVariable(varName->s, varValue);
 			return varValue;
 		}
-		else if(fxName->s == "quote") {
+		else if (fxName->s == "quote") {
 			// return back source, caller will only fetch data
 			if (temporary)
 				return d + 2;
@@ -607,7 +607,7 @@ cell_t eval(cell_t d, bool temporary) {
 			// just copy quote body to stack
 			return pushData(d + 2);
 		}
-		else if(fxName->s == "lambda") {
+		else if (fxName->s == "lambda") {
 			// copy cdr of lambda, first element is "lambda" identifier, we dont need it
 			return pushCdr(d);
 		}
@@ -765,14 +765,14 @@ cell_t eval(cell_t d, bool temporary) {
 
 		// get fx address
 		cell_t fx = getVariable(fxName->s);
-		if(isVariableValid(fx)) {
-			if(fx->type == cell::typeList) {
+		if (isVariableValid(fx)) {
+			if (fx->type == cell::typeList) {
 				// [list:][list:]<arg><arg>[list:]<body><body>[list:]<body>...
 				// evaluate and bind args
 				cell_t args = fx + 1;
 				cell_t args_vals = d + 2; // skip list and fx name
 				cell_t args_vals_i = args_vals;
-				for(int i = 0; i < args->i; ++i) {
+				for (int i = 0; i < args->i; ++i) {
 					auto v = eval(args_vals_i); // TODO: temporary and push/pop CS
 					args_vals_i = nextCell(args_vals_i);
 					pushVariable((args + i + 1)->s, v);
@@ -788,7 +788,7 @@ cell_t eval(cell_t d, bool temporary) {
 		}
 		else {
 			intrinsic_t i = getIntrinsic(fxName->s);
-			if(isIntrinsicValid(i)) {
+			if (isIntrinsicValid(i)) {
 				// arguments list address
 				cell_t r = stack.end();
 
