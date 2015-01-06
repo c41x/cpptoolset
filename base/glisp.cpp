@@ -426,18 +426,17 @@ cell_t popCallStackLeaveData() { // TODO: test
 	return stack.begin() + callStack.top();
 }
 
-// TODO: tests
-// removes unused (unbound) data from stack
+// removes unused (unbound) data from top stack frame
 void sweepStack() {
 	size_t stackTopOffset = callStack.top();
 	cell_t stackTop = stack.begin() + stackTopOffset;
 
 	// searches for first variable in stack frame
 	auto findFirstVar = [&stackTopOffset /*capture variables*/]() -> vars_t::iterator {
-		return find_if_backwards(variables.begin(), variables.end(),
-								 [&stackTopOffset](const var_t &var) {
-									 return std::get<1>(var) <= stackTopOffset;
-								 });
+		return std::next(find_if_backwards(variables.begin(), variables.end(),
+										   [&stackTopOffset](const var_t &var) {
+											   return std::get<1>(var) < stackTopOffset;
+										   }));
 	};
 
 	// relocate all variables to beginning of stack
@@ -458,6 +457,9 @@ void sweepStack() {
 		// continue searching
 		varTop = findFirstVar();
 	}
+
+	// discard rest
+	stack.resize(stackTopOffset);
 }
 
 //- initialization consts and intrinsics -
@@ -597,7 +599,7 @@ cell_t eval(cell_t d, bool temporary) {
 			cell_t varName = d + 2;
 			cell_t varValue = eval(d + 3);
 			pushVariable(varName->s, varValue);
-			return varValue;
+			return pushCell(*varName);
 		}
 		else if (fxName->s == "quote") {
 			// return back source, caller will only fetch data
@@ -637,7 +639,7 @@ cell_t eval(cell_t d, bool temporary) {
 			// d->i must be > 2
 			pushCallStack();
 			cell_t a1 = eval(d + 2);
-			cell_t a2 = eval(d + 3);
+			cell_t a2 = eval(nextCell(d + 2));
 			if (a1->type == cell::typeInt && a2->type == cell::typeInt) {
 				bool t = a1->i == a2->i;
 				popCallStack();
@@ -827,6 +829,9 @@ void lisp::eval(const string &s) {
 	std::cout << detail::toString(code) << std::endl;
 	auto retAddr = detail::eval(code.begin(), true);
 	std::cout << "return addr: " << detail::getAddress(retAddr) << std::endl;
+	detail::printStack();
+	std::cout << "sweep..." << std::endl;
+	detail::sweepStack();
 	detail::printStack();
 }
 
