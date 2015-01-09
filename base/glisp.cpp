@@ -353,6 +353,61 @@ void printCallStack() {
 	printStack();
 }
 
+void printState() {
+	// reverse call stack
+	auto cs = callStack;
+	call_stack_t rcs;
+	while (cs.size()) {
+		rcs.push(cs.top());
+		cs.pop();
+	}
+
+	// print all elements
+	size_t varsLeft = variables.size();
+	for (size_t i = 0; i < stack.size(); ++i) {
+		// put call stack bottom frame
+		if (rcs.size() > 0 && i == rcs.top()) {
+			std::cout << "| ";
+			rcs.pop();
+		}
+
+		// variable name
+		auto v = std::find_if(variables.begin(), variables.end(), [&i](var_t &v) {
+				return std::get<1>(v) == i;
+			});
+		if (v != variables.end()) {
+			--varsLeft;
+			std::cout << "#" << std::get<0>(*v) << " ";
+		}
+
+		// print element
+		auto &e = stack[i];
+		if (e.type == cell::typeList) {
+			std::cout << "[list:" << e.i << "] ";
+		}
+		else if (e.type == cell::typeIdentifier) {
+			std::cout << e.s << " ";
+		}
+		else if (e.type == cell::typeInt) {
+			std::cout << e.i << " ";
+		}
+	}
+
+	// print last call stack frame
+	if (rcs.size() > 0 && rcs.top() == stack.size()) {
+		std::cout << "| ";
+		rcs.pop();
+	}
+
+	if (rcs.size() > 0)
+		std::cout << "| call stack corrupted! ";
+
+	if (varsLeft > 0)
+		std::cout << "| variables corrupted!";
+
+	std::cout << std::endl;
+}
+
 void pushCallStack() {
 	callStack.push(stack.size());
 }
@@ -402,28 +457,25 @@ void popCallStack() {
 
 // pops call stack and leaves given cell at bottom of current stack frame
 cell_t popCallStackLeaveData(cell_t addr) {
-	callStack.pop();
+	// undefine all variables on this stack frame
+	popVariablesAbove(callStack.top());
 
 	// copy data
 	size_t elemsCount = countElements(addr);
 	cell_t whence = stack.begin() + callStack.top();
 	std::copy(addr, addr + elemsCount, whence); // safe, not overlapping (src > dst)
 
-	// undefine all variables on this stack frame
-	popVariablesAbove(callStack.top());
-
-	// adjust previous stack (add addr to last call stack)
-	callStack.top() += elemsCount; // TODO: ?
-
-	// remove unused data
-	stack.resize(callStack.top());
+	// remove unused data and pop call stack frame
+	stack.resize(callStack.top() + elemsCount);
+	callStack.pop();
 	return whence;
 }
 
 // pops call stack and leaves stack untouched
-cell_t popCallStackLeaveData() { // TODO: test
+cell_t popCallStackLeaveData() {
+	cell_t ret = stack.begin() + callStack.top();
 	callStack.pop();
-	return stack.begin() + callStack.top();
+	return ret;
 }
 
 // removes unused (unbound) data from top stack frame
@@ -534,6 +586,19 @@ cell_t evalreturn(cell_t begin, cell_t end) {
 		if(i == end)
 			return lastResult;
 		popCallStack();
+	}
+
+	// return nil when evaluating empty list
+	return c_nil;
+}
+
+// same as above, but with no stack
+cell_t evalreturnNoStack(cell_t begin, cell_t end) {
+	for(cell_t i = begin; i != end;) {
+		cell_t lastResult = eval(i);
+		i = nextCell(i);
+		if(i == end)
+			return lastResult;
 	}
 
 	// return nil when evaluating empty list
@@ -662,7 +727,7 @@ cell_t eval(cell_t d, bool temporary) {
 			}
 
 			// evaluate function body
-			return popCallStackLeaveData(evalreturn(nextCell(args), lastCell(d)));
+			return popCallStackLeaveData(evalreturnNoStack(nextCell(args), lastCell(d)));
 		}
 		else if (fxName->s == "boundp") {
 			// eval(d + 2) must be ID
@@ -733,6 +798,7 @@ cell_t eval(cell_t d, bool temporary) {
 			auto r = eval(arg);
 			if (r->type == cell::typeList) {
 				if (r->i > 1) {
+					r->i--; // we're erasing one element - update list's el count
 					eraseCell(r + 1);
 					return popCallStackLeaveData();
 				}
@@ -842,10 +908,10 @@ void lisp::eval(const string &s) {
 	auto retAddr = detail::eval(code.begin(), true);
 	std::cout << "return addr: " << detail::getAddress(retAddr)
 			  << " | " << detail::toString(retAddr) << std::endl;
-	detail::printStack();
+	detail::printState();
 	std::cout << "sweep..." << std::endl;
 	detail::sweepStack();
-	detail::printStack();
+	detail::printState();
 }
 
 void lisp::addIntrinsic(const string &name, intrinsic_fx_t fx) {
