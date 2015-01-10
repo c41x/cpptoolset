@@ -327,30 +327,11 @@ void tab() {
 	}
 }
 
-void printStack() {
-	std::cout << "stack: " + toStr(stack.size()) + " > " + toString(stack) << std::endl;
-}
-
 void printVariables() {
 	std::cout << "defined variables(" << variables.size() << ")" << std::endl;
 	for (auto &v : variables) {
 		std::cout << std::get<0>(v) << " = " << stack[std::get<1>(v)].getStr() << std::endl;
 	}
-}
-
-void printCallStack() {
-	auto ccal = callStack;
-	std::vector<size_t> cs;
-	while (ccal.size() > 0) {
-		cs.insert(cs.begin(), ccal.top());
-		ccal.pop();
-	}
-
-	std::cout << "call stack: ";
-	for (auto s : cs) {
-		std::cout << s << " ";
-	}
-	printStack();
 }
 
 void printState() {
@@ -450,9 +431,6 @@ void popCallStack() {
 	// "free" data
 	stack.resize(callStack.top());
 	callStack.pop();
-
-	printVariables();
-	printCallStack();
 }
 
 // pops call stack and leaves given cell at bottom of current stack frame
