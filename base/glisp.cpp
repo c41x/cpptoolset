@@ -630,9 +630,11 @@ cell_t eval(cell_t d, bool temporary) {
 			return c_nil;
 
 		// first argument must be identifier
-		// TODO: or lambda/list
 		cell_t fxName = d + 1;
-		if (fxName->type != cell::typeIdentifier) {
+		if ((d + 1)->type == cell::typeList) {
+			return eval(d + 1, temporary);
+		}
+		else if (fxName->type != cell::typeIdentifier) {
 			std::cout << "function name must be ID" << std::endl;
 		}
 
