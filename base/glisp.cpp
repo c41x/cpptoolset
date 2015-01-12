@@ -406,21 +406,18 @@ void popVariablesAbove(size_t addr) {
 
 void popVariablesInRange(size_t begin, size_t end) {
 	// TODO: test
-	// check range
-	if (end <= std::get<1>(variables.back())) {
-		// check find_if - it must find at leat 1 element to perform erase
-		variables.erase(find_if_backwards(variables.begin(), variables.end(),
-										  [&begin, &end](var_t var) {
-											  return begin <= std::get<1>(var) &&
-												  end > std::get<1>(var);
-										  }));
-	}
+	auto cmp = [](const var_t &a, const var_t &v) {
+		return std::get<1>(a) < std::get<1>(v);
+	};
+	auto lb = std::lower_bound(variables.begin(), variables.end(), std::make_tuple("", begin), cmp);
+	auto ub = std::upper_bound(variables.begin(), variables.end(), std::make_tuple("", end), cmp);
+	variables.erase(lb, ub);
 }
 
 void eraseCell(cell_t addr) {
 	// TODO: test
-	cell_t e = addr + countElements(addr);
-	//popVariablesInRange(std::distance(stack.begin(), addr), std::distance(stack.begin(), e));
+	size_t e = addr + countElements(addr);
+	popVariablesInRange(std::distance(stack.begin(), addr), std::distance(stack.begin(), e));
 	stack.erase(addr, e);
 }
 
