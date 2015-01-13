@@ -175,6 +175,11 @@ string toString(const cell_t c) {
 cells_t stack;
 vars_t variables;
 
+// comparsion operator for variables
+bool operator<(const var_t &a, const var_t &b) {
+	return std::get<1>(a) < std::get<1>(b);
+}
+
 // shortcuts to constants
 cell_t c_nil;
 cell_t c_t;
@@ -406,17 +411,14 @@ void popVariablesAbove(size_t addr) {
 
 void popVariablesInRange(size_t begin, size_t end) {
 	// TODO: test
-	auto cmp = [](const var_t &a, const var_t &v) {
-		return std::get<1>(a) < std::get<1>(v);
-	};
-	auto lb = std::lower_bound(variables.begin(), variables.end(), std::make_tuple("", begin), cmp);
-	auto ub = std::upper_bound(variables.begin(), variables.end(), std::make_tuple("", end), cmp);
+	auto lb = std::lower_bound(variables.begin(), variables.end(), std::make_tuple("", begin));
+	auto ub = std::upper_bound(lb + 1, variables.end(), std::make_tuple("", end));
 	variables.erase(lb, ub);
 }
 
 void eraseCell(cell_t addr) {
 	// TODO: test
-	size_t e = addr + countElements(addr);
+	cell_t e = addr + countElements(addr);
 	popVariablesInRange(std::distance(stack.begin(), addr), std::distance(stack.begin(), e));
 	stack.erase(addr, e);
 }
@@ -444,6 +446,15 @@ cell_t popCallStackLeaveData(cell_t addr) {
 	stack.resize(callStack.top() + elemsCount);
 	callStack.pop();
 	return whence;
+}
+
+// same as above but preceeded with cs pop
+cell_t pop2CallStackLeaveData(cell_t addr) {
+	// nuke last call stack frame (merge frames)
+	callStack.pop();
+
+	// pop call stack leaving addr
+	return popCallStackLeaveData(addr);
 }
 
 // pops call stack and leaves stack untouched
@@ -797,8 +808,10 @@ cell_t eval(cell_t d, bool temporary) {
 			// find address
 			pushCallStack();
 			cell_t nth = eval(d + 3);
-			if (nth->type != cell::typeList)
+			if (nth->type != cell::typeList){
+				popCallStack();
 				return c_nil; // error?
+			}
 
 			// nth->i must be < N
 			for (nth = firstCell(nth); nth != lastCell(d + 3) && n-- > 0; nth = nextCell(nth));
@@ -825,20 +838,22 @@ cell_t eval(cell_t d, bool temporary) {
 		if (isVariableValid(fx)) {
 			if (fx->type == cell::typeList) {
 				// [list:][list:]<arg><arg>[list:]<body><body>[list:]<body>...
+				// function stack frame
+				pushCallStack();
+
 				// evaluate and bind args
 				cell_t args = fx + 1;
 				cell_t args_vals = d + 2; // skip list and fx name
 				cell_t args_vals_i = args_vals;
 				for (int i = 0; i < args->i; ++i) {
-					auto v = eval(args_vals_i); // TODO: temporary and push/pop CS
+					auto v = eval(args_vals_i);
 					args_vals_i = nextCell(args_vals_i);
 					pushVariable((args + i + 1)->s, v);
 				}
-				printVariables();
 
 				// evaluate body
 				cell_t body = nextCell(args);
-				return evalreturn(body, lastCell(fx));
+				return pop2CallStackLeaveData(evalreturn(body, lastCell(fx)));
 			}
 			std::cout << "not function!" << std::endl;
 			return fx;
@@ -846,6 +861,8 @@ cell_t eval(cell_t d, bool temporary) {
 		else {
 			intrinsic_t i = getIntrinsic(fxName->s);
 			if (isIntrinsicValid(i)) {
+				pushCallStack();
+
 				// arguments list address
 				cell_t r = stack.end();
 
@@ -853,10 +870,9 @@ cell_t eval(cell_t d, bool temporary) {
 				pushCell(cell(cell::typeList, d->i - 1)); // list elements count (not counting name)
 				for(cell_t a = firstCell(d) + 1; a != lastCell(d); a = nextCell(a))
 					eval(a);
-				printVariables();
 
 				// call intrinsic
-				return std::get<1>(*i)(r);
+				return popCallStackLeaveData(std::get<1>(*i)(r));
 			}
 			std::cout << "intrinsic not found" << std::endl; // not a function?
 		}
