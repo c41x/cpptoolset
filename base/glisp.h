@@ -61,7 +61,7 @@ public:
 
 	void init(size_t memSize = 100000);
 	void close();
-	void eval(const string &s);
+	string eval(const string &s);
 	void addIntrinsic(const string &name, intrinsic_fx_t fx);
 	void addVariable(const string &name, cell value);
 };

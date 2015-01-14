@@ -1,14 +1,34 @@
 #include <base/base.h>
 
+bool test(granite::base::lisp &gl, const string &input, const string &expectedOutput) {
+	string result = gl.eval(input);
+	if (result == expectedOutput) {
+		std::cout << "[ok] " << input << " = " << expectedOutput << std::endl;
+		return true;
+	}
+
+	std::cout << "[fail] " << input << " = " << result << std::endl;
+	return false;
+}
+
+//#define REPL
+
 int main(int argc, char**argv) {
 	granite::base::lisp gl;
 	gl.init();
 
+	#ifdef REPL
 	while (true) {
 		string inp;
 		std::getline(std::cin, inp);
 		gl.eval(inp);
 	}
+	#else
+	test(gl, "1", "1");
+	test(gl, "()", "nil");
+	test(gl, "(= 44 66)", "nil");
+	test(gl, "(= 66 66)", "t");
+	#endif
 
 	gl.close();
 	return 0;

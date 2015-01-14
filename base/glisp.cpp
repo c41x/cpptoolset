@@ -895,16 +895,18 @@ void lisp::close() {
 	detail::popCallStack();
 }
 
-void lisp::eval(const string &s) {
+string lisp::eval(const string &s) {
 	auto code = detail::parse(s);
 	std::cout << detail::toString(code) << std::endl;
 	auto retAddr = detail::eval(code.begin(), true);
+	string r = detail::toString(retAddr);
 	std::cout << "return addr: " << detail::getAddress(retAddr)
 			  << " | " << detail::toString(retAddr) << std::endl;
 	detail::printState();
 	std::cout << "sweep..." << std::endl;
 	detail::sweepStack();
 	detail::printState();
+	return r;
 }
 
 void lisp::addIntrinsic(const string &name, intrinsic_fx_t fx) {
