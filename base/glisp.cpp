@@ -30,6 +30,13 @@ const string cell::getStr() const {
 
 namespace detail {
 
+//#define GLISP_DEBUG_LOG
+#ifdef GLISP_DEBUG_LOG
+#define dout(param) std::cout << param
+#else
+#define dout(param)
+#endif
+
 //- parser -
 cells_t parse(const string &s) {
 	// create tokenizer
@@ -210,9 +217,9 @@ cell_t getVariable(const string &name) {
 		return stack.begin() + std::get<1>(*r);
 
 	// variable name not found
-	std::cout << "variable \"" << name << "\" not found" << std::endl;
+	dout("variable \"" << name << "\" not found" << std::endl);
 	for(auto v : variables) {
-		std::cout << " > " << std::get<0>(v) << " = " << std::get<1>(v) << std::endl;
+		dout(" > " << std::get<0>(v) << " = " << std::get<1>(v) << std::endl);
 	}
 	return stack.end();
 }
@@ -229,8 +236,8 @@ cell_t pushVariable(const string &name, size_t count) {
 
 // assign address to memory
 void pushVariable(const string &name, cell_t addr) {
-	std::cout << "push variable (" << name << ") addr: " << std::distance(stack.begin(), addr)
-			  << " value: " << toString(addr) << std::endl;
+	dout("push variable (" << name << ") addr: " << std::distance(stack.begin(), addr)
+		 << " value: " << toString(addr) << std::endl);
 	variables.push_back(std::make_tuple(name, std::distance(stack.begin(), addr)));
 }
 
@@ -328,14 +335,14 @@ call_stack_t callStack;
 
 void tab() {
 	for(size_t i = 0; i < callStack.size(); ++i) {
-		std::cout << "  ";
+		dout("  ");
 	}
 }
 
 void printVariables() {
-	std::cout << "defined variables(" << variables.size() << ")" << std::endl;
+	dout("defined variables(" << variables.size() << ")" << std::endl);
 	for (auto &v : variables) {
-		std::cout << std::get<0>(v) << " = " << stack[std::get<1>(v)].getStr() << std::endl;
+		dout(std::get<0>(v) << " = " << stack[std::get<1>(v)].getStr() << std::endl);
 	}
 }
 
@@ -353,7 +360,7 @@ void printState() {
 	for (size_t i = 0; i < stack.size(); ++i) {
 		// put call stack bottom frame
 		if (rcs.size() > 0 && i == rcs.top()) {
-			std::cout << "| ";
+			dout("| ");
 			rcs.pop();
 		}
 
@@ -363,35 +370,35 @@ void printState() {
 			});
 		if (v != variables.end()) {
 			--varsLeft;
-			std::cout << "#" << std::get<0>(*v) << " ";
+			dout("#" << std::get<0>(*v) << " ");
 		}
 
 		// print element
 		auto &e = stack[i];
 		if (e.type == cell::typeList) {
-			std::cout << "[list:" << e.i << "] ";
+			dout("[list:" << e.i << "] ");
 		}
 		else if (e.type == cell::typeIdentifier) {
-			std::cout << e.s << " ";
+			dout(e.s << " ");
 		}
 		else if (e.type == cell::typeInt) {
-			std::cout << e.i << " ";
+			dout(e.i << " ");
 		}
 	}
 
 	// print last call stack frame
 	if (rcs.size() > 0 && rcs.top() == stack.size()) {
-		std::cout << "| ";
+		dout("| ");
 		rcs.pop();
 	}
 
 	if (rcs.size() > 0)
-		std::cout << "| call stack corrupted! ";
+		dout("| call stack corrupted! ");
 
 	if (varsLeft > 0)
-		std::cout << "| variables corrupted!";
+		dout("| variables corrupted!");
 
-	std::cout << std::endl;
+	dout(std::endl);
 }
 
 void pushCallStack() {
@@ -506,7 +513,7 @@ intrinsics_t intrinsics;
 cell_t c_message(cell_t c) {
 	// *c - count
 	// *(c + x) - element x
-	std::cout << "> message: " << (c + 1)->i << std::endl;
+	dout("> message: " << (c + 1)->i << std::endl);
 	return c;
 }
 
@@ -515,7 +522,7 @@ cell_t c_mul(cell_t c) {
 	for(cell_t i = c + 1; i != c + 1 + c->i; ++i) {
 		r *= i->i;
 	}
-	std::cout << " > mul: " << r << std::endl;
+	dout(" > mul: " << r << std::endl);
 	return pushCell(cell(cell::typeInt, r));
 }
 
@@ -604,7 +611,7 @@ void evalmap(cell_t begin, cell_t end, T_OP op) {
 // TODO: hint - iterator offset
 cell_t eval(cell_t d, bool temporary) {
 	tab();
-	std::cout << "eval: " << toString(d) << std::endl;
+	dout("eval: " << toString(d) << std::endl);
 
 	if (d->type == cell::typeInt) {
 		// when temporary is true - return value directly (it's in input array!)
@@ -643,7 +650,7 @@ cell_t eval(cell_t d, bool temporary) {
 			return eval(d + 1, temporary);
 		}
 		else if (fxName->type != cell::typeIdentifier) {
-			std::cout << "function name must be ID" << std::endl;
+			dout("function name must be ID" << std::endl);
 		}
 
 		// is fx name built in function
@@ -855,7 +862,7 @@ cell_t eval(cell_t d, bool temporary) {
 				cell_t body = nextCell(args);
 				return pop2CallStackLeaveData(evalreturn(body, lastCell(fx)));
 			}
-			std::cout << "not function!" << std::endl;
+			dout("not function!" << std::endl);
 			return fx;
 		}
 		else {
@@ -874,7 +881,7 @@ cell_t eval(cell_t d, bool temporary) {
 				// call intrinsic
 				return popCallStackLeaveData(std::get<1>(*i)(r));
 			}
-			std::cout << "intrinsic not found" << std::endl; // not a function?
+			dout("intrinsic not found" << std::endl); // not a function?
 		}
 	}
 
@@ -897,13 +904,13 @@ void lisp::close() {
 
 string lisp::eval(const string &s) {
 	auto code = detail::parse(s);
-	std::cout << detail::toString(code) << std::endl;
+	dout(detail::toString(code) << std::endl);
 	auto retAddr = detail::eval(code.begin(), true);
 	string r = detail::toString(retAddr);
-	std::cout << "return addr: " << detail::getAddress(retAddr)
-			  << " | " << detail::toString(retAddr) << std::endl;
+	dout("return addr: " << detail::getAddress(retAddr)
+		 << " | " << detail::toString(retAddr) << std::endl);
 	detail::printState();
-	std::cout << "sweep..." << std::endl;
+	dout("sweep..." << std::endl);
 	detail::sweepStack();
 	detail::printState();
 	return r;

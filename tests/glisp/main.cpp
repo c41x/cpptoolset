@@ -13,7 +13,7 @@ bool test(granite::base::lisp &gl, const string &input, const string &expectedOu
 
 //#define REPL
 
-int main(int argc, char**argv) {
+int main(int argc, char **argv) {
 	granite::base::lisp gl;
 	gl.init();
 
