@@ -30,7 +30,7 @@ const string cell::getStr() const {
 
 namespace detail {
 
-//#define GLISP_DEBUG_LOG
+#define GLISP_DEBUG_LOG
 #ifdef GLISP_DEBUG_LOG
 #define dout(param) std::cout << param
 #else
@@ -598,6 +598,7 @@ cell_t evalreturnNoStack(cell_t begin, cell_t end) {
 	return c_nil;
 }
 
+// calls [op] for all (evaluated) elements of list
 template <typename T_OP>
 void evalmap(cell_t begin, cell_t end, T_OP op) {
 	for(cell_t i = begin; i != end; i = nextCell(i)) {
@@ -612,6 +613,7 @@ void evalmap(cell_t begin, cell_t end, T_OP op) {
 cell_t eval(cell_t d, bool temporary) {
 	tab();
 	dout("eval: " << toString(d) << std::endl);
+	// TODO: print state here (no tab())
 
 	if (d->type == cell::typeInt) {
 		// when temporary is true - return value directly (it's in input array!)
@@ -647,10 +649,12 @@ cell_t eval(cell_t d, bool temporary) {
 		// first argument must be identifier
 		cell_t fxName = d + 1;
 		if ((d + 1)->type == cell::typeList) {
+			// first list element is list -> evaluating lambda
 			return eval(d + 1, temporary);
 		}
 		else if (fxName->type != cell::typeIdentifier) {
 			dout("function name must be ID" << std::endl);
+			return c_nil;
 		}
 
 		// is fx name built in function
@@ -659,6 +663,8 @@ cell_t eval(cell_t d, bool temporary) {
 			cell_t varName = d + 2;
 			cell_t varValue = eval(d + 3);
 			pushVariable(varName->s, varValue);
+
+			// return identifier of created variable
 			return pushCell(*varName);
 		}
 		else if (fxName->s == "quote") {
