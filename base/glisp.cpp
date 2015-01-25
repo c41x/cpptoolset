@@ -153,6 +153,12 @@ cell_t nextCell(cell_t c) {
 	return c;
 }
 
+// iterating over list: nth element of list
+cell_t nthCell(cell_t c, size_t n) {
+	for (c = firstCell(c); n--; c = nextCell(c));
+	return c;
+}
+
 // iterating over lists: cell after last one
 cell_t lastCell(cell_t c) {
 	return nextCell(c);
@@ -575,6 +581,7 @@ cell_t evalreturn(cell_t begin, cell_t end) {
 	for(cell_t i = begin; i != end;) {
 		pushCallStack();
 		cell_t lastResult = eval(i);
+		//std::tie(lastResult, i) = eval(i);
 		i = nextCell(i);
 		if(i == end)
 			return lastResult;
@@ -609,11 +616,20 @@ void evalmap(cell_t begin, cell_t end, T_OP op) {
 	}
 }
 
-// TODO: hint - iterator offset
+// TODO: offsets
+// struct for functions that are "shifting" stack
+struct eval_t {
+	cell_t c; // return cell iterator
+	int offset; // offset (number of cells added)
+};
+
+cell_t applyOffset(eval_t et, cell_t c) {
+	return c + et.offset;
+}
+
 cell_t eval(cell_t d, bool temporary) {
-	tab();
-	dout("eval: " << toString(d) << std::endl);
-	// TODO: print state here (no tab())
+	tab(); dout("eval: " << toString(d) << std::endl);
+	tab(); printState();
 
 	if (d->type == cell::typeInt) {
 		// when temporary is true - return value directly (it's in input array!)
@@ -827,10 +843,8 @@ cell_t eval(cell_t d, bool temporary) {
 			}
 
 			// nth->i must be < N
-			for (nth = firstCell(nth); nth != lastCell(d + 3) && n-- > 0; nth = nextCell(nth));
-
-			// return result
-			popCallStackLeaveData(nth);
+			// find nth element in list and return result
+			popCallStackLeaveData(nthCell(nth, n));
 			return nth;
 		}
 		else if (fxName->s == "defun") {
