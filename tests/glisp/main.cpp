@@ -36,6 +36,7 @@ int main(int argc, char **argv) {
 	test(gl, "(let ((a 10) (b (* a 20))) b)", "200");
 	test(gl, "(car '(aa bb cc))", "aa");
 	test(gl, "(cdr '(aa bb cc))", "(bb cc)");
+	test(gl, "(nth 1 '(aa bb cc))", "bb");
 	#endif
 
 	gl.close();

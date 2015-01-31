@@ -624,8 +624,41 @@ struct eval_t {
 };
 
 cell_t applyOffset(eval_t et, cell_t c) {
+	// TODO: call stack?
+	// TODO: call context (executed code)?
 	return c + et.offset;
 }
+
+/*
+
+void t(int offset) {
+	std::cout << "no pointers passed" << std::endl;
+}
+
+template <typename ...Args>
+void t(int offset, int &ptr, Args&... args) {
+	std::cout << "pointer changed by: " << offset << " (" << ptr << ")" << std::endl;
+	ptr += offset;
+	t(offset, args...);
+}
+
+template <typename ...Args>
+void et(int offset, Args&... ptrs) {
+	std::cout << "eval " << offset << std::endl;
+	t(offset, ptrs...);
+}
+
+
+cell_t evalApplyOffset(cell_t c) {
+	eval_t et = eval(c);
+	return et.c;
+}
+
+template <typename Args...>
+cell_t evalApplyOffset(cell_t c, Args&... iterators) {
+	return evalApplyOffset(c, iterators...);
+}
+*/
 
 cell_t eval(cell_t d, bool temporary) {
 	tab(); dout("eval: " << toString(d) << std::endl);
@@ -895,7 +928,7 @@ cell_t eval(cell_t d, bool temporary) {
 
 				// evaluate arguments (leave result on stack)
 				pushCell(cell(cell::typeList, d->i - 1)); // list elements count (not counting name)
-				for(cell_t a = firstCell(d) + 1; a != lastCell(d); a = nextCell(a))
+				for(cell_t a = firstCell(d) + 1; a != lastCell(d); a = nextCell(a)) // TODO: replace all loops like this one
 					eval(a);
 
 				// call intrinsic
