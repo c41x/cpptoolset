@@ -706,7 +706,15 @@ cell_t eval(cell_t d, bool temporary) {
 			return c_nil;
 		}
 
-		// is fx name built in function
+		//- builtins -
+		// builtins rules:
+		// 1) a) returns address to result
+		//    b) can return temporary result (in source / stack memory)
+		//    c) can use temporary memory in read only
+		// 2) a) leaves stack frame at the same point as before execution
+		//    b) unbounds all unused variables that ran out of scope
+		// 3) a) can shift memory location by offset and must return shift info
+		//    b) must offset all necessary pointers after calling eval
 		if (fxName->s == "defvar") {
 			// 3 elements min!
 			cell_t varName = d + 2;
