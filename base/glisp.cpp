@@ -629,36 +629,19 @@ cell_t applyOffset(eval_t et, cell_t c) {
 	return c + et.offset;
 }
 
-/*
-
-void t(int offset) {
-	std::cout << "no pointers passed" << std::endl;
+void applyOffset(eval_t) {}
+template <typename ...Args>
+void applyOffset(eval_t et, cell_t &ptr, Args&... args) {
+	ptr += et.offset;
+	applyOffset(et, args...);
 }
 
 template <typename ...Args>
-void t(int offset, int &ptr, Args&... args) {
-	std::cout << "pointer changed by: " << offset << " (" << ptr << ")" << std::endl;
-	ptr += offset;
-	t(offset, args...);
+eval_t evalApplyOffset(cell_t c, Args&... ptrs) {
+	eval_t r = eval(c);
+	applyOffset(r, ptrs...);
+	return cell_t;
 }
-
-template <typename ...Args>
-void et(int offset, Args&... ptrs) {
-	std::cout << "eval " << offset << std::endl;
-	t(offset, ptrs...);
-}
-
-
-cell_t evalApplyOffset(cell_t c) {
-	eval_t et = eval(c);
-	return et.c;
-}
-
-template <typename Args...>
-cell_t evalApplyOffset(cell_t c, Args&... iterators) {
-	return evalApplyOffset(c, iterators...);
-}
-*/
 
 cell_t eval(cell_t d, bool temporary) {
 	tab(); dout("eval: " << toString(d) << std::endl);
