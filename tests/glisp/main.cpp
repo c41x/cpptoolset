@@ -31,6 +31,7 @@ int main(int argc, char **argv) {
 	test(gl, "(defvar l (lambda (a bc ) (+ a bc (* 2 bc) 1000)))", "l");
 	test(gl, "(l 2 3)", "1011");
 	test(gl, "(if t (progn 11 22) 33)", "22");
+	test(gl, "(if nil (progn 11 22) 33)", "33");
 	test(gl, "(let ((a 10) (b 20)) (+ a a) (+ b b))", "40");
 	test(gl, "(let ((a '(a b c))) a)", "(a b c)");
 	test(gl, "(let ((a 10) (b (* a 20))) b)", "200");
