@@ -623,12 +623,6 @@ struct eval_t {
 	int offset; // offset (number of cells added)
 };
 
-cell_t applyOffset(eval_t et, cell_t c) {
-	// TODO: call stack?
-	// TODO: call context (executed code)?
-	return c + et.offset;
-}
-
 void applyOffset(eval_t) {}
 template <typename ...Args>
 void applyOffset(eval_t et, cell_t &ptr, Args&... args) {
