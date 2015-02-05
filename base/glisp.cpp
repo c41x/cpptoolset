@@ -30,7 +30,7 @@ const string cell::getStr() const {
 
 namespace detail {
 
-#define GLISP_DEBUG_LOG
+//#define GLISP_DEBUG_LOG
 #ifdef GLISP_DEBUG_LOG
 #define dout(param) std::cout << param
 #else
@@ -578,7 +578,7 @@ cell_t eval(cell_t d, bool temporary = false);
 
 // helper for evaluating lists, evals all elements and returns last
 cell_t evalreturn(cell_t begin, cell_t end) {
-	for(cell_t i = begin; i != end;) {
+	for (cell_t i = begin; i != end;) {
 		pushCallStack();
 		cell_t lastResult = eval(i);
 		//std::tie(lastResult, i) = eval(i);
@@ -594,7 +594,7 @@ cell_t evalreturn(cell_t begin, cell_t end) {
 
 // same as above, but with no stack
 cell_t evalreturnNoStack(cell_t begin, cell_t end) {
-	for(cell_t i = begin; i != end;) {
+	for (cell_t i = begin; i != end;) {
 		cell_t lastResult = eval(i);
 		i = nextCell(i);
 		if(i == end)
@@ -605,10 +605,16 @@ cell_t evalreturnNoStack(cell_t begin, cell_t end) {
 	return c_nil;
 }
 
+// evals all elements leaving results on stack
+void evalNoStack(cell_t begin, cell_t end) {
+	for (; begin != end; begin = nextCell(begin))
+		eval(begin);
+}
+
 // calls [op] for all (evaluated) elements of list
 template <typename T_OP>
 void evalmap(cell_t begin, cell_t end, T_OP op) {
-	for(cell_t i = begin; i != end; i = nextCell(i)) {
+	for (cell_t i = begin; i != end; i = nextCell(i)) {
 		pushCallStack();
 		cell_t lastResult = eval(i);
 		op(lastResult);
@@ -634,7 +640,7 @@ template <typename ...Args>
 eval_t evalApplyOffset(cell_t c, Args&... ptrs) {
 	eval_t r = eval(c);
 	applyOffset(r, ptrs...);
-	return cell_t;
+	return r;
 }
 
 cell_t eval(cell_t d, bool temporary) {
@@ -783,9 +789,7 @@ cell_t eval(cell_t d, bool temporary) {
 			// create list and eval its elements
 			auto ret = stack.begin() + stack.size();
 			stack.push_back({cell::typeList, d->i - 1});
-			for (cell_t e = d + 2; e != lastCell(d); e = nextCell(e))
-				eval(e);
-
+			evalNoStack(d + 2, lastCell(d));
 			return ret;
 		}
 		else if (fxName->s == "listp") {
@@ -913,8 +917,7 @@ cell_t eval(cell_t d, bool temporary) {
 
 				// evaluate arguments (leave result on stack)
 				pushCell(cell(cell::typeList, d->i - 1)); // list elements count (not counting name)
-				for(cell_t a = firstCell(d) + 1; a != lastCell(d); a = nextCell(a)) // TODO: replace all loops like this one
-					eval(a);
+				evalNoStack(d + 2, lastCell(d));
 
 				// call intrinsic
 				return popCallStackLeaveData(std::get<1>(*i)(r));
