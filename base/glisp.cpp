@@ -30,7 +30,7 @@ const string cell::getStr() const {
 
 namespace detail {
 
-//#define GLISP_DEBUG_LOG
+#define GLISP_DEBUG_LOG
 #ifdef GLISP_DEBUG_LOG
 #define dout(param) std::cout << param
 #else
@@ -645,7 +645,6 @@ eval_t evalApplyOffset(cell_t c, Args&... ptrs) {
 
 cell_t eval(cell_t d, bool temporary) {
 	tab(); dout("eval: " << toString(d) << std::endl);
-	tab(); printState();
 
 	if (d->type == cell::typeInt) {
 		// when temporary is true - return value directly (it's in input array!)
@@ -738,7 +737,7 @@ cell_t eval(cell_t d, bool temporary) {
 				return eval(lastCell(d + 2));
 			else {
 				cell_t offset = lastCell(lastCell(d + 2)); // else statements offset
-				return evalreturn(offset, lastCell(d));
+				return popCallStackLeaveData(evalreturn(offset, lastCell(d)));
 			}
 		}
 		else if (fxName->s == "=") {
@@ -756,7 +755,7 @@ cell_t eval(cell_t d, bool temporary) {
 		}
 		else if (fxName->s == "progn") {
 			// d->i must be > 1
-			return evalreturn(d + 2, lastCell(d));
+			return popCallStackLeaveData(evalreturn(d + 2, lastCell(d)));
 		}
 		else if (fxName->s == "let") {
 			// evaluate and push variables
@@ -944,6 +943,7 @@ void lisp::close() {
 }
 
 string lisp::eval(const string &s) {
+	dout(std::endl << std::endl);
 	auto code = detail::parse(s);
 	dout(detail::toString(code) << std::endl);
 	auto retAddr = detail::eval(code.begin(), true);
