@@ -189,7 +189,7 @@ template<typename... Args> string strf(const char *format, const Args&... args);
 template <typename T> T strToSigned(const stringRange &range) {
 	string::const_iterator it(range.begin);
 	T sign, ret = 0;
-	if((*range.begin) == '-') {
+	if ((*range.begin) == '-') {
 		it++;
 		sign = -1;
 	}
@@ -203,7 +203,7 @@ template <typename T> T strToSigned(const stringRange &range) {
 
 template <typename T> T strToUnsigned(const stringRange &range) {
 	T ret = 0;
-	for(string::const_iterator it(range.begin); it != range.end; ++it) {
+	for (string::const_iterator it(range.begin); it != range.end; ++it) {
 		gassert(isDigit(*it), "parsing string to integer - non numeric character");
 		ret = ret * 10 + getAlphaToDigit(*it);
 	}
@@ -213,14 +213,14 @@ template <typename T> T strToUnsigned(const stringRange &range) {
 template <typename T> T strToReal(const stringRange &range) {
 	string::const_iterator it(range.begin);
 	T sign;
-	if((*range.begin) == '-') {
+	if ((*range.begin) == '-') {
 		++it;
 		sign = -static_cast<T>(1.0);
 	}
 	else sign = static_cast<T>(1.0);
 	T ret = static_cast<T>(0.0);
-	for(; it!=range.end; it++) {
-		if(*it == '.'){
+	for (; it!=range.end; it++) {
+		if (*it == '.'){
 			++it;
 			break;
 		}
@@ -228,7 +228,7 @@ template <typename T> T strToReal(const stringRange &range) {
 		gassert(isDigit(*it), "parsing string to real - non numeric character");
 	}
 	T mant = static_cast<T>(0.0), fact=static_cast<T>(1.0);
-	for(; it!=range.end; it++){
+	for (; it!=range.end; it++){
 		fact *= static_cast<T>(0.1);
 		mant += static_cast<T>(getAlphaToDigit(*it)) * fact;
 		gassert(isDigit(*it), "parsing string to real - non numeric character");
@@ -238,10 +238,10 @@ template <typename T> T strToReal(const stringRange &range) {
 
 bool isInteger(const stringRange &range) {
 	string::const_iterator it(range.begin);
-	if((*range.begin) == '-')
+	if ((*range.begin) == '-')
 		it++;
-	for(; it != range.end; ++it) {
-		if(!isDigit(*it))
+	for (; it != range.end; ++it) {
+		if (!isDigit(*it))
 			return false;
 	}
 	return true;
@@ -249,15 +249,15 @@ bool isInteger(const stringRange &range) {
 
 bool isFloat(const stringRange &range) {
 	string::const_iterator it(range.begin);
-	if((*range.begin) == '-')
+	if ((*range.begin) == '-')
 		++it;
 	bool dotFound = false;
-	for(; it != range.end; it++) {
-		if(*it == '.' && !dotFound){
+	for (; it != range.end; it++) {
+		if (*it == '.' && !dotFound){
 			++it;
 			dotFound = true;
 		}
-		if(!isDigit(*it))
+		if (!isDigit(*it))
 			return false;
 	}
 	return true;
@@ -265,19 +265,19 @@ bool isFloat(const stringRange &range) {
 
 template <typename T> stringRange signedToStr(const T &i, string &os) {
 	string::iterator p = os.begin() + os.size() - 1;
-	if(i == 0) {
+	if (i == 0) {
 		gassert(p >= os.begin(), "string to signed - index out of buffer");
 		*p = '0';
 		return stringRange(p, os.end());
 	}
 	T v = i < 0 ? -i : i;
-	while(v) {
+	while (v) {
 		gassert(p + 1 >= os.begin(), "string to unsigned - index out of buffer");
 		*p = getDigitToAlpha(v % 10);
 		v /= 10;
 		p--;
 	}
-	if(i < 0) {
+	if (i < 0) {
 		*p = '-';
 		p--;
 	}
@@ -287,13 +287,13 @@ template <typename T> stringRange signedToStr(const T &i, string &os) {
 
 template <typename T> stringRange unsignedToStr(const T &u, string &os) {
 	string::iterator p = os.begin() + os.size() - 1;
-	if(u == 0) {
+	if (u == 0) {
 		gassert(p >= os.begin(), "string to unsigned - index out of buffer");
 		*p = '0';
 		return stringRange(p, os.end());
 	}
 	T v = u;
-	while(v) {
+	while (v) {
 		gassert(p + 1 >= os.begin(), "string to unsigned - index out of buffer");
 		*p = getDigitToAlpha(v % 10);
 		v /= 10;
@@ -311,11 +311,11 @@ template <typename T> stringRange realToStr(const T &r, string &os, int precisio
 	i = i < 0 ? -i : i;
 	T base = T(i);
 	T sbase = r < static_cast<T>(0.0) ? - r : r;
-	if(i == 0) {
+	if (i == 0) {
 		*p = '0';
 		p++;
 	}
-	while(i) {
+	while (i) {
 		*p = getDigitToAlpha(i % 10);
 		i /= 10;
 		p++;
@@ -327,7 +327,7 @@ template <typename T> stringRange realToStr(const T &r, string &os, int precisio
 
 	// mantissa .###
 	T man = sbase - base;
-	while(precision--) {
+	while (precision--) {
 		gassert(p < os.end(), "real to unsigned - index out of buffer");
 		char dig = char(man *= static_cast<T>(10.0));
 		*p = getDigitToAlpha(dig);
@@ -336,7 +336,7 @@ template <typename T> stringRange realToStr(const T &r, string &os, int precisio
 	}
 
 	// sign
-	if(r < static_cast<T>(0.0)) {
+	if (r < static_cast<T>(0.0)) {
 		*p = '-';
 		p++;
 	}
@@ -351,8 +351,8 @@ inline string boolToStr(const bool &b) {
 // detail:
 namespace detail {
 inline void strf(string &buffer, string &out, const char *format) {
-	while(*format) {
-		if(*format == '%') {
+	while (*format) {
+		if (*format == '%') {
 			gassert(*(format + 1) == '%', "formatted string: missing function arguments");
 			if(*(format + 1) == '%')
 				++format;
@@ -362,9 +362,9 @@ inline void strf(string &buffer, string &out, const char *format) {
 	}
 }
 template <typename T, typename... Args> void strf(string &buffer, string &out, const char *format, const T &v, const Args&... args) {
-	while(*format) {
-		if(*format == '%') {
-			if(*(format + 1) == '%') // replace %% -> %
+	while (*format) {
+		if (*format == '%') {
+			if (*(format + 1) == '%') // replace %% -> %
 				++format;
 			else {
 				stringRange r = toStr(v, buffer);
