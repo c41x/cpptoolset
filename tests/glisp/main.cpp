@@ -30,6 +30,7 @@ int main(int argc, char **argv) {
 	test(gl, "(= 66 66)", "t");
 	test(gl, "(defvar l (lambda (a bc ) (+ a bc (* 2 bc) 1000)))", "l");
 	test(gl, "(l 2 3)", "1011");
+	test(gl, "(progn 1 2 3)", "3");
 	test(gl, "(if t (progn 11 22) 33)", "22");
 	test(gl, "(if nil (progn 11 22) 33)", "33");
 	test(gl, "(let ((a 10) (b 20)) (+ a a) (+ b b))", "40");
