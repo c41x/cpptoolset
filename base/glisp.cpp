@@ -37,6 +37,21 @@ namespace detail {
 #define dout(param)
 #endif
 
+class memory {
+	std::vector<cell> _mem;
+	std::vector<cell> _ptrs;
+public:
+	class iterator {
+		std::vector<cell>::iterator _it;
+	public:
+		iterator() {}
+		~iterator() {}
+	};
+
+	memory() {}
+	~memory() {}
+};
+
 //- parser -
 cells_t parse(const string &s) {
 	// create tokenizer
@@ -622,27 +637,6 @@ void evalmap(cell_t begin, cell_t end, T_OP op) {
 	}
 }
 
-// TODO: offsets
-// struct for functions that are "shifting" stack
-struct eval_t {
-	cell_t c; // return cell iterator
-	int offset; // offset (number of cells added)
-};
-
-void applyOffset(eval_t) {}
-template <typename ...Args>
-void applyOffset(eval_t et, cell_t &ptr, Args&... args) {
-	ptr += et.offset;
-	applyOffset(et, args...);
-}
-
-template <typename ...Args>
-eval_t evalApplyOffset(cell_t c, Args&... ptrs) {
-	eval_t r = eval(c);
-	applyOffset(r, ptrs...);
-	return r;
-}
-
 cell_t eval(cell_t d, bool temporary) {
 	tab(); dout("eval: " << toString(d) << std::endl);
 
@@ -695,8 +689,6 @@ cell_t eval(cell_t d, bool temporary) {
 		//    c) can use temporary memory in read only
 		// 2) a) leaves stack frame at the same point as before execution
 		//    b) unbounds all unused variables that ran out of scope
-		// 3) a) can shift memory location by offset and must return shift info
-		//    b) must offset all necessary pointers after calling eval
 		if (fxName->s == "defvar") {
 			// 3 elements min!
 			cell_t varName = d + 2;
