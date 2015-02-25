@@ -44,7 +44,7 @@ template<typename S, typename I, typename FN> struct bind {
 };
 }
 
-template<typename... P> class signal {
+template<typename... P> class sig {
 		static const int argsCount = sizeof...(P);
 		typedef std::function<void(P...)> tdSlot;
 		typedef std::pair<slotId, tdSlot> tdSlotPair;
@@ -53,8 +53,8 @@ template<typename... P> class signal {
 		slotId m_counter;
 
 	public:
-		signal() : m_counter(0) {}
-		~signal(){}
+		sig() : m_counter(0) {}
+		~sig(){}
 		slotId connect(const tdSlot &f) {
 			gassert(f, "passed std::function object is not valid");
 			m_slots.push_back(tdSlotPair(m_counter, f));
