@@ -55,13 +55,13 @@ int main(int argc, char**argv) {
 	float ff = 555;
 	sigs2.fire(ff);
 
-	delegate<float,float> df;
+	delegate<float, float> df;
 	df.connect(&foo::zzzff, &obiekt);
 	df.fire(5, 10);
 	df.connect(std::bind(&foo::zzzff, &obiekt, std::placeholders::_1, std::placeholders::_2)); // mo¿na te¿ tak
 	df.fire(10, 15);
 
-	int intArg=66;
+	int intArg = 66;
 	delegate<int&> di;
 	di = [](int &o) { std::cout << "\ninside lambda: " << o; ++o; };
 	di.fire(intArg);
