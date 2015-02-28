@@ -39,17 +39,51 @@ namespace detail {
 
 class memory {
 	std::vector<cell> _mem;
-	std::vector<cell> _ptrs;
+	std::vector<std::vector<cell>::iterator> _ptrs;
 public:
 	class iterator {
 		std::vector<cell>::iterator _it;
+		memory _pc;
 	public:
-		iterator() {}
-		~iterator() {}
+		iterator(const std::vector<cell>::iterator &it, memory &pc);
+		iterator(const iterator &it);
+		~iterator();
+
+		iterator &operator++();
+		iterator operator++(int);
+		iterator &operator--();
+		iterator operator--(int);
+		iterator &operator+(int);
+		iterator &operator-(int);
+		iterator &operator+=(int);
+		iterator &operator-=(int);
+		bool operator==(const iterator &it);
+		bool operator!=(const iterator &it);
+		bool operator<(const iterator &it);
+		bool operator<=(const iterator &it);
+		bool operator>(const iterator &it);
+		bool operator>=(const iterator &it);
+		cell &operator*();
 	};
 
 	memory() {}
 	~memory() {}
+
+	iterator begin();
+	iterator end();
+	size_t size() const;
+	size_t capacity() const;
+	void resize(size_t n);
+	void reserve(size_t n);
+	bool empty() const;
+	cell &back();
+	void push_back(const cell &val);
+	void pop_back();
+	iterator insert(iterator position, const cell &val);
+	void insert(iterator position, size_t n, const cell &val);
+	void insert(iterator position, iterator begin, iterator end);
+	iterator erase(iterator position);
+	iterator erase(iterator first, iterator last);
 };
 
 //- parser -
