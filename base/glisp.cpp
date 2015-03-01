@@ -43,27 +43,28 @@ class memory {
 public:
 	class iterator {
 		std::vector<cell>::iterator _it;
-		memory _pc;
+		memory &_pc;
 	public:
-		iterator(const std::vector<cell>::iterator &it, memory &pc);
-		iterator(const iterator &it);
-		~iterator();
+		iterator(const std::vector<cell>::iterator &it, memory &pc) : _pc(pc), _it(it) { _pc.trace(_it); }
+		iterator(const iterator &it) { _pc = it._pc; _it = it._it; _pc.trace(_it); }
+		~iterator() { _pc.untrace(_it); }
 
-		iterator &operator++();
-		iterator operator++(int);
-		iterator &operator--();
-		iterator operator--(int);
-		iterator &operator+(int);
-		iterator &operator-(int);
-		iterator &operator+=(int);
-		iterator &operator-=(int);
-		bool operator==(const iterator &it);
-		bool operator!=(const iterator &it);
-		bool operator<(const iterator &it);
-		bool operator<=(const iterator &it);
-		bool operator>(const iterator &it);
-		bool operator>=(const iterator &it);
-		cell &operator*();
+		iterator &operator++() { ++_it; return *this; }
+		iterator operator++(int) { iterator cp = *this; ++_it; return cp; };
+		iterator &operator--() { --_it; return *this; }
+		iterator operator--(int) { iterator cp = *this; --_it; return cp; }
+		iterator operator+(int off) const { iterator cp = *this; cp._it += off; return cp; }
+		iterator operator-(int off) const { iterator cp = *this; cp._it -= off; return cp; }
+		iterator &operator+=(int off) { _it += off; return *this; }
+		iterator &operator-=(int off) { _it -= off; return *this; }
+		bool operator==(const iterator &it) const { return _pc == it.pc && _it == it._it; }
+		bool operator!=(const iterator &it) const { return _pc == it.pc && _it != it._it; }
+		bool operator<(const iterator &it) const { return _pc == it.pc && _it < it._it; }
+		bool operator<=(const iterator &it) const { return _pc == it.pc && _it <= it._it; }
+		bool operator>(const iterator &it) const { return _pc == it.pc && _it > it._it; }
+		bool operator>=(const iterator &it) const { return _pc == it.pc && _it >= it._it; }
+		cell &operator*() { return *_it; }
+		cell *operator->() { return _it; }
 	};
 
 	memory() {}
@@ -84,6 +85,12 @@ public:
 	void insert(iterator position, iterator begin, iterator end);
 	iterator erase(iterator position);
 	iterator erase(iterator first, iterator last);
+
+	// iterators
+	void trace(std::vector<cell>::iterator it) {
+
+	}
+	void untrace(std::vector<cell>::iterator it);
 };
 
 //- parser -
