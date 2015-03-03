@@ -37,62 +37,6 @@ namespace detail {
 #define dout(param)
 #endif
 
-class memory {
-	std::vector<cell> _mem;
-	std::vector<std::vector<cell>::iterator> _ptrs;
-public:
-	class iterator {
-		std::vector<cell>::iterator _it;
-		memory &_pc;
-	public:
-		iterator(const std::vector<cell>::iterator &it, memory &pc) : _pc(pc), _it(it) { _pc.trace(_it); }
-		iterator(const iterator &it) { _pc = it._pc; _it = it._it; _pc.trace(_it); }
-		~iterator() { _pc.untrace(_it); }
-
-		iterator &operator++() { ++_it; return *this; }
-		iterator operator++(int) { iterator cp = *this; ++_it; return cp; };
-		iterator &operator--() { --_it; return *this; }
-		iterator operator--(int) { iterator cp = *this; --_it; return cp; }
-		iterator operator+(int off) const { iterator cp = *this; cp._it += off; return cp; }
-		iterator operator-(int off) const { iterator cp = *this; cp._it -= off; return cp; }
-		iterator &operator+=(int off) { _it += off; return *this; }
-		iterator &operator-=(int off) { _it -= off; return *this; }
-		bool operator==(const iterator &it) const { return _pc == it.pc && _it == it._it; }
-		bool operator!=(const iterator &it) const { return _pc == it.pc && _it != it._it; }
-		bool operator<(const iterator &it) const { return _pc == it.pc && _it < it._it; }
-		bool operator<=(const iterator &it) const { return _pc == it.pc && _it <= it._it; }
-		bool operator>(const iterator &it) const { return _pc == it.pc && _it > it._it; }
-		bool operator>=(const iterator &it) const { return _pc == it.pc && _it >= it._it; }
-		cell &operator*() { return *_it; }
-		cell *operator->() { return _it; }
-	};
-
-	memory() {}
-	~memory() {}
-
-	iterator begin();
-	iterator end();
-	size_t size() const;
-	size_t capacity() const;
-	void resize(size_t n);
-	void reserve(size_t n);
-	bool empty() const;
-	cell &back();
-	void push_back(const cell &val);
-	void pop_back();
-	iterator insert(iterator position, const cell &val);
-	void insert(iterator position, size_t n, const cell &val);
-	void insert(iterator position, iterator begin, iterator end);
-	iterator erase(iterator position);
-	iterator erase(iterator first, iterator last);
-
-	// iterators
-	void trace(std::vector<cell>::iterator it) {
-
-	}
-	void untrace(std::vector<cell>::iterator it);
-};
-
 //- parser -
 cells_t parse(const string &s) {
 	// create tokenizer
@@ -243,6 +187,9 @@ string toString(const cell_t c) {
 //- dynamic scoping / stack / variable memory -
 cells_t stack;
 vars_t variables;
+
+typedef std::deque<std::vector> lists_t;
+lists_t lists;
 
 // comparsion operator for variables
 bool operator<(const var_t &a, const var_t &b) {

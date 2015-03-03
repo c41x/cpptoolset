@@ -41,8 +41,8 @@ public:
 typedef std::vector<cell> cells_t;
 typedef std::vector<cell>::iterator cell_t;
 typedef std::function<cell_t(cell_t)> intrinsic_fx_t;
-typedef std::tuple<string, size_t> var_t;
-typedef std::vector<var_t> vars_t; // name, stack position
+typedef std::tuple<string, size_t, bool> var_t;
+typedef std::vector<var_t> vars_t; // name, stack position, is list?
 typedef std::stack<size_t> call_stack_t;
 typedef std::tuple<string, intrinsic_fx_t> intrinsic_tuple_t;
 typedef std::vector<intrinsic_tuple_t> intrinsics_t;
@@ -54,7 +54,7 @@ class lisp {
 	vars_t _variables;
 	call_stack_t _callStack;
 	intrinsics_t _intrinsics;
-
+	// TODO: add lists
 public:
 	lisp() {}
 	~lisp() {}
@@ -74,4 +74,3 @@ public:
 // TODO: non standard types
 // TODO: cons? assoc
 // TODO: cond
-// TODO: defun
