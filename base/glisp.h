@@ -23,7 +23,8 @@ public:
 	enum type_t {
 		typeIdentifier,
 		typeInt,
-		typeList
+		typeList,
+		typeVector
 	};
 
 	type_t type;
