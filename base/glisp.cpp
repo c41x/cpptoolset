@@ -188,7 +188,7 @@ string toString(const cell_t c) {
 cells_t stack;
 vars_t variables;
 
-typedef std::deque<std::vector<cell>> lists_t;
+typedef std::map<string, std::vector<cell>> lists_t;
 lists_t lists;
 
 // comparsion operator for variables (compares by address)
@@ -236,7 +236,7 @@ cell_t getVariable(const string &name) {
 // push variable and allocate memory
 cell_t pushVariable(const string &name, size_t count) {
 	// add new variable
-	variables.push_back(std::make_tuple(name, stack.size(), false));
+	variables.push_back(std::make_tuple(name, stack.size()));
 
 	// resize stack and return iterator to first allocated element
 	stack.resize(stack.size() + count);
@@ -247,7 +247,7 @@ cell_t pushVariable(const string &name, size_t count) {
 void pushVariable(const string &name, cell_t addr) {
 	dout("push variable (" << name << ") addr: " << std::distance(stack.begin(), addr)
 		 << " value: " << toString(addr) << std::endl);
-	variables.push_back(std::make_tuple(name, std::distance(stack.begin(), addr), false));
+	variables.push_back(std::make_tuple(name, std::distance(stack.begin(), addr)));
 }
 
 // push data on top of stack (copy all addr cell) return data address on stack
@@ -427,9 +427,8 @@ void popVariablesAbove(size_t addr) {
 
 void popVariablesInRange(size_t begin, size_t end) {
 	// TODO: test
-	// TODO: remove only static memory? what about vectors?
-	auto lb = std::lower_bound(variables.begin(), variables.end(), std::make_tuple("", begin, false));
-	auto ub = std::upper_bound(lb + 1, variables.end(), std::make_tuple("", end, false));
+	auto lb = std::lower_bound(variables.begin(), variables.end(), std::make_tuple("", begin));
+	auto ub = std::upper_bound(lb + 1, variables.end(), std::make_tuple("", end));
 	variables.erase(lb, ub);
 }
 
