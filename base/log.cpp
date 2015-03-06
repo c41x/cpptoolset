@@ -39,8 +39,8 @@ void signalCallback(int signal) {
 		void *a[10];
 		size_t s = backtrace(a, 10);
 		char **p = backtrace_symbols(a, s);
-		for (size_t i = 0; i < 10; ++i)
-			v_file << ptr[0] << std::endl;
+		for (size_t i = 0; i < s; ++i)
+			v_file << p[i] << std::endl;
 		free(p);
 		#endif
 

@@ -1,15 +1,15 @@
 /*
- * granite engine 1.0 | 2006-2013 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com 
+ * granite engine 1.0 | 2006-2013 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
  * file: includes.h
  * created: 22-10-2012
- * 
+ *
  * description: common *external* includes for base modules
- * 
+ *
  * changelog:
  * - 22-10-2012: add
  * - 20-01-2013: added windows/linux headers for hires timers
  * - 29-09-2013: changelog moved to GIT repository
- * 
+ *
  * todo:
  * - 22-10-2012: fix linux includes as soon as possible
  */
@@ -29,6 +29,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstdarg>
+#include <cstring>
 #include <string>
 //#include <io.h>
 #include <iostream>
