@@ -33,20 +33,23 @@ void signalCallback(int signal) {
 		else desc = "signal(?) unknown signal ID";
 
 		log(logLevelCritical, desc);
+		process();
 
 		// print backtrace
 		#ifdef GE_PLATFORM_LINUX
 		void *a[10];
 		size_t s = backtrace(a, 10);
 		char **p = backtrace_symbols(a, s);
-		for (size_t i = 0; i < s; ++i)
+		for (size_t i = 0; i < s; ++i) {
+			std::cerr << p[i] << std::endl;
 			v_file << p[i] << std::endl;
+		}
 		free(p);
 		#endif
 
 		// shutdown all
-		shutdown();
-		// exit(1);
+		v_file.close();
+		exit(1);
 	}
 }
 
