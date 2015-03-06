@@ -1,10 +1,10 @@
 /*
- * granite engine 1.0 | 2006-2013 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com 
+ * granite engine 1.0 | 2006-2015 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
  * file: common.h
  * created: 22-10-2012
- * 
+ *
  * description: some useful defines/macros/typedefs. All base files should include this file
- * 
+ *
  * changelog:
  * - 28-09-2008: initial add date in old engine version
  * - 22-10-2012: add
@@ -22,7 +22,7 @@
 #define GE_NAME "Granite"
 #define GE_VERSION 1.0
 #define GE_SVERSION "1.0"
-#define GE_AUTHOR "Jakub Duracz"          
+#define GE_AUTHOR "Jakub Duracz"
 #define GE_CREATION_DATE "22-08-2006"
 
 // quoting shit
@@ -169,14 +169,14 @@ namespace granite{
 }
 
 // run once macro - usefull for fast prototyping (do not use in production code)
-#define GE_ONCE(RUNCODE)                          \
-    do{                                           \
-        static bool x=true;                       \
-        if(x){                                    \
-            RUNCODE;                              \
-            x=false;                              \
-        }                                         \
-    }while(false)
+#define GE_ONCE(RUNCODE)							\
+    do {											\
+        static bool x = true;                       \
+        if (x) {                                    \
+            RUNCODE;								\
+            x = false;                              \
+        }											\
+    } while(false)
 
 // lock unused warnings
 #if defined(GE_RELEASE) && defined(GE_COMPILER_VISUAL)
@@ -195,18 +195,17 @@ namespace granite{
 #endif
 
 // logging macros
-#define GE_LOG_PREFIX_STRING string(__FILE__ "@" __SLINE__ ":")+string(__SFUNC__)+string("> ")
-#define logError(message) granite::base::log::log(granite::base::log::logLevelError,GE_LOG_PREFIX_STRING+message)
-#define logOK(message) granite::base::log::log(granite::base::log::logLevelOK,GE_LOG_PREFIX_STRING+message)
-#define logInfo(message) granite::base::log::log(granite::base::log::logLevelInfo,GE_LOG_PREFIX_STRING+message)
-#define logCritical(message) granite::base::log::log(granite::base::log::logLevelCritical,GE_LOG_PREFIX_STRING+message)
+#define GE_LOG_PREFIX_STRING string(__FILE__ "@" __SLINE__ ":") + string(__SFUNC__) + string("> ")
+#define logError(message) granite::base::log::log(granite::base::log::logLevelError, GE_LOG_PREFIX_STRING + message)
+#define logOK(message) granite::base::log::log(granite::base::log::logLevelOK, GE_LOG_PREFIX_STRING + message)
+#define logInfo(message) granite::base::log::log(granite::base::log::logLevelInfo, GE_LOG_PREFIX_STRING + message)
+#define logCritical(message) granite::base::log::log(granite::base::log::logLevelCritical, GE_LOG_PREFIX_STRING + message)
 
 // assert
 #ifdef GE_DEBUG
-#define gassert(condition,message) if(!(condition)) {const string e=string("assertion failed(" #condition ") ")+GE_LOG_PREFIX_STRING+message; logError(e); std::cerr<<e<<std::endl; toggleBreakpoint;} else
+#define gassert(condition, message) if(!(condition)) { const string e = string("assertion failed(" #condition ") ") + GE_LOG_PREFIX_STRING + message; std::cerr << e << std::endl; logError(e); toggleBreakpoint; } else
 #else
-#define gassert(condition,message)
+#define gassert(condition, message)
 #endif
 
 //~
-
