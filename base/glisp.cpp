@@ -179,17 +179,44 @@ string toString(const cell_t c) {
 cells_t stack;
 vars_t variables;
 
-typedef std::map<string, std::vector<cell>> lists_t;
+// auxiculary memory
+typedef std::tuple<int, string> lists_id_t; // stack frame, id
+typedef std::map<lists_id_t, cells_t> lists_t;
 lists_t lists;
+
+// shortcuts to constants
+cell_t c_nil;
+cell_t c_t;
 
 // comparsion operator for variables (compares by address)
 bool operator<(const var_t &a, const var_t &b) {
 	return std::get<1>(a) < std::get<1>(b);
 }
 
-// shortcuts to constants
-cell_t c_nil;
-cell_t c_t;
+// comparsion operator for auxiculary memory
+bool operator<(const lists_id_t &a, const lists_id_t &b) {
+	return std::get<0>(a) < std::get<0>(b);
+}
+
+// detach variable to aux memory
+cell_t detachVariable(cell_t addr, int stackFrame, const string &name) {
+	// move data
+	lists_id_t id = std::make_pair(stackFrame, name);
+	auto e = lists.find(id);
+	if (e == lists.end()) {
+		cells_t m = lists[id];
+		m.insert(m.begin(), addr, addr + countElements(addr));
+
+		// leave id on stack
+		*addr = {cell::typeDetach, stackFrame, name};
+
+		// return new address
+		return m.begin();
+	}
+
+	// return existing variable
+	return e->second.begin();
+}
 
 vars_t::iterator findVariable(const string &name) {
 	return find_if_backwards(variables.begin(), variables.end(),

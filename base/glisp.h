@@ -24,7 +24,8 @@ public:
 		typeIdentifier,
 		typeInt,
 		typeList,
-		typeVector
+		typeVector,
+		typeDetach
 	};
 
 	type_t type;
@@ -33,7 +34,8 @@ public:
 
 	cell() {}
 	cell(type_t t, const string &v) : type(t), s(v) {}
-	cell(type_t t, int v) : type(t), i(v){}
+	cell(type_t t, int v) : type(t), i(v) {}
+	cell(type_t t, int _i, const string &_s) : type(t), s(_s), i(_i) {}
 
 	operator string() const;
 	const string getStr() const;
