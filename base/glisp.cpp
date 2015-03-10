@@ -137,7 +137,7 @@ cell_t firstCell(cell_t c) {
 cell_t nextCell(cell_t c) {
 	cell_t delim = c;
 	while (c <= delim) {
-		if(c->type == cell::typeList)
+		if(c->type == cell::typeList || c->type == cell::typeDetach) // TODO: leave detach test?
 			delim += c->i;
 		++c;
 	}
@@ -208,7 +208,9 @@ cell_t detachVariable(cell_t addr, int stackFrame, const string &name) {
 		m.insert(m.begin(), addr, addr + countElements(addr));
 
 		// leave id on stack
-		*addr = {cell::typeDetach, stackFrame, name};
+		*addr = {cell::typeDetach,
+				 addr->type == cell::typeList ? addr->i : 1,
+				 stackFrame, name};
 
 		// return new address
 		return m.begin();
@@ -311,6 +313,7 @@ cell_t pushCar(cell_t l) {
 	return c_nil;
 }
 
+// TODO: call stack is not updated here - invalid!
 // reallocate variable
 cell_t resizeVariable(const string &name, size_t insertPos, size_t elements) {
 	auto var = findVariable(name);
@@ -331,6 +334,7 @@ cell_t resizeVariable(const string &name, size_t insertPos, size_t elements) {
 	return stack.end();
 }
 
+// TODO: call stack is not updated here - invalid!
 // remove variable permanently (make void)
 void removeVariable(const string &name) {
 	auto var = findVariable(name);
@@ -410,6 +414,9 @@ void printState() {
 		}
 		else if (e.type == cell::typeInt) {
 			dout(e.i << " ");
+		}
+		else if (e.type == cell::typeDetach) {
+			dout("[detach:" << e.i << "] ");
 		}
 	}
 
@@ -500,6 +507,7 @@ cell_t popCallStackLeaveData() {
 
 // removes unused (unbound) data from top stack frame
 void sweepStack() {
+	// stack offsets - everything 'below' is valid
 	size_t stackTopOffset = callStack.top();
 	cell_t stackTop = stack.begin() + stackTopOffset;
 
@@ -515,24 +523,40 @@ void sweepStack() {
 	auto varTop = findFirstVar();
 	while (varTop != variables.end()) {
 		size_t &srcAddrOffset = std::get<1>(*varTop);
-		auto srcAddr = stack.begin() + srcAddrOffset;
+		cell_t srcAddr = stack.begin() + srcAddrOffset;
 		size_t elements = countElements(srcAddr);
 
-		// change variable address
-		srcAddrOffset -= srcAddrOffset - stackTopOffset;
+		// erase - detach (unbound variable, 0 cells moved)
+		if (srcAddr->type == cell::typeDetach && srcAddr->j == -1) {
+			variables.erase(varTop);
+			elements = 0;
+		}
+		else {
+			// change variable address
+			srcAddrOffset -= srcAddrOffset - stackTopOffset;
 
-		// relocate variable to stack begin and adjust stack top pointer
-		std::copy(srcAddr, srcAddr + elements, stackTop);
-		stackTop += elements;
-		stackTopOffset += elements;
+			// it's detached memory - copy only 1 element (ID)
+			if (srcAddr->type == cell::typeDetach) {
+				elements = 1;
+				srcAddr->i = 1; // also keep count valid
+			}
+
+			// move data to stack top
+			std::copy(srcAddr, srcAddr + elements, stackTop);
+		}
 
 		// continue searching
+		stackTop += elements;
+		stackTopOffset += elements;
 		varTop = findFirstVar();
 	}
 
 	// discard rest
 	stack.resize(stackTopOffset);
 }
+
+// TODO: removes all unused data (moved previously by detach) - rebuild callstack
+// void sweepAll();
 
 //- initialization consts and intrinsics -
 intrinsics_t intrinsics;
@@ -773,10 +797,15 @@ cell_t eval(cell_t d, bool temporary) {
 		}
 		else if (fxName->s == "unbound") {
 			// eval(d + 2) must be ID
-			removeVariable(eval(d + 2, true)->s);
+			cell r = *eval(d + 2, true);
+
+			// find and tag variable address as detached
+			auto var = getVariable(r.s);
+			if (isVariableValid(var))
+				*var = {cell::typeDetach, var->i, -1, ""};
 
 			// return argument back
-			return pushData(d + 2);
+			return pushCell(r);
 		}
 		else if (fxName->s == "list") {
 			// empty list evaluates to nil
