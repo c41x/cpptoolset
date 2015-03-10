@@ -39,6 +39,8 @@ int main(int argc, char **argv) {
 	test(gl, "(car '(aa bb cc))", "aa");
 	test(gl, "(cdr '(aa bb cc))", "(bb cc)");
 	test(gl, "(nth 1 '(aa bb cc))", "bb");
+	test(gl, "(defvar xx 456)", "xx");
+	test(gl, "(unbound 'l)", "l");
 	#endif
 
 	gl.close();
