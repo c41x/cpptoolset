@@ -30,12 +30,19 @@ public:
 
 	type_t type;
 	string s;
-	int i;
+	union {
+		struct {
+			int i;
+			int j;
+		};
+		int64 ii;
+		__m128 xmm;
+	};
 
 	cell() {}
 	cell(type_t t, const string &v) : type(t), s(v) {}
 	cell(type_t t, int v) : type(t), i(v) {}
-	cell(type_t t, int _i, const string &_s) : type(t), s(_s), i(_i) {}
+	cell(type_t t, int _i, int _j, const string &_s) : type(t), s(_s), i(_i), j(_j) {}
 
 	operator string() const;
 	const string getStr() const;
