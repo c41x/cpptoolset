@@ -21,7 +21,7 @@ const string cell::getStr() const {
 
 namespace detail {
 
-#define GLISP_DEBUG_LOG
+//#define GLISP_DEBUG_LOG
 #ifdef GLISP_DEBUG_LOG
 #define dout(param) std::cout << param
 #else
@@ -180,8 +180,7 @@ cells_t stack;
 vars_t variables;
 
 // auxiculary memory
-typedef std::tuple<int, string> lists_id_t; // stack frame, id
-typedef std::map<lists_id_t, cells_t> lists_t;
+typedef std::map<var_key_t, cells_t> lists_t;
 lists_t lists;
 
 // shortcuts to constants
@@ -189,28 +188,22 @@ cell_t c_nil;
 cell_t c_t;
 
 // comparsion operator for variables (compares by address)
-bool operator<(const var_t &a, const var_t &b) {
+bool operator<(const var_key_t &a, const var_key_t &b) {
 	return std::get<1>(a) < std::get<1>(b);
 }
 
-// comparsion operator for auxiculary memory
-bool operator<(const lists_id_t &a, const lists_id_t &b) {
-	return std::get<0>(a) < std::get<0>(b);
-}
-
 // detach variable to aux memory
-cell_t detachVariable(cell_t addr, int stackFrame, const string &name) {
+cell_t detachVariable(cell_t addr, cell_t val, var_key_t key) {
 	// move data
-	lists_id_t id = std::make_pair(stackFrame, name);
-	auto e = lists.find(id);
+	auto e = lists.find(key);
 	if (e == lists.end()) {
-		cells_t m = lists[id];
-		m.insert(m.begin(), addr, addr + countElements(addr));
+		cells_t &m = lists[key];
+		m.insert(m.begin(), val, val + countElements(val));
 
 		// leave id on stack
 		*addr = {cell::typeDetach,
 				 addr->type == cell::typeList ? addr->i : 1,
-				 stackFrame, name};
+				 (int)std::get<1>(key), std::get<0>(key)};
 
 		// return new address
 		return m.begin();
@@ -220,37 +213,51 @@ cell_t detachVariable(cell_t addr, int stackFrame, const string &name) {
 	return e->second.begin();
 }
 
-vars_t::iterator findVariable(const string &name) {
-	return find_if_backwards(variables.begin(), variables.end(),
-							 [name](const var_t &e) {
-								 return std::get<0>(e) == name;
-							 });
-}
-
-// checks if given iterator / address is valid
-bool isVariableValid(cell_t i) {
-	return i != stack.end();
-}
-
-bool isVariableValid(vars_t::iterator i) {
+// checks if given iterator is valid
+bool isVariableValid(var_t i) {
 	return i != variables.end();
 }
 
-// returns variable
-cell_t getVariable(const string &name) {
-	// find variable
-	auto r = findVariable(name);
+// search for variable in index by name
+var_t findVariable(const string &name) {
+	auto ret = find_if_backwards(variables.begin(), variables.end(),
+								 [name](const var_key_t &e) {
+									 return std::get<0>(e) == name;
+								 });
 
-	// if variable found -> return iterator
-	if(isVariableValid(r))
-		return stack.begin() + std::get<1>(*r);
-
-	// variable name not found
-	dout("variable \"" << name << "\" not found" << std::endl);
-	for(auto v : variables) {
-		dout(" > " << std::get<0>(v) << " = " << std::get<1>(v) << std::endl);
+	// just prints info that variable is not found
+	if (!isVariableValid(ret)) {
+		// variable name not found
+		dout("variable \"" << name << "\" not found" << std::endl);
+		for(auto v : variables) {
+			dout(" > " << std::get<0>(v) << " = " << std::get<1>(v) << std::endl);
+		}
 	}
-	return stack.end();
+
+	return ret;
+}
+
+// get variable address on stack
+cell_t getVariableStackAddress(var_t v) {
+	return stack.begin() + std::get<1>(*v);
+}
+
+string &getVariableName(var_t v) {
+	return std::get<0>(*v);
+}
+
+size_t &getVariablePosition(var_t v) {
+	return std::get<1>(*v);
+}
+
+// gets address to variable data
+cell_t getVariableAddress(var_t v) {
+	cell_t addr = getVariableStackAddress(v);
+
+	if (addr->type == cell::typeDetach)
+		// TODO: check?
+		return lists[*v].begin();
+	return addr;
 }
 
 // push variable and allocate memory
@@ -320,7 +327,7 @@ cell_t resizeVariable(const string &name, size_t insertPos, size_t elements) {
 	if(isVariableValid(var)) {
 		// move variable positions by offset
 		mapc(var + 1, variables.end(),
-			 [elements](var_t &v) {
+			 [elements](var_key_t &v) {
 				 std::get<1>(v) += elements;
 			 });
 
@@ -344,7 +351,7 @@ void removeVariable(const string &name) {
 
 		// offset variables
 		mapc(var + 1, variables.end(),
-			 [offset](var_t &v) {
+			 [offset](var_key_t &v) {
 				 std::get<1>(v) -= offset;
 			 });
 
@@ -396,7 +403,7 @@ void printState() {
 		}
 
 		// variable name
-		auto v = std::find_if(variables.begin(), variables.end(), [&i](var_t &v) {
+		auto v = std::find_if(variables.begin(), variables.end(), [&i](var_key_t &v) {
 				return std::get<1>(v) == i;
 			});
 		if (v != variables.end()) {
@@ -416,7 +423,7 @@ void printState() {
 			dout(e.i << " ");
 		}
 		else if (e.type == cell::typeDetach) {
-			dout("[detach:" << e.i << "] ");
+			dout("[detach:" << e.i << ":" << e.j << "] ");
 		}
 	}
 
@@ -444,7 +451,7 @@ void popVariablesAbove(size_t addr) {
 	if (addr <= std::get<1>(variables.back())) {
 		// there are some variables above addr find last (should always delete sth)
 		variables.erase(find_if_backwards(variables.begin(), variables.end(),
-										  [&addr](var_t var) {
+										  [&addr](var_key_t var) {
 											  return addr >= std::get<1>(var);
 										  }), variables.end());
 	}
@@ -512,9 +519,9 @@ void sweepStack() {
 	cell_t stackTop = stack.begin() + stackTopOffset;
 
 	// searches for first variable in stack frame
-	auto findFirstVar = [&stackTopOffset /*capture variables*/]() -> vars_t::iterator {
+	auto findFirstVar = [&stackTopOffset /*capture variables*/]() -> var_t {
 		return std::next(find_if_backwards(variables.begin(), variables.end(),
-										   [&stackTopOffset](const var_t &var) {
+										   [&stackTopOffset](const var_key_t &var) {
 											   return std::get<1>(var) < stackTopOffset;
 										   }));
 	};
@@ -538,7 +545,7 @@ void sweepStack() {
 			// it's detached memory - copy only 1 element (ID)
 			if (srcAddr->type == cell::typeDetach) {
 				elements = 1;
-				srcAddr->i = 1; // also keep count valid
+				srcAddr->i = 1; // TODO: also keep count valid?
 			}
 
 			// move data to stack top
@@ -680,8 +687,10 @@ cell_t eval(cell_t d, bool temporary) {
 		return --stack.end();
 	}
 	else if (d->type == cell::typeIdentifier) {
-		auto addr = getVariable(d->s);
-		if (isVariableValid(addr)) {
+		var_t var = findVariable(d->s);
+		if (isVariableValid(var)) {
+			auto addr = getVariableAddress(var);
+
 			// return temporary result
 			if (temporary)
 				return addr;
@@ -800,9 +809,11 @@ cell_t eval(cell_t d, bool temporary) {
 			cell r = *eval(d + 2, true);
 
 			// find and tag variable address as detached
-			auto var = getVariable(r.s);
-			if (isVariableValid(var))
-				*var = {cell::typeDetach, var->i, -1, ""};
+			var_t var = findVariable(r.s);
+			if (isVariableValid(var)) {
+				cell_t addr = getVariableAddress(var);
+				*addr = {cell::typeDetach, addr->i, -1, ""};
+			}
 
 			// return argument back
 			return pushCell(r);
@@ -907,10 +918,41 @@ cell_t eval(cell_t d, bool temporary) {
 			// return function id
 			return pushCell(*fnName);
 		}
+		// TODO: setq draft
+		else if (fxName->s == "setq") {
+			string &name = (d + 2)->s;
+			auto var = findVariable(name);
+			if (isVariableValid(var)) {
+				cell_t addr = stack.begin() + std::get<1>(*var);
+				cell_t val = eval(d + 3);
+
+				// TODO: handle case when variable is already detached
+				// calculate elements count
+				size_t sourceSize = countElements(addr);
+				size_t targetSize = countElements(val);
+				//bool isDetached = addr->type == cell::typeDetach;
+
+				// check if we need more space
+				if (sourceSize >= targetSize) {
+					// just replace content
+					std::copy(val, val + targetSize, addr);
+				}
+				else {
+					// we must detach variable
+					addr = detachVariable(addr, val, *var);
+				}
+
+				return addr;
+			}
+
+			// return invalid address
+			return stack.end();
+		}
 
 		// get fx address
-		cell_t fx = getVariable(fxName->s);
-		if (isVariableValid(fx)) {
+		var_t var = findVariable(fxName->s);
+		if (isVariableValid(var)) {
+			cell_t fx = getVariableAddress(var);
 			if (fx->type == cell::typeList) {
 				// [list:][list:]<arg><arg>[list:]<body><body>[list:]<body>...
 				// function stack frame
