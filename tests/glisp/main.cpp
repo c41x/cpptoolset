@@ -41,6 +41,11 @@ int main(int argc, char **argv) {
 	test(gl, "(nth 1 '(aa bb cc))", "bb");
 	test(gl, "(defvar xx 456)", "xx");
 	test(gl, "(unbound 'l)", "l");
+	test(gl, "(quote (asd sdf dfg fgh))", "(asd sdf dfg fgh)");
+	test(gl, "(defvar x 123)", "x");
+	test(gl, "x", "123");
+	test(gl, "(setq x '(1 2 3))", "(1 2 3)");
+	test(gl, "x", "(1 2 3)");
 	#endif
 
 	gl.close();
