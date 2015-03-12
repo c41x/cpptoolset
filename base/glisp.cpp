@@ -418,7 +418,7 @@ void popVariablesAbove(size_t addr) {
 		// there are some variables above addr find last (should always delete sth)
 		variables.erase(backwards_until(variables.begin(), variables.end(),
 										[&addr](var_key_t var) {
-											return std::get<1>(var) >= addr;
+											return std::get<1>(var) < addr;
 										}), variables.end());
 	}
 }

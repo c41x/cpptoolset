@@ -105,7 +105,7 @@ T_ITERATOR backwards_until(T_ITERATOR begin, T_ITERATOR end, T_OPERATION pred) {
 	// search until pred returns false
 	auto last_pass = end;
 	for (auto it = end - 1;; --it) {
-		if (pred(*it))
+		if (!pred(*it))
 			last_pass = it;
 		else return last_pass;
 		if (it == begin)
