@@ -23,8 +23,10 @@ public:
 	enum type_t {
 		typeIdentifier,
 		typeInt,
-		typeList,
+		typeInt64,
+		typeFloat,
 		typeVector,
+		typeList,
 		typeDetach
 	};
 
@@ -35,6 +37,7 @@ public:
 			int i;
 			int j;
 		};
+		float f;
 		int64 ii;
 		__m128 xmm;
 	};
@@ -44,15 +47,15 @@ public:
 	cell(type_t t, int v) : type(t), i(v) {}
 	cell(type_t t, int _i, int _j, const string &_s) : type(t), s(_s), i(_i), j(_j) {}
 
-	operator string() const;
 	const string getStr() const;
 };
 
 typedef std::vector<cell> cells_t;
 typedef std::vector<cell>::iterator cell_t;
 typedef std::function<cell_t(cell_t)> intrinsic_fx_t;
-typedef std::tuple<string, size_t> var_key_t;
-typedef std::vector<var_key_t> vars_t; // name, stack position
+typedef std::tuple<string, size_t> var_key_t; // name, stack position
+typedef std::vector<var_key_t> vars_t;
+typedef std::map<var_key_t, cells_t> lists_t;
 typedef vars_t::iterator var_t;
 typedef std::stack<size_t> call_stack_t;
 typedef std::tuple<string, intrinsic_fx_t> intrinsic_tuple_t;
@@ -82,6 +85,5 @@ public:
 // TODO: lists management
 // TODO: resizable memory (add-to-list etc.)
 // TODO: loops? mapping functions
-// TODO: non standard types
 // TODO: cons? assoc
 // TODO: cond

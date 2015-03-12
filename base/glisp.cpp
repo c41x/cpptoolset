@@ -180,7 +180,6 @@ cells_t stack;
 vars_t variables;
 
 // auxiculary memory
-typedef std::map<var_key_t, cells_t> lists_t;
 lists_t lists;
 
 // shortcuts to constants
@@ -923,7 +922,7 @@ cell_t eval(cell_t d, bool temporary) {
 			string &name = (d + 2)->s;
 			auto var = findVariable(name);
 			if (isVariableValid(var)) {
-				cell_t addr = stack.begin() + std::get<1>(*var);
+				cell_t addr = getVariableStackAddress(var);
 				cell_t val = eval(d + 3);
 
 				// TODO: handle case when variable is already detached
