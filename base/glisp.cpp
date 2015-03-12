@@ -441,6 +441,7 @@ void printState() {
 		rcs.pop();
 	}
 
+	// TODO: print counts
 	if (rcs.size() > 0)
 		dout("| call stack corrupted! ");
 
@@ -458,10 +459,10 @@ void popVariablesAbove(size_t addr) {
 	// no variables defined with address above given (warning - asserting that variables is not empty)
 	if (addr <= std::get<1>(variables.back())) {
 		// there are some variables above addr find last (should always delete sth)
-		variables.erase(find_if_backwards(variables.begin(), variables.end(),
-										  [&addr](var_key_t var) {
-											  return addr >= std::get<1>(var);
-										  }), variables.end());
+		variables.erase(backwards_until(variables.begin(), variables.end(),
+										[&addr](var_key_t var) {
+											return std::get<1>(var) >= addr;
+										}), variables.end());
 	}
 }
 
@@ -502,15 +503,6 @@ cell_t popCallStackLeaveData(cell_t addr) {
 	stack.resize(callStack.top() + elemsCount);
 	callStack.pop();
 	return whence;
-}
-
-// same as above but preceeded with cs pop
-cell_t pop2CallStackLeaveData(cell_t addr) {
-	// nuke last call stack frame (merge frames)
-	callStack.pop();
-
-	// pop call stack leaving addr
-	return popCallStackLeaveData(addr);
 }
 
 // pops call stack and leaves stack untouched
@@ -638,34 +630,16 @@ cell_t eval(cell_t d, bool temporary = false);
 
 // helper for evaluating lists, evals all elements and returns last
 cell_t evalreturn(cell_t begin, cell_t end) {
-	for (cell_t i = begin; i != end;) {
-		pushCallStack();
-		cell_t lastResult = eval(i);
-		//std::tie(lastResult, i) = eval(i);
-		i = nextCell(i);
-		if(i == end)
-			return lastResult;
-		popCallStack();
-	}
+	cell_t lastResult = c_nil; // return nil when evaluating empty list
 
-	// return nil when evaluating empty list
-	return c_nil;
+	// evaluate all cells
+	for (cell_t i = begin; i != end; i = nextCell(i))
+		lastResult = eval(i);
+
+	return lastResult;
 }
 
-// same as above, but with no stack
-cell_t evalreturnNoStack(cell_t begin, cell_t end) {
-	for (cell_t i = begin; i != end;) {
-		cell_t lastResult = eval(i);
-		i = nextCell(i);
-		if(i == end)
-			return lastResult;
-	}
-
-	// return nil when evaluating empty list
-	return c_nil;
-}
-
-// evals all elements leaving results on stack
+// evals all elements leaving results on stack (same as above but no address returned)
 void evalNoStack(cell_t begin, cell_t end) {
 	for (; begin != end; begin = nextCell(begin))
 		eval(begin);
@@ -769,11 +743,10 @@ cell_t eval(cell_t d, bool temporary) {
 			pushCallStack();
 			cell_t testi = eval(d + 2, true);
 			bool test = testi->s != "nil" || testi->type != cell::typeIdentifier;
-			popCallStack();
 
 			// test and eval
 			if (test)
-				return eval(lastCell(d + 2));
+				return popCallStackLeaveData(eval(lastCell(d + 2)));
 			else {
 				cell_t offset = lastCell(lastCell(d + 2)); // else statements offset
 				return popCallStackLeaveData(evalreturn(offset, lastCell(d)));
@@ -794,6 +767,7 @@ cell_t eval(cell_t d, bool temporary) {
 		}
 		else if (fxName->s == "progn") {
 			// d->i must be > 1
+			pushCallStack();
 			return popCallStackLeaveData(evalreturn(d + 2, lastCell(d)));
 		}
 		else if (fxName->s == "let") {
@@ -806,14 +780,14 @@ cell_t eval(cell_t d, bool temporary) {
 			}
 
 			// evaluate function body
-			return popCallStackLeaveData(evalreturnNoStack(nextCell(args), lastCell(d)));
+			return popCallStackLeaveData(evalreturn(nextCell(args), lastCell(d)));
 		}
 		else if (fxName->s == "boundp") {
 			// eval(d + 2) must be ID
 			return isVariableValid(findVariable(eval(d + 2, true)->s)) ? c_t : c_nil;
 		}
 		else if (fxName->s == "unbound") {
-			// eval(d + 2) must be ID
+			// eval(d + 2) must be ID (we are not using stack frames)
 			cell r = *eval(d + 2, true);
 
 			// find and tag variable address as detached
@@ -996,7 +970,7 @@ cell_t eval(cell_t d, bool temporary) {
 
 				// evaluate body
 				cell_t body = nextCell(args);
-				return pop2CallStackLeaveData(evalreturn(body, lastCell(fx)));
+				return popCallStackLeaveData(evalreturn(body, lastCell(fx)));
 			}
 			dout("not function!" << std::endl);
 			return fx;
