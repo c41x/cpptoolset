@@ -1,3 +1,5 @@
+//#define REPL
+
 #include <base/base.h>
 
 bool test(granite::base::lisp &gl, const string &input, const string &expectedOutput) {
@@ -10,8 +12,6 @@ bool test(granite::base::lisp &gl, const string &input, const string &expectedOu
 	std::cout << "[fail] " << input << " = " << result << std::endl;
 	return false;
 }
-
-//#define REPL
 
 int main(int argc, char **argv) {
 	granite::base::lisp gl;
@@ -42,10 +42,16 @@ int main(int argc, char **argv) {
 	test(gl, "(defvar xx 456)", "xx");
 	test(gl, "(unbound 'l)", "l");
 	test(gl, "(quote (asd sdf dfg fgh))", "(asd sdf dfg fgh)");
+	test(gl, "(progn (progn 1 2 3 'asd) 44)", "44");
 	test(gl, "(defvar x 123)", "x");
 	test(gl, "x", "123");
 	test(gl, "(setq x '(1 2 3))", "(1 2 3)");
 	test(gl, "x", "(1 2 3)");
+	test(gl, "(setq x 666)", "666");
+	test(gl, "(setq x (progn (defvar zyx 777) zyx))", "777");
+	test(gl, "(progn (defvar zyx 777) zyx)", "777");
+	test(gl, "(set (progn 123 33 (defvar its-x 'x) its-x) 1234567)", "1234567");
+
 	#endif
 
 	gl.close();
