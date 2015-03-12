@@ -94,4 +94,26 @@ T_ITERATOR find_if_backwards(T_ITERATOR begin, T_ITERATOR end, T_OPERATION pred)
 	return end;
 }
 
+// search for last element, break if pred returns false
+// returns last element [e] that [pred(e)] == true
+template <typename T_ITERATOR, typename T_OPERATION>
+T_ITERATOR backwards_until(T_ITERATOR begin, T_ITERATOR end, T_OPERATION pred) {
+	// empty sequence
+	if (begin == end)
+		return end;
+
+	// search until pred returns false
+	auto last_pass = end;
+	for (auto it = end - 1;; --it) {
+		if (pred(*it))
+			last_pass = it;
+		else return last_pass;
+		if (it == begin)
+			break;
+	}
+
+	// not found
+	return end;
+}
+
 }}
