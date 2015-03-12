@@ -328,49 +328,6 @@ cell_t pushCar(cell_t l) {
 	return c_nil;
 }
 
-// TODO: call stack is not updated here - invalid!
-// reallocate variable
-cell_t resizeVariable(const string &name, size_t insertPos, size_t elements) {
-	auto var = findVariable(name);
-	if(isVariableValid(var)) {
-		// move variable positions by offset
-		mapc(var + 1, variables.end(),
-			 [elements](var_key_t &v) {
-				 std::get<1>(v) += elements;
-			 });
-
-		// resize stack and return variable address
-		auto varMemLocation = stack.begin() + std::get<1>(*var);
-		stack.insert(varMemLocation + insertPos, elements, cell());
-		return varMemLocation;
-	}
-
-	// return invalid variable address
-	return stack.end();
-}
-
-// TODO: call stack is not updated here - invalid!
-// remove variable permanently (make void)
-void removeVariable(const string &name) {
-	auto var = findVariable(name);
-	if (isVariableValid(var)) {
-		cell_t addr = stack.begin() + std::get<1>(*var);
-		size_t offset = countElements(addr);
-
-		// offset variables
-		mapc(var + 1, variables.end(),
-			 [offset](var_key_t &v) {
-				 std::get<1>(v) -= offset;
-			 });
-
-		// free data
-		stack.erase(addr, addr + offset);
-
-		// erase variable from index
-		variables.erase(var);
-	}
-}
-
 // get address (just size_t number - do not use in logic code)
 size_t getAddress(cell_t c) {
 	return std::distance(stack.begin(), c);
