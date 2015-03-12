@@ -935,12 +935,10 @@ cell_t eval(cell_t d, bool temporary) {
 			pushCallStack();
 			if (isSetq) {
 				const string &name = (d + 2)->s;
-				std::cout << "is setq: " << name << std::endl;
 				var = findVariable(name);
 			}
 			else {
 				const string &name = eval(d + 2, true)->s;
-				std::cout << "is set: " << name << std::endl;
 				var = findVariable(name);
 			}
 
