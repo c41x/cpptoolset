@@ -21,7 +21,7 @@ const string cell::getStr() const {
 
 namespace detail {
 
-//#define GLISP_DEBUG_LOG
+#define GLISP_DEBUG_LOG
 #ifdef GLISP_DEBUG_LOG
 #define dout(param) std::cout << param
 #else
@@ -65,9 +65,6 @@ cells_t parse(const string &s) {
 	};
 
 	auto onNewElement = [&openPars, &cells, &checkQuoteDelim]() {
-		// check if we need to terminate quote
-		checkQuoteDelim();
-
 		// increase list elements count
 		if (openPars.size() > 0)
 			cells[std::get<0>(openPars.top())].i++;
@@ -76,6 +73,9 @@ cells_t parse(const string &s) {
 	// tokenizer loop
 	for (auto t = tok.begin(s, false); t; t = tok.next()) {
 		if (t.id == tokenOpenPar || t.id == tokenQuote) {
+			// check if we need close quote first
+			checkQuoteDelim();
+
 			// add new element (list is element too)
 			onNewElement();
 
@@ -102,6 +102,9 @@ cells_t parse(const string &s) {
 			if (isInteger(t.value))
 				cells.push_back(cell(cell::typeInt, fromStr<int>(t.value)));
 			else cells.push_back(cell(cell::typeIdentifier, t.value));
+
+			// after element is added - check if we need to close quote
+			checkQuoteDelim();
 		}
 	}
 
@@ -257,6 +260,12 @@ cell_t getVariableAddress(var_t v) {
 		// TODO: check?
 		return lists[*v].begin();
 	return addr;
+}
+
+// gets detached memory vector
+cells_t &getVariableContainer(var_t v) {
+	// TODO: check?
+	return lists[*v];
 }
 
 // push variable and allocate memory
@@ -917,35 +926,57 @@ cell_t eval(cell_t d, bool temporary) {
 			// return function id
 			return pushCell(*fnName);
 		}
-		// TODO: setq draft
-		else if (fxName->s == "setq") {
-			string &name = (d + 2)->s;
-			auto var = findVariable(name);
+		else if (fxName->s == "setq" || fxName->s == "set") {
+			const bool isSetq = fxName->s == "setq";
+			var_t var;
+			cell_t addr = stack.end(); // default invalid return value
+
+			// find variable name
+			pushCallStack();
+			if (isSetq) {
+				const string &name = (d + 2)->s;
+				std::cout << "is setq: " << name << std::endl;
+				var = findVariable(name);
+			}
+			else {
+				const string &name = eval(d + 2, true)->s;
+				std::cout << "is set: " << name << std::endl;
+				var = findVariable(name);
+			}
+
+			// perform variable replace
 			if (isVariableValid(var)) {
-				cell_t addr = getVariableStackAddress(var);
-				cell_t val = eval(d + 3);
-
-				// TODO: handle case when variable is already detached
-				// calculate elements count
-				size_t sourceSize = countElements(addr);
+				addr = getVariableStackAddress(var);
+				cell_t val = eval(nextCell(d + 2));
 				size_t targetSize = countElements(val);
-				//bool isDetached = addr->type == cell::typeDetach;
 
-				// check if we need more space
-				if (sourceSize >= targetSize) {
-					// just replace content
-					std::copy(val, val + targetSize, addr);
+				// cell is already detached -> reassign its contents
+				if (addr->type == cell::typeDetach) {
+					cells_t &varContainer = getVariableContainer(var);
+					varContainer.assign(val, val + targetSize);
+					addr = varContainer.begin();
 				}
 				else {
-					// we must detach variable
-					addr = detachVariable(addr, val, *var);
+					// calculate elements count
+					size_t sourceSize = countElements(addr);
+
+					// check if we need more space
+					if (sourceSize >= targetSize) {
+						// just replace content on stack
+						std::copy(val, val + targetSize, addr);
+					}
+					else {
+						// we must detach variable
+						addr = detachVariable(addr, val, *var);
+					}
 				}
 
 				return addr;
 			}
 
-			// return invalid address
-			return stack.end();
+			// return address and pop all temporary mess
+			popCallStack();
+			return addr;
 		}
 
 		// get fx address
