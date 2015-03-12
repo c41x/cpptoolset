@@ -970,8 +970,6 @@ cell_t eval(cell_t d, bool temporary) {
 						addr = detachVariable(addr, val, *var);
 					}
 				}
-
-				return addr;
 			}
 
 			// return address and pop all temporary mess
