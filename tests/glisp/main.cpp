@@ -51,7 +51,12 @@ int main(int argc, char **argv) {
 	test(gl, "(setq x (progn (defvar zyx 777) zyx))", "777");
 	test(gl, "(progn (defvar zyx 777) zyx)", "777");
 	test(gl, "(set (progn 123 33 (defvar its-x 'x) its-x) 1234567)", "1234567");
-
+	test(gl, "(defvar ll '(a b c))", "ll");
+	test(gl, "(push 'asdf ll)", "(a b c asdf)");
+	test(gl, "ll", "(a b c asdf)");
+	test(gl, "(pop ll)", "asdf");
+	test(gl, "ll", "(a b c)");
+	test(gl, "(append ll '(1 2 3 4))", "(a b c 1 2 3 4)");
 	#endif
 
 	gl.close();

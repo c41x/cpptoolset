@@ -68,7 +68,7 @@ class lisp {
 	vars_t _variables;
 	call_stack_t _callStack;
 	intrinsics_t _intrinsics;
-	// TODO: add lists
+	lists_t _lists;
 public:
 	lisp() {}
 	~lisp() {}

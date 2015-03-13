@@ -21,7 +21,7 @@ const string cell::getStr() const {
 
 namespace detail {
 
-#define GLISP_DEBUG_LOG
+//#define GLISP_DEBUG_LOG
 #ifdef GLISP_DEBUG_LOG
 #define dout(param) std::cout << param
 #else
@@ -154,22 +154,36 @@ cell_t nthCell(cell_t c, size_t n) {
 }
 
 // iterating over lists: cell after last one
-cell_t lastCell(cell_t c) {
+cell_t endCell(cell_t c) {
 	return nextCell(c);
+}
+
+// last cell of list
+cell_t lastCell(cell_t c) {
+	cell_t e = endCell(c);
+	cell_t r = c;
+	c = firstCell(c);
+	while (true) {
+		if (c >= e)
+			return r;
+		else r = c;
+		c = nextCell(c);
+	}
+	return c;
 }
 
 // counts elements of given cell
 size_t countElements(cell_t c) {
-	return std::distance(c, lastCell(c));
+	return std::distance(c, endCell(c));
 }
 
 // nice print cell
 string toString(const cell_t c) {
 	if (c->type == cell::typeList) {
 		string s = "(";
-		for (auto i = firstCell(c); i != lastCell(c); i = nextCell(i)) {
+		for (auto i = firstCell(c); i != endCell(c); i = nextCell(i)) {
 			s += toString(i);
-			if (nextCell(i) != lastCell(c))
+			if (nextCell(i) != endCell(c))
 				s += " ";
 		}
 		s += ")";
@@ -195,12 +209,21 @@ bool operator<(const var_key_t &a, const var_key_t &b) {
 }
 
 // detach variable to aux memory
-cell_t detachVariable(cell_t addr, cell_t val, var_key_t key) {
+cell_t detachVariable(cell_t addr, bool copySelf, cell_t val_begin, cell_t val_end, var_key_t key) {
 	// move data
 	auto e = lists.find(key);
 	if (e == lists.end()) {
 		cells_t &m = lists[key];
-		m.insert(m.begin(), val, val + countElements(val));
+
+		// reserve space
+		size_t selfSize = copySelf ? countElements(addr) : 0;
+		size_t valSize = std::distance(val_begin, val_end);
+		m.reserve(selfSize + valSize);
+
+		// copy contents
+		if (copySelf)
+			m.insert(m.end(), addr, addr + selfSize);
+		m.insert(m.end(), val_begin, val_end);
 
 		// leave id on stack
 		*addr = {cell::typeDetach,
@@ -266,6 +289,23 @@ cell_t getVariableAddress(var_t v) {
 cells_t &getVariableContainer(var_t v) {
 	// TODO: check?
 	return lists[*v];
+}
+
+// gather all variable data <is valid, is detached, data address, variable it, container>
+std::tuple<bool, bool, cell_t, var_t, cells_t*> fetchVariable(cell_t addr) {
+	const string &name = addr->s;
+	var_t var = findVariable(name);
+	bool isValid = isVariableValid(var);
+	if (isValid) {
+		bool isDetached = getVariableStackAddress(var)->type == cell::typeDetach;
+		if (isDetached)
+			return std::make_tuple(true, true,
+								   getVariableContainer(var).begin(),
+								   var,
+								   &getVariableContainer(var));
+		return std::make_tuple(true, false, getVariableStackAddress(var), var, &stack);
+	}
+	return std::make_tuple(false, false, stack.end(), var, &stack);
 }
 
 // push variable and allocate memory
@@ -690,7 +730,7 @@ cell_t eval(cell_t d, bool temporary) {
 		}
 		else if (fxName->s == "+") {
 			int sum = 0;
-			evalmap(firstCell(d) + 1, lastCell(d), [&sum](cell_t i){ sum += i->i; });
+			evalmap(firstCell(d) + 1, endCell(d), [&sum](cell_t i){ sum += i->i; });
 
 			// leave return value on stack
 			return pushCell({cell::typeInt, sum});
@@ -703,10 +743,10 @@ cell_t eval(cell_t d, bool temporary) {
 
 			// test and eval
 			if (test)
-				return popCallStackLeaveData(eval(lastCell(d + 2)));
+				return popCallStackLeaveData(eval(endCell(d + 2)));
 			else {
-				cell_t offset = lastCell(lastCell(d + 2)); // else statements offset
-				return popCallStackLeaveData(evalreturn(offset, lastCell(d)));
+				cell_t offset = endCell(endCell(d + 2)); // else statements offset
+				return popCallStackLeaveData(evalreturn(offset, endCell(d)));
 			}
 		}
 		else if (fxName->s == "=") {
@@ -725,19 +765,19 @@ cell_t eval(cell_t d, bool temporary) {
 		else if (fxName->s == "progn") {
 			// d->i must be > 1
 			pushCallStack();
-			return popCallStackLeaveData(evalreturn(d + 2, lastCell(d)));
+			return popCallStackLeaveData(evalreturn(d + 2, endCell(d)));
 		}
 		else if (fxName->s == "let") {
 			// evaluate and push variables
 			pushCallStack();
 			cell_t args = d + 2;
-			for (cell_t a = firstCell(args); a != lastCell(args); a = nextCell(a)) {
+			for (cell_t a = firstCell(args); a != endCell(args); a = nextCell(a)) {
 				cell_t val = eval(a + 2);
 				pushVariable((a + 1)->s, val);
 			}
 
 			// evaluate function body
-			return popCallStackLeaveData(evalreturn(nextCell(args), lastCell(d)));
+			return popCallStackLeaveData(evalreturn(nextCell(args), endCell(d)));
 		}
 		else if (fxName->s == "boundp") {
 			// eval(d + 2) must be ID
@@ -765,7 +805,7 @@ cell_t eval(cell_t d, bool temporary) {
 			// create list and eval its elements
 			auto ret = stack.begin() + stack.size();
 			stack.push_back({cell::typeList, d->i - 1});
-			evalNoStack(d + 2, lastCell(d));
+			evalNoStack(d + 2, endCell(d));
 			return ret;
 		}
 		else if (fxName->s == "listp") {
@@ -830,10 +870,8 @@ cell_t eval(cell_t d, bool temporary) {
 			// calc N
 			pushCallStack();
 			int n = eval(d + 2, true)->i;
-			popCallStack();
 
 			// find address
-			pushCallStack();
 			cell_t nth = eval(d + 3);
 			if (nth->type != cell::typeList){
 				popCallStack();
@@ -842,8 +880,7 @@ cell_t eval(cell_t d, bool temporary) {
 
 			// nth->i must be < N
 			// find nth element in list and return result
-			popCallStackLeaveData(nthCell(nth, n));
-			return nth;
+			return popCallStackLeaveData(nthCell(nth, n));
 		}
 		else if (fxName->s == "defun") {
 			// d->i > 4
@@ -851,39 +888,33 @@ cell_t eval(cell_t d, bool temporary) {
 
 			// just put list (lambda) on stack
 			cell_t va = pushCell({cell::typeList, d->i - 2}); // without "defun" and <fnName>
-			stack.insert(stack.end(), d + 3, lastCell(d)); // copy args and body
+			stack.insert(stack.end(), d + 3, endCell(d)); // copy args and body
 			pushVariable(fnName->s, va);
 
 			// return function id
 			return pushCell(*fnName);
 		}
 		else if (fxName->s == "setq" || fxName->s == "set") {
-			const bool isSetq = fxName->s == "setq";
-			var_t var;
-			cell_t addr = stack.end(); // default invalid return value
-
-			// find variable name
 			pushCallStack();
-			if (isSetq) {
-				const string &name = (d + 2)->s;
-				var = findVariable(name);
-			}
-			else {
-				const string &name = eval(d + 2, true)->s;
-				var = findVariable(name);
-			}
+
+			// gather data
+			const bool isSetq = fxName->s == "setq";
+			bool isValid;
+			bool isDetached;
+			cell_t addr;
+			var_t var;
+			cells_t *cont;
+			std::tie(isValid, isDetached, addr, var, cont) =
+				fetchVariable(isSetq ? (d + 2) : eval(d + 2, true));
 
 			// perform variable replace
-			if (isVariableValid(var)) {
-				addr = getVariableStackAddress(var);
+			if (isValid) {
 				cell_t val = eval(nextCell(d + 2));
 				size_t targetSize = countElements(val);
 
 				// cell is already detached -> reassign its contents
-				if (addr->type == cell::typeDetach) {
-					cells_t &varContainer = getVariableContainer(var);
-					varContainer.assign(val, val + targetSize);
-					addr = varContainer.begin();
+				if (isDetached) {
+					cont->assign(val, val + targetSize);
 				}
 				else {
 					// calculate elements count
@@ -896,7 +927,7 @@ cell_t eval(cell_t d, bool temporary) {
 					}
 					else {
 						// we must detach variable
-						addr = detachVariable(addr, val, *var);
+						addr = detachVariable(addr, false, val, val + countElements(val), *var);
 					}
 				}
 			}
@@ -905,7 +936,122 @@ cell_t eval(cell_t d, bool temporary) {
 			popCallStack();
 			return addr;
 		}
+		else if (fxName->s == "length") {
+			pushCallStack();
+			cell_t addr = eval(d + 2, true);
+			int len = addr->type == cell::typeList ? addr->i : 1;
+			popCallStack();
+			return pushCell({cell::typeInt, len});
+		}
+		else if (fxName->s == "push") {
+			// addr must be list, d + 3 must be id
+			pushCallStack();
+			bool isValid;
+			bool isDetached;
+			cell_t addr;
+			var_t var;
+			cells_t *cont;
+			std::tie(isValid, isDetached, addr, var, cont) = fetchVariable(nextCell(d + 2));
 
+			// push variable at list's end
+			if (isValid) {
+				cell_t val = eval(d + 2);
+
+				// insert cell
+				if (isDetached) {
+					cont->insert(cont->end(), val, val + countElements(val));
+					addr = cont->begin();
+				}
+				else addr = detachVariable(addr, true, val, val + countElements(val), *var);
+
+				// update count
+				addr->i += 1;
+			}
+
+			// return address and pop all temporary mess
+			popCallStack();
+			return addr;
+		}
+		else if (fxName->s == "pop") {
+			// addr must be list, d + 3 must be id
+			pushCallStack();
+			bool isValid;
+			bool isDetached;
+			cell_t addr;
+			var_t var;
+			cells_t *cont;
+			std::tie(isValid, isDetached, addr, var, cont) = fetchVariable(d + 2);
+
+			// pop variable and return it's value
+			if (isValid) {
+				// find last element and leave it on the stack
+				cell_t last = lastCell(addr);
+				cell_t ret = pushData(last);
+
+				// note: free space only for detached!
+				if (isDetached)
+					cont->erase(last, cont->end());
+
+				// update count
+				addr->i -= 1;
+
+				// return value
+				return popCallStackLeaveData(ret);
+			}
+
+			// return address and pop all temporary mess
+			popCallStack();
+			return addr;
+		}
+		else if (fxName->s == "append") {
+			// addr must be list, d + 3 must be id
+			pushCallStack();
+			bool isValid;
+			bool isDetached;
+			cell_t addr;
+			var_t var;
+			cells_t *cont;
+			std::tie(isValid, isDetached, addr, var, cont) = fetchVariable(d + 2);
+
+			// merge 2 lists
+			if (isValid) {
+				// eval target value
+				cell_t val = eval(nextCell(d + 2), true);
+				size_t elems = countElements(val);
+
+				// merging
+				if (isDetached) {
+					cont->insert(cont->end(), val + 1, val + elems);
+					addr = cont->begin(); // addr may be invalid at this point
+				}
+				else addr = detachVariable(addr, true, val + 1, val + elems, *var);
+
+				// update count (-1 because countElements includes list header)
+				addr->i += elems - 1;
+			}
+
+			// return address and pop all temporary mess
+			popCallStack();
+			return addr;
+		}
+		else if (fxName->s == "setcar") {
+
+		}
+
+		/*
+		 * setcar
+		 * setcdr
+
+		 * add-to-list (unique)
+		 * add-to-ordered-list (sorted)
+		 * reverse
+		 * sort
+		 * member
+		 * delete
+		 ** assoc **
+		 */
+
+		//- functions evaluation -
 		// get fx address
 		var_t var = findVariable(fxName->s);
 		if (isVariableValid(var)) {
@@ -927,7 +1073,7 @@ cell_t eval(cell_t d, bool temporary) {
 
 				// evaluate body
 				cell_t body = nextCell(args);
-				return popCallStackLeaveData(evalreturn(body, lastCell(fx)));
+				return popCallStackLeaveData(evalreturn(body, endCell(fx)));
 			}
 			dout("not function!" << std::endl);
 			return fx;
@@ -942,7 +1088,7 @@ cell_t eval(cell_t d, bool temporary) {
 
 				// evaluate arguments (leave result on stack)
 				pushCell(cell(cell::typeList, d->i - 1)); // list elements count (not counting name)
-				evalNoStack(d + 2, lastCell(d));
+				evalNoStack(d + 2, endCell(d));
 
 				// call intrinsic
 				return popCallStackLeaveData(std::get<1>(*i)(r));
