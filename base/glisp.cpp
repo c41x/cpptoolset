@@ -21,7 +21,7 @@ const string cell::getStr() const {
 
 namespace detail {
 
-//#define GLISP_DEBUG_LOG
+#define GLISP_DEBUG_LOG
 #ifdef GLISP_DEBUG_LOG
 #define dout(param) std::cout << param
 #else
@@ -428,7 +428,8 @@ void printState() {
 			dout(e.i << " ");
 		}
 		else if (e.type == cell::typeDetach) {
-			dout("[detach:" << e.i << ":" << e.j << "] ");
+			dout("[detach:" << e.i << ":" << e.j << ":" <<
+				 (e.j != -1 ? toString(getVariableAddress(v)) : "?") << "] ");
 		}
 	}
 
