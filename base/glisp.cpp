@@ -1036,7 +1036,34 @@ cell_t eval(cell_t d, bool temporary) {
 			return addr;
 		}
 		else if (fxName->s == "setcar") {
+			pushCallStack();
+			bool isValid;
+			bool isDetached;
+			cell_t addr;
+			var_t var;
+			cells_t *cont = nullptr;
+			std::tie(isValid, isDetached, addr, var, cont) = fetchVariable(d + 2);
 
+			if (isValid) {
+				cell_t val = eval(nextCell(d + 2));
+				size_t dstSize = countElements(val);
+				size_t srcSize = countElements(addr + 1);
+
+				// check if we need to detach memory
+				if (!isDetached && srcSize != dstSize)
+					addr = detachVariable(addr, false, addr,
+										  addr + countElements(addr), *var);
+
+				// replace memory content
+				addr = remove_copy(*cont, addr + 1, addr + 1 + srcSize,
+								   val, val + dstSize);
+
+				// move iterator one element back (addr by now contains pointer to car)
+				--addr;
+			}
+
+			popCallStack();
+			return addr;
 		}
 
 		/*

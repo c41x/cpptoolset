@@ -116,4 +116,34 @@ T_ITERATOR backwards_until(T_ITERATOR begin, T_ITERATOR end, T_OPERATION pred) {
 	return end;
 }
 
+// deletes range [del_begin, del_end), inserts [copy_begin, copy_end) instead
+template <typename T_CONTAINER, typename T_ITERATOR>
+T_ITERATOR remove_copy(T_CONTAINER &container,
+					   T_ITERATOR del_begin, T_ITERATOR del_end,
+					   T_ITERATOR copy_begin, T_ITERATOR copy_end) {
+	size_t delSize = std::distance(del_begin, del_end);
+	size_t copySize = std::distance(copy_begin, copy_end);
+	size_t firstPartSize = std::min(delSize, copySize);
+
+	// copy first part
+	std::copy(copy_begin, copy_begin + firstPartSize, del_begin);
+
+	// return pos if sizes were equal
+	if (copySize == delSize)
+		return del_begin;
+
+	// remember iterator position
+	size_t delPosition = std::distance(container.begin(), del_begin);
+
+	// allocate more space and copy second part, or...
+	if (copySize > delSize)
+		container.insert(del_end, copy_begin + delSize, copy_end);
+	else
+		// ... remove unused part
+		container.erase(del_begin + firstPartSize, del_end);
+
+	// return valid iterator
+	return container.begin() + delPosition;
+}
+
 }}

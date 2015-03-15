@@ -57,6 +57,8 @@ int main(int argc, char **argv) {
 	test(gl, "(pop ll)", "asdf");
 	test(gl, "ll", "(a b c)");
 	test(gl, "(append ll '(1 2 3 4))", "(a b c 1 2 3 4)");
+	test(gl, "(setcar ll 666", "((x y z) b c 1 2 3 4)");
+	test(gl, "(setcar ll '(x y z)", "((x y z) b c 1 2 3 4)");
 	#endif
 
 	gl.close();
