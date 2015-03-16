@@ -57,8 +57,27 @@ int main(int argc, char **argv) {
 	test(gl, "(pop ll)", "asdf");
 	test(gl, "ll", "(a b c)");
 	test(gl, "(append ll '(1 2 3 4))", "(a b c 1 2 3 4)");
-	test(gl, "(setcar ll 666", "((x y z) b c 1 2 3 4)");
-	test(gl, "(setcar ll '(x y z)", "((x y z) b c 1 2 3 4)");
+	test(gl, "(setcar ll 666)", "666");
+	test(gl, "ll", "(666 b c 1 2 3 4)");
+	test(gl, "(setcar ll '(x y z))", "(x y z)");
+	test(gl, "ll", "((x y z) b c 1 2 3 4)");
+	test(gl, "(setcdr ll '(c d '(r r r))", "(c d (quote (r r r)))");
+	test(gl, "ll", "((x y z) c d (quote (r r r)))");
+	test(gl, "(defvar ll1 '(1 2 3))", "ll1");
+	test(gl, "(setcdr ll1 '(b c))", "(b c)");
+	test(gl, "ll1", "(1 b c)");
+	test(gl, "(defvar ll2 '(1 2))", "ll2");
+	test(gl, "(setcdr ll2 '(c))", "(c)");
+	test(gl, "ll2", "(1 c)");
+	test(gl, "(setcdr ll2 66)", "66");
+	test(gl, "ll2", "(1 66)");
+	test(gl, "(setcdr ll2 '(ugly parabola wolfram))", "(ugly parabola wolfram)");
+	test(gl, "ll2", "(1 ugly parabola wolfram)");
+	test(gl, "(setcdr ll2 '(ugly parabola))", "(ugly parabola)");
+	test(gl, "ll2", "(1 ugly parabola)");
+	test(gl, "(defvar ll3 '(1 2))", "ll3");
+	test(gl, "(setcar ll3 '(1 2))", "(1 2)");
+	test(gl, "ll3", "((1 2) 2)");
 	#endif
 
 	gl.close();
