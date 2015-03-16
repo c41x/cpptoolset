@@ -21,7 +21,7 @@ const string cell::getStr() const {
 
 namespace detail {
 
-#define GLISP_DEBUG_LOG
+//#define GLISP_DEBUG_LOG
 #ifdef GLISP_DEBUG_LOG
 #define dout(param) std::cout << param
 #else
@@ -209,20 +209,19 @@ bool operator<(const var_key_t &a, const var_key_t &b) {
 }
 
 // detach variable to aux memory
-cell_t detachVariable(cell_t addr, bool copySelf, cell_t val_begin, cell_t val_end, var_key_t key) {
+cell_t detachVariable(cell_t addr, cell_t addr_end, cell_t val_begin, cell_t val_end, var_key_t key) {
 	// move data
 	auto e = lists.find(key);
 	if (e == lists.end()) {
 		cells_t &m = lists[key];
 
 		// reserve space
-		size_t selfSize = copySelf ? countElements(addr) : 0;
+		size_t selfSize = std::distance(addr, addr_end);
 		size_t valSize = std::distance(val_begin, val_end);
 		m.reserve(selfSize + valSize);
 
 		// copy contents
-		if (copySelf)
-			m.insert(m.end(), addr, addr + selfSize);
+		m.insert(m.end(), addr, addr_end);
 		m.insert(m.end(), val_begin, val_end);
 
 		// leave id on stack
@@ -236,6 +235,16 @@ cell_t detachVariable(cell_t addr, bool copySelf, cell_t val_begin, cell_t val_e
 
 	// return existing variable
 	return e->second.begin();
+}
+
+// shortcuts for detach variable
+cell_t detachVariable(cell_t addr, var_key_t key) {
+	return detachVariable(addr, addr + countElements(addr), addr, addr, key);
+}
+
+cell_t detachVariable(cell_t addr, cell_t val, var_key_t key) {
+	return detachVariable(addr, addr,
+						  val, val + countElements(val), key);
 }
 
 // checks if given iterator is valid
@@ -928,7 +937,7 @@ cell_t eval(cell_t d, bool temporary) {
 					}
 					else {
 						// we must detach variable
-						addr = detachVariable(addr, false, val, val + countElements(val), *var);
+						addr = detachVariable(addr, val, *var);
 					}
 				}
 			}
@@ -963,7 +972,8 @@ cell_t eval(cell_t d, bool temporary) {
 					cont->insert(cont->end(), val, val + countElements(val));
 					addr = cont->begin();
 				}
-				else addr = detachVariable(addr, true, val, val + countElements(val), *var);
+				else addr = detachVariable(addr, addr + countElements(addr),
+										   val, val + countElements(val), *var);
 
 				// update count
 				addr->i += 1;
@@ -1025,7 +1035,7 @@ cell_t eval(cell_t d, bool temporary) {
 					cont->insert(cont->end(), val + 1, val + elems);
 					addr = cont->begin(); // addr may be invalid at this point
 				}
-				else addr = detachVariable(addr, true, val + 1, val + elems, *var);
+				else addr = detachVariable(addr, addr + elems, val + 1, val + elems, *var);
 
 				// update count (-1 because countElements includes list header)
 				addr->i += elems - 1;
@@ -1050,26 +1060,53 @@ cell_t eval(cell_t d, bool temporary) {
 				size_t srcSize = countElements(addr + 1);
 
 				// check if we need to detach memory
-				if (!isDetached && srcSize != dstSize)
-					addr = detachVariable(addr, false, addr,
-										  addr + countElements(addr), *var);
+				if (!isDetached && srcSize != dstSize) {
+					addr = detachVariable(addr, *var);
+					cont = &getVariableContainer(var);
+				}
 
 				// replace memory content
-				addr = remove_copy(*cont, addr + 1, addr + 1 + srcSize,
-								   val, val + dstSize);
-
-				// move iterator one element back (addr by now contains pointer to car)
-				--addr;
+				remove_copy(*cont, addr + 1, addr + 1 + srcSize,
+							val, val + dstSize);
 			}
 
-			popCallStack();
-			return addr;
+			return popCallStackLeaveData();
+		}
+		else if (fxName->s == "setcdr") {
+			pushCallStack();
+			bool isValid;
+			bool isDetached;
+			cell_t addr;
+			var_t var;
+			cells_t *cont = nullptr;
+			std::tie(isValid, isDetached, addr, var, cont) = fetchVariable(d + 2);
+
+			if (isValid) {
+				cell_t val = eval(nextCell(d + 2));
+				size_t dstSize = countElements(val);
+				size_t srcCarSize = countElements(addr + 1);
+				size_t srcSize = countElements(addr);
+				size_t valOffset = val->type == cell::typeList ? 1 : 0;
+
+				// update list count
+				addr->i = 1 + (val->type == cell::typeList ? val->i : 1);
+
+				// check if we need to detach memory
+				if (!isDetached && (srcSize - srcCarSize - 1) != (dstSize - valOffset)) {
+					detachVariable(addr, addr + 1 + srcCarSize,
+										  val + valOffset, val + dstSize, *var);
+				}
+				else {
+					// replace memory content
+					remove_copy(*cont, addr + 1 + srcCarSize, addr + srcSize,
+									   val + valOffset, val + dstSize);
+				}
+			}
+
+			return popCallStackLeaveData();
 		}
 
 		/*
-		 * setcar
-		 * setcdr
-
 		 * add-to-list (unique)
 		 * add-to-ordered-list (sorted)
 		 * reverse
