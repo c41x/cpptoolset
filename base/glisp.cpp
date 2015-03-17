@@ -14,14 +14,42 @@
 namespace granite { namespace base {
 
 const string cell::getStr() const {
+	// TODO: types
 	if (type == typeInt) return strs(i);
 	else if (type == typeIdentifier) return s;
 	return "";
 }
 
+const bool operator==(const cell &l, const cell &r) {
+	if (l.type == r.type) {
+		if (l.type == cell::typeInt) return l.i == r.i;
+		else if (l.type == cell::typeString || l.type == cell::typeIdentifier) return l.s == r.s;
+		else if (l.type == cell::typeFloat) return l.f == r.f;
+		else if (l.type == cell::typeInt64) return l.ii == r.ii;
+		// TODO: vec
+	}
+	return false;
+}
+
+const bool operator<(const cell &l, const cell &r) {
+	if (l.type == r.type) {
+		if (l.type == cell::typeInt) return l.i < r.i;
+		else if (l.type == cell::typeString || l.type == cell::typeIdentifier) return l.s < r.s;
+		else if (l.type == cell::typeFloat) return l.f < r.f;
+		else if (l.type == cell::typeInt64) return l.ii < r.ii;
+		// TODO: vec
+	}
+	return false;
+}
+
+const bool operator!=(const cell &l, const cell &r) { return !(l == r); }
+const bool operator>=(const cell &l, const cell &r) { return !(l < r); }
+const bool operator>(const cell &l, const cell &r) { return r < l; }
+const bool operator<=(const cell &l, const cell &r) { return !(l > r); }
+
 namespace detail {
 
-//#define GLISP_DEBUG_LOG
+#define GLISP_DEBUG_LOG
 #ifdef GLISP_DEBUG_LOG
 #define dout(param) std::cout << param
 #else
@@ -579,7 +607,7 @@ cell_t c_message(cell_t c) {
 	// *c - count
 	// *(c + x) - element x
 	dout("> message: " << (c + 1)->i << std::endl);
-	return c;
+	return c + 1;
 }
 
 cell_t c_mul(cell_t c) {
@@ -654,13 +682,35 @@ void evalNoStack(cell_t begin, cell_t end) {
 
 // calls [op] for all (evaluated) elements of list
 template <typename T_OP>
-void evalmap(cell_t begin, cell_t end, T_OP op) {
+void evalmap(cell_t begin, cell_t end, T_OP op, bool temporary = false) {
 	for (cell_t i = begin; i != end; i = nextCell(i)) {
-		pushCallStack();
-		cell_t lastResult = eval(i);
+		cell_t lastResult = eval(i, temporary);
 		op(lastResult);
-		popCallStack();
 	}
+}
+
+// evals all list elements until [op] returns false
+template <typename T_OP>
+bool evalUntilUnary(cell_t begin, cell_t end, T_OP op, bool temporary = false) {
+	for (cell_t i = begin; i != end; i = nextCell(i)) {
+		cell_t lastResult = eval(i, temporary);
+		if (!op(lastResult))
+			return false;
+	}
+	return true;
+}
+
+// same as above but binary
+template <typename T_OP>
+bool evalUntilBinary(cell_t begin, cell_t end, T_OP op, bool temporary = false) {
+	cell_t prevResult = begin;
+	for (cell_t i = begin; i != end; i = nextCell(i)) {
+		cell_t lastResult = eval(i, temporary);
+		if (i != begin && !op(prevResult, lastResult))
+			return false;
+		prevResult = lastResult;
+	}
+	return true;
 }
 
 cell_t eval(cell_t d, bool temporary) {
@@ -749,7 +799,7 @@ cell_t eval(cell_t d, bool temporary) {
 			// test, we dont need return value - discard it with call stack
 			pushCallStack();
 			cell_t testi = eval(d + 2, true);
-			bool test = testi->s != "nil" || testi->type != cell::typeIdentifier;
+			bool test = *testi != *c_nil;
 
 			// test and eval
 			if (test)
@@ -758,19 +808,6 @@ cell_t eval(cell_t d, bool temporary) {
 				cell_t offset = endCell(endCell(d + 2)); // else statements offset
 				return popCallStackLeaveData(evalreturn(offset, endCell(d)));
 			}
-		}
-		else if (fxName->s == "=") {
-			// d->i must be > 2
-			pushCallStack();
-			cell_t a1 = eval(d + 2);
-			cell_t a2 = eval(nextCell(d + 2));
-			if (a1->type == cell::typeInt && a2->type == cell::typeInt) {
-				bool t = a1->i == a2->i;
-				popCallStack();
-				return t ? c_t : c_nil;
-			}
-			popCallStack();
-			return c_nil;
 		}
 		else if (fxName->s == "progn") {
 			// d->i must be > 1
@@ -1104,6 +1141,45 @@ cell_t eval(cell_t d, bool temporary) {
 			}
 
 			return popCallStackLeaveData();
+		}
+		else if (fxName->s == "while") {
+			cell_t result = c_nil;
+			while (true) {
+				pushCallStack();
+
+				// compute test
+				cell_t test = eval(d + 2, true);
+
+				// if test is not nil -> eval body, otherwise return last result
+				if (*test != *c_nil)
+					result = evalreturn(nextCell(d + 2), endCell(d));
+				else return popCallStackLeaveData(result);
+				popCallStack();
+			}
+
+			// will never reach here
+			return c_nil;
+		}
+		else if (fxName->s == "=") {
+			pushCallStack();
+
+			// checks if all evaluated cells are equal (supports multiple values)
+			cell_t result = evalUntilBinary(d + 2, endCell(d),
+											[](cell_t n, cell_t n1) -> bool {
+												return *n == *n1;
+											}, true) ? c_t : c_nil;
+			popCallStack();
+			return result;
+		}
+		else if (fxName->s == "!=") {
+			pushCallStack();
+
+			// checks if all evaluated cells are not equal
+			// does not support multiple values
+			cell_t result = *eval(d + 2, true) != *eval(nextCell(d + 2), true) ?
+				c_t : c_nil;
+			popCallStack();
+			return result;
 		}
 
 		/*
