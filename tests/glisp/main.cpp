@@ -78,6 +78,11 @@ int main(int argc, char **argv) {
 	test(gl, "(defvar ll3 '(1 2))", "ll3");
 	test(gl, "(setcar ll3 '(1 2))", "(1 2)");
 	test(gl, "ll3", "((1 2) 2)");
+	test(gl, "(let ((i 0) (k 55)) (= i k))", "nil");
+	test(gl, "(let ((i 55) (k 55)) (= i k))", "t");
+	test(gl, "(let ((i 0) (k 55)) (!= i k))", "t");
+	test(gl, "(let ((i 55) (k 55)) (!= i k))", "nil");
+	test(gl, "(let ((i 0)) (while (!= 7 i) (setq i (+ i 1)) (message i) i))", "7");
 	#endif
 
 	gl.close();
