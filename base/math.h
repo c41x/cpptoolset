@@ -306,6 +306,12 @@ public:
 	operator vec3f() const { vec4f tr; _mm_store_ps(tr.data, xmm); return vec3f(tr.x, tr.y, tr.z); }
 	operator vec4f() const { vec4f r; _mm_store_ps(r.data, xmm); return r; }
 	operator __m128() const { return xmm; }
+	bool operator==(const vec &r) const { return 0xffff == _mm_movemask_epi8(_mm_castps_si128(_mm_cmpeq_ps(r.xmm, xmm))); }
+	bool operator!=(const vec &r) const { return 0xffff == _mm_movemask_epi8(_mm_castps_si128(_mm_cmpneq_ps(r.xmm, xmm))); }
+	bool operator<(const vec &r) const { return 0xffff == _mm_movemask_epi8(_mm_castps_si128(_mm_cmplt_ps(xmm, r.xmm))); }
+	bool operator<=(const vec &r) const { return 0xffff == _mm_movemask_epi8(_mm_castps_si128(_mm_cmple_ps(xmm, r.xmm))); }
+	bool operator>(const vec &r) const { return 0xffff == _mm_movemask_epi8(_mm_castps_si128(_mm_cmpgt_ps(xmm, r.xmm))); }
+	bool operator>=(const vec &r) const { return 0xffff == _mm_movemask_epi8(_mm_castps_si128(_mm_cmpge_ps(xmm, r.xmm))); }
 
 	// fxs
 	vec &shuffle(const int &x, const int &y, const int &z, const int w) { xmm = _mm_shuffle_ps(xmm, xmm, _MM_SHUFFLE(x, y, z, w)); return *this; }
