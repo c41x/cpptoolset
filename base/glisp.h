@@ -26,6 +26,7 @@ public:
 		typeInt64,
 		typeFloat,
 		typeVector,
+		typeString,
 		typeList,
 		typeDetach
 	};
@@ -46,6 +47,10 @@ public:
 	cell(type_t t, const string &v) : type(t), s(v) {}
 	cell(type_t t, int v) : type(t), i(v) {}
 	cell(type_t t, int _i, int _j, const string &_s) : type(t), s(_s), i(_i), j(_j) {}
+	cell(float _f) : type(typeFloat), f(_f) {}
+	cell(int64 _i64) : type(typeInt64), ii(_i64) {}
+	cell(vec _xmm) : type(typeVector), xmm(_xmm) {}
+	cell(const string &_s) : type(typeString), s(_s) {}
 
 	const string getStr() const;
 };
