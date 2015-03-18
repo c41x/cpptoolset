@@ -24,6 +24,14 @@ int main(int argc, char **argv) {
 		gl.eval(inp);
 	}
 	#else
+	test(gl, "(defvar my-test-x 55)", "my-test-x");
+	test(gl, "my-test-x", "55");
+	test(gl, "(defun my-test-l () (setq my-test-x 66))", "my-test-l");
+	test(gl, "(my-test-l)", "66");
+	test(gl, "my-test-x", "66");
+	test(gl, "(defun y () (defvar x 6))", "y");
+	test(gl, "(y)", "x");
+	test(gl, "(unbound 'y)", "y");
 	test(gl, "1", "1");
 	test(gl, "()", "nil");
 	test(gl, "(= 44 66)", "nil");
