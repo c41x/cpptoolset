@@ -14,9 +14,14 @@
 namespace granite { namespace base {
 
 const string cell::getStr() const {
-	// TODO: types
 	if (type == typeInt) return strs(i);
-	else if (type == typeIdentifier) return s;
+	else if (type == typeIdentifier || type == typeString) return s;
+	else if (type == typeInt64) return strs(ii);
+	else if (type == typeFloat) return strs(f);
+	else if (type == typeVector) {
+		vec4f v = vec(xmm);
+		return strs(v.x, v.y, v.z, v.w);
+	}
 	return "";
 }
 
@@ -26,7 +31,6 @@ const bool operator==(const cell &l, const cell &r) {
 		else if (l.type == cell::typeString || l.type == cell::typeIdentifier) return l.s == r.s;
 		else if (l.type == cell::typeFloat) return l.f == r.f;
 		else if (l.type == cell::typeInt64) return l.ii == r.ii;
-		// TODO: vec
 	}
 	return false;
 }
@@ -37,7 +41,6 @@ const bool operator<(const cell &l, const cell &r) {
 		else if (l.type == cell::typeString || l.type == cell::typeIdentifier) return l.s < r.s;
 		else if (l.type == cell::typeFloat) return l.f < r.f;
 		else if (l.type == cell::typeInt64) return l.ii < r.ii;
-		// TODO: vec
 	}
 	return false;
 }
@@ -49,7 +52,7 @@ const bool operator<=(const cell &l, const cell &r) { return !(l > r); }
 
 namespace detail {
 
-#define GLISP_DEBUG_LOG
+//#define GLISP_DEBUG_LOG
 #ifdef GLISP_DEBUG_LOG
 #define dout(param) std::cout << param
 #else
@@ -392,19 +395,6 @@ cell_t pushCdr(cell_t l) {
 	return c_nil;
 }
 
-// push car of given list (if it is a list -> copy all items)
-cell_t pushCar(cell_t l) {
-	// TODO: test
-	cell_t whence = stack.end();
-	size_t elems = countElements(l + 1);
-	if (elems > 0) {
-		stack.resize(stack.size() + elems);
-		std::copy(l + 1, l + 1 + elems, whence);
-		return whence;
-	}
-	return c_nil;
-}
-
 // get address (just size_t number - do not use in logic code)
 size_t getAddress(cell_t c) {
 	return std::distance(stack.begin(), c);
@@ -501,20 +491,6 @@ void popVariablesAbove(size_t addr) {
 	}
 }
 
-void popVariablesInRange(size_t begin, size_t end) {
-	// TODO: test
-	auto lb = std::lower_bound(variables.begin(), variables.end(), std::make_tuple("", begin));
-	auto ub = std::upper_bound(lb + 1, variables.end(), std::make_tuple("", end));
-	variables.erase(lb, ub);
-}
-
-void eraseCell(cell_t addr) {
-	// TODO: test
-	cell_t e = addr + countElements(addr);
-	popVariablesInRange(std::distance(stack.begin(), addr), std::distance(stack.begin(), e));
-	stack.erase(addr, e);
-}
-
 void popCallStack() {
 	// delete variables
 	popVariablesAbove(callStack.top());
@@ -540,8 +516,9 @@ cell_t popCallStackLeaveData(cell_t addr) {
 	return whence;
 }
 
-// pops call stack and leaves stack untouched
+// pops call stack and leaves stack untouched (unbounds variables!)
 cell_t popCallStackLeaveData() {
+	popVariablesAbove(callStack.top());
 	cell_t ret = stack.begin() + callStack.top();
 	callStack.pop();
 	return ret;
@@ -580,7 +557,7 @@ void sweepStack() {
 			// it's detached memory - copy only 1 element (ID)
 			if (srcAddr->type == cell::typeDetach) {
 				elements = 1;
-				srcAddr->i = 1; // TODO: also keep count valid?
+				srcAddr->i = 1;
 			}
 
 			// move data to stack top
@@ -803,9 +780,9 @@ cell_t eval(cell_t d, bool temporary) {
 
 			// test and eval
 			if (test)
-				return popCallStackLeaveData(eval(endCell(d + 2)));
+				return popCallStackLeaveData(eval(nextCell(d + 2)));
 			else {
-				cell_t offset = endCell(endCell(d + 2)); // else statements offset
+				cell_t offset = nextCell(nextCell(d + 2)); // else statements offset
 				return popCallStackLeaveData(evalreturn(offset, endCell(d)));
 			}
 		}
@@ -901,7 +878,7 @@ cell_t eval(cell_t d, bool temporary) {
 			if (r->type == cell::typeList) {
 				if (r->i > 1) {
 					r->i--; // we're erasing one element - update list's el count
-					eraseCell(r + 1);
+					stack.erase(r + 1, r + 1 + countElements(r + 1));
 					return popCallStackLeaveData();
 				}
 
