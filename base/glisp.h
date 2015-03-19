@@ -55,28 +55,20 @@ public:
 	const string getStr() const;
 };
 
-typedef std::vector<cell> cells_t;
+// lisp state
+struct lispState;
+
+// some basic typedefs
 typedef std::vector<cell>::iterator cell_t;
 typedef std::function<cell_t(cell_t)> intrinsic_fx_t;
-typedef std::tuple<string, size_t> var_key_t; // name, stack position
-typedef std::vector<var_key_t> vars_t;
-typedef std::map<var_key_t, cells_t> lists_t;
-typedef vars_t::iterator var_t;
-typedef std::stack<size_t> call_stack_t;
-typedef std::tuple<string, intrinsic_fx_t> intrinsic_tuple_t;
-typedef std::vector<intrinsic_tuple_t> intrinsics_t;
-typedef intrinsics_t::iterator intrinsic_t;
 
 //- client side -
 class lisp {
-	cells_t _stack;
-	vars_t _variables;
-	call_stack_t _callStack;
-	intrinsics_t _intrinsics;
-	lists_t _lists;
+	std::unique_ptr<lispState> _s;
+
 public:
-	lisp() {}
-	~lisp() {}
+	lisp();
+	~lisp();
 
 	void init(size_t memSize = 100000);
 	void close();
@@ -87,8 +79,6 @@ public:
 
 }}
 
-// TODO: lists management
-// TODO: resizable memory (add-to-list etc.)
 // TODO: loops? mapping functions
 // TODO: cons? assoc
 // TODO: cond

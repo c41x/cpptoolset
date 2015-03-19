@@ -38,6 +38,7 @@
 #include <fstream>
 #include <sstream>
 #include <cassert>
+#include <memory>
 
 #ifdef GE_PLATFORM_WINDOWS
 #include <windows.h>
