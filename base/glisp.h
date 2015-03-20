@@ -84,6 +84,17 @@ public:
 
 }}
 
-// TODO: loops? mapping functions
+// TODO: mapping functions
 // TODO: cons? assoc
-// TODO: cond
+// TODO: numeric operations
+// TODO: error handling
+
+/*
+ * add-to-list (unique)
+ * add-to-ordered-list (sorted)
+ * reverse
+ * sort
+ * member
+ * delete
+ ** assoc **
+ */

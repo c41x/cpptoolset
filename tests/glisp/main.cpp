@@ -114,6 +114,12 @@ int main(int argc, char **argv) {
 	test(gl, "(let ((i 0) (k 55)) (!= i k))", "t");
 	test(gl, "(let ((i 55) (k 55)) (!= i k))", "nil");
 	test(gl, "(let ((i 0)) (while (!= 7 i) (setq i (+ i 1)) (message i) i))", "7");
+	test(gl, "(dotimes i 5 (message i)", "4");
+	test(gl, "(dolist e '(11 22 33) (message e))", "33");
+	test(gl, "(cond (t 123)(nil 555))", "123");
+	test(gl, "(cond (nil 123)(t 555))", "555");
+	test(gl, "(cond (nil 123)(nil 555))", "nil");
+	test(gl, "(cond ((= 5 (+ 2 3)) 1235)(nil 555))", "1235");
 	#endif
 
 	gl.close();

@@ -381,6 +381,7 @@ cell_t pushVariable(lispState &s, const string &name, size_t count) {
 	return s.stack.begin() + std::get<1>(s.variables.back());
 }
 
+// TODO: detect if inserting to variables in order
 // assign address to memory
 void pushVariable(lispState &s, const string &name, cell_t addr) {
 	dout("push variable (" << name << ") addr: " << std::distance(s.stack.begin(), addr)
@@ -1136,6 +1137,69 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			// will never reach here
 			return s.c_nil;
 		}
+		else if (fxName->s == "dotimes") {
+			pushCallStack(s);
+
+			// extract name and loop iteration count
+			string &name = (d + 2)->s;
+			int ntimes = eval(s, d + 3, true)->i;
+
+			// create iterator variable
+			cell_t it = pushVariable(s, name, 1);
+			cell_t result = s.c_nil;
+
+			// update variable value and eval body
+			for (int i = 0; i < ntimes; ++i) {
+				*it = { cell::typeInt, i };
+				result = evalreturn(s, d + 4, endCell(d));
+			}
+
+			// return last eval result or nil
+			return popCallStackLeaveData(s, result);
+		}
+		else if (fxName->s == "dolist") {
+			pushCallStack(s);
+
+			// extract iterator name, and eval list
+			string &name = (d + 2)->s;
+			cell_t lst = eval(s, d + 3);
+
+			// setup variable and get [var] reference
+			cell_t it = firstCell(lst);
+			cell_t end = endCell(lst);
+			cell_t endBody = endCell(d);
+			cell_t result = s.c_nil;
+			pushVariable(s, name, it);
+			var_key_t &var = s.variables.back();
+
+			// iterate through list
+			for(; it != end; it = nextCell(it)) {
+				// change variable address
+				// note: we could do that only in [lst] list range
+				// otherwise it will break variables index
+				std::get<1>(var) = std::distance(s.stack.begin(), it);
+
+				// eval body
+				result = evalreturn(s, nextCell(d + 3), endBody);
+			}
+
+			// return last eval or nil
+			return popCallStackLeaveData(s, result);
+		}
+		else if (fxName->s == "cond") {
+			// iterate through all clauses
+			for (cell_t c = d + 2; c != endCell(d); c = nextCell(c)) {
+				// check condition - if true return evaluated result
+				if (*eval(s, c + 1, true) != *s.c_nil) {
+					pushCallStack(s);
+					return popCallStackLeaveData(
+						s, evalreturn(s, nextCell(c + 1), endCell(c)));
+				}
+			}
+
+			// no condition yielded true -> return nil
+			return s.c_nil;
+		}
 		else if (fxName->s == "=") {
 			pushCallStack(s);
 
@@ -1157,16 +1221,6 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			popCallStack(s);
 			return result;
 		}
-
-		/*
-		 * add-to-list (unique)
-		 * add-to-ordered-list (sorted)
-		 * reverse
-		 * sort
-		 * member
-		 * delete
-		 ** assoc **
-		 */
 
 		//- functions evaluation -
 		// get fx address
