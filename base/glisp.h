@@ -17,7 +17,7 @@
 
 namespace granite { namespace base {
 
-//- just data (variant) -
+// just data (variant)
 class cell {
 public:
 	enum type_t {
@@ -53,16 +53,21 @@ public:
 	cell(const string &_s) : type(typeString), s(_s) {}
 
 	const string getStr() const;
+
+	// constants
+	static cell nil;
+	static cell t;
 };
 
 // lisp state
 struct lispState;
 
 // some basic typedefs
-typedef std::vector<cell>::iterator cell_t;
-typedef std::function<cell_t(cell_t)> intrinsic_fx_t;
+typedef std::vector<cell> cells_t;
+typedef cells_t::iterator cell_t;
+typedef std::function<cell_t(cell_t, cells_t&)> procedure_t; // input, output
 
-//- client side -
+// interpreter
 class lisp {
 	std::unique_ptr<lispState> _s;
 
@@ -73,7 +78,7 @@ public:
 	void init(size_t memSize = 100000);
 	void close();
 	string eval(const string &s);
-	void addIntrinsic(const string &name, intrinsic_fx_t fx);
+	void addProcedure(const string &name, procedure_t fx);
 	void addVariable(const string &name, cell value);
 };
 

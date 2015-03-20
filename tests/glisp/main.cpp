@@ -2,7 +2,9 @@
 
 #include <base/base.h>
 
-bool test(granite::base::lisp &gl, const string &input, const string &expectedOutput) {
+using namespace granite;
+
+bool test(base::lisp &gl, const string &input, const string &expectedOutput) {
 	string result = gl.eval(input);
 	if (result == expectedOutput) {
 		std::cout << "[ok] " << input << " = " << expectedOutput << std::endl;
@@ -13,9 +15,30 @@ bool test(granite::base::lisp &gl, const string &input, const string &expectedOu
 	return false;
 }
 
+// custom (user) procedures
+base::cell_t c_message(base::cell_t c, base::cells_t &ret) {
+	// *c - count
+	// *(c + x) - element x
+	std::cout << "> message: " << (c + 1)->i << std::endl;
+	return c + 1;
+}
+
+base::cell_t c_mul(base::cell_t c, base::cells_t &ret) {
+	int r = 1;
+	for(base::cell_t i = c + 1; i != c + 1 + c->i; ++i) {
+		r *= i->i;
+	}
+	ret.push_back(base::cell(base::cell::typeInt, r));
+	return ret.begin() + ret.size() - 1;
+}
+
 int main(int argc, char **argv) {
 	granite::base::lisp gl;
 	gl.init();
+
+	// add custom procedures
+	gl.addProcedure("*", &c_mul);
+	gl.addProcedure("message", &c_message);
 
 	#ifdef REPL
 	while (true) {

@@ -51,16 +51,18 @@ const bool operator>=(const cell &l, const cell &r) { return !(l < r); }
 const bool operator>(const cell &l, const cell &r) { return r < l; }
 const bool operator<=(const cell &l, const cell &r) { return !(l > r); }
 
+cell cell::nil = cell(cell::typeIdentifier, "nil");
+cell cell::t = cell(cell::typeIdentifier, "t");
+
 //- state -
-typedef std::vector<cell> cells_t;
 typedef std::tuple<string, size_t> var_key_t; // name, stack position
 typedef std::vector<var_key_t> vars_t;
 typedef std::map<var_key_t, cells_t> lists_t;
 typedef vars_t::iterator var_t;
 typedef std::stack<size_t> call_stack_t;
-typedef std::tuple<string, intrinsic_fx_t> intrinsic_tuple_t;
-typedef std::vector<intrinsic_tuple_t> intrinsics_t;
-typedef intrinsics_t::iterator intrinsic_t;
+typedef std::tuple<string, procedure_t> procedure_tuple_t;
+typedef std::vector<procedure_tuple_t> procedures_t;
+typedef procedures_t::iterator proc_t;
 
 struct lispState {
 	// stack / variable memory
@@ -77,8 +79,8 @@ struct lispState {
 	// stack containing frames begin
 	call_stack_t callStack;
 
-	// intrinsics list (user fx)
-	intrinsics_t intrinsics;
+	// procedures list (user fx)
+	procedures_t procedures;
 };
 
 namespace detail {
@@ -428,9 +430,9 @@ void tab(lispState &s) {
 }
 
 void printVariables(lispState &s) {
-	dout("defined variables(" << variables.size() << ")" << std::endl);
+	dout("defined variables(" << s.variables.size() << ")" << std::endl);
 	for (auto &v : s.variables) {
-		dout(std::get<0>(v) << " = " << stack[std::get<1>(v)].getStr() << std::endl);
+		dout(std::get<0>(v) << " = " << s.stack[std::get<1>(v)].getStr() << std::endl);
 	}
 }
 
@@ -542,6 +544,7 @@ cell_t popCallStackLeaveData(lispState &s) {
 	return ret;
 }
 
+// TODO: remove duplicate variables
 // removes unused (unbound) data from top stack frame
 void sweepStack(lispState &s) {
 	// stack offsets - everything 'below' is valid
@@ -595,43 +598,27 @@ void sweepStack(lispState &s) {
 // TODO: removes all unused data (moved previously by detach) - rebuild callstack
 // void sweepAll();
 
-//- initialization consts and intrinsics -
-cell_t c_message(cell_t c) {
-	// *c - count
-	// *(c + x) - element x
-	dout("> message: " << (c + 1)->i << std::endl);
-	return c + 1;
-}
-
-cell_t c_mul(cell_t c) {
-	int r = 1;
-	for(cell_t i = c + 1; i != c + 1 + c->i; ++i) {
-		r *= i->i;
-	}
-	dout(" > mul: " << r << std::endl);
-	return c;// TODO: pushCell(cell(cell::typeInt, r));
-}
-
-// search for intrinsic address
-intrinsic_t getIntrinsic(lispState &s, const string &name) {
-	return std::find_if(std::begin(s.intrinsics), std::end(s.intrinsics),
-						[name](intrinsic_tuple_t &e) {
+//- initialization consts and procedures -
+// search for procedure address
+proc_t getProcedure(lispState &s, const string &name) {
+	return std::find_if(std::begin(s.procedures), std::end(s.procedures),
+						[name](procedure_tuple_t &e) {
 							return name == std::get<0>(e);
 						});
 }
 
-// test intrinsic iterator for validity
-bool isIntrinsicValid(lispState &s, intrinsic_t i) {
-	return i != s.intrinsics.end();
+// test procedure iterator for validity
+bool isProcedureValid(lispState &s, proc_t i) {
+	return i != s.procedures.end();
 }
 
-// adds intrinsic to list
-bool addIntrinsic(lispState &s, const string &name, intrinsic_fx_t fx) {
-	if(!isIntrinsicValid(s, getIntrinsic(s, name))) {
-		s.intrinsics.push_back(std::make_tuple(name, fx));
+// adds procedure to list
+bool addProcedure(lispState &s, const string &name, procedure_t fx) {
+	if(!isProcedureValid(s, getProcedure(s, name))) {
+		s.procedures.push_back(std::make_tuple(name, fx));
 		return true;
 	}
-	else ; // intrinsic already defined
+	else ; // procedure already defined
 	return false;
 }
 
@@ -647,10 +634,6 @@ void init(lispState &s, size_t stackSize) {
 	auto t = pushVariable(s, "t", 1);
 	*t = cell(cell::typeIdentifier, "t");
 	s.c_t = t;
-
-	// intrinsics
-	addIntrinsic(s, "*", &c_mul);
-	addIntrinsic(s, "message", &c_message);
 }
 
 //- eval -
@@ -1213,8 +1196,8 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return fx;
 		}
 		else {
-			intrinsic_t i = getIntrinsic(s, fxName->s);
-			if (isIntrinsicValid(s, i)) {
+			proc_t i = getProcedure(s, fxName->s);
+			if (isProcedureValid(s, i)) {
 				pushCallStack(s);
 
 				// arguments list address
@@ -1224,10 +1207,10 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 				pushCell(s, cell(cell::typeList, d->i - 1)); // list elements count (not counting name)
 				evalNoStack(s, d + 2, endCell(d));
 
-				// call intrinsic
-				return popCallStackLeaveData(s, std::get<1>(*i)(r));
+				// call procedure
+				return popCallStackLeaveData(s, std::get<1>(*i)(r, s.stack));
 			}
-			dout("intrinsic not found" << std::endl); // not a function?
+			dout("procedure not found" << std::endl); // not a function?
 		}
 	}
 
@@ -1257,7 +1240,7 @@ string lisp::eval(const string &s) {
 	dout(detail::toString(code) << std::endl);
 	auto retAddr = detail::eval(*_s, code.begin(), true);
 	string r = detail::toString(retAddr);
-	dout("return addr: " << detail::getAddress(retAddr)
+	dout("return addr: " << detail::getAddress(*_s, retAddr)
 		 << " | " << detail::toString(retAddr) << std::endl);
 	detail::printState(*_s);
 	dout("sweep..." << std::endl);
@@ -1266,12 +1249,12 @@ string lisp::eval(const string &s) {
 	return r;
 }
 
-void lisp::addIntrinsic(const string &name, intrinsic_fx_t fx) {
-
+void lisp::addProcedure(const string &name, procedure_t fx) {
+	detail::addProcedure(*_s, name, fx);
 }
 
 void lisp::addVariable(const string &name, cell value) {
-
+	*detail::pushVariable(*_s, name, 1) = value;
 }
 
 }}
