@@ -26,6 +26,7 @@ const string cell::getStr() const {
 	return "";
 }
 
+// TODO: comparing lists
 const bool operator==(const cell &l, const cell &r) {
 	if (l.type == r.type) {
 		if (l.type == cell::typeInt) return l.i == r.i;
@@ -431,10 +432,12 @@ void tab(lispState &s) {
 }
 
 void printVariables(lispState &s) {
+	#ifdef GLISP_DEBUG_LOG
 	dout("defined variables(" << s.variables.size() << ")" << std::endl);
 	for (auto &v : s.variables) {
 		dout(std::get<0>(v) << " = " << s.stack[std::get<1>(v)].getStr() << std::endl);
 	}
+	#endif
 }
 
 void printState(lispState &s) {
@@ -521,6 +524,7 @@ void popCallStack(lispState &s) {
 	s.callStack.pop();
 }
 
+// TODO: make backward version?
 // pops call stack and leaves given cell at bottom of current stack frame
 cell_t popCallStackLeaveData(lispState &s, cell_t addr) {
 	// undefine all variables on this stack frame
@@ -1220,6 +1224,20 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 				s.c_t : s.c_nil;
 			popCallStack(s);
 			return result;
+		}
+		else if (fxName->s == "assoc") {
+			// get key and list address
+			cell_t key = eval(s, d + 2, true);
+			cell_t lst = eval(s, nextCell(d + 2), true);
+
+			// search for first found key in list
+			for (cell_t it = firstCell(lst); it != endCell(lst); it = nextCell(it)) {
+				if (*key == *(it + 1))
+					return it;
+			}
+
+			// or return nil if not found
+			return s.c_nil;
 		}
 
 		//- functions evaluation -

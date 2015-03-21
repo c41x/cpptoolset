@@ -120,6 +120,8 @@ int main(int argc, char **argv) {
 	test(gl, "(cond (nil 123)(t 555))", "555");
 	test(gl, "(cond (nil 123)(nil 555))", "nil");
 	test(gl, "(cond ((= 5 (+ 2 3)) 1235)(nil 555))", "1235");
+	test(gl, "(defvar trees '((pine cones) (oak acorns) (maple seeds)))", "trees");
+	test(gl, "(assoc 'oak trees)", "(oak acorns)");
 	#endif
 
 	gl.close();

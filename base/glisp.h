@@ -85,11 +85,13 @@ public:
 }}
 
 // TODO: mapping functions
-// TODO: cons? assoc
 // TODO: numeric operations
 // TODO: error handling
+// TODO: temporary by default?
+// TODO: parsing strings
 
 /*
+ * erase element / insert element
  * add-to-list (unique)
  * add-to-ordered-list (sorted)
  * reverse
