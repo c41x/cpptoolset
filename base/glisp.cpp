@@ -1232,8 +1232,11 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 
 			// search for first found key in list
 			for (cell_t it = firstCell(lst); it != endCell(lst); it = nextCell(it)) {
-				if (*key == *(it + 1))
-					return it;
+				if (*key == *(it + 1)) {
+					if (temporary)
+						return it;
+					return pushData(s, it);
+				}
 			}
 
 			// or return nil if not found
