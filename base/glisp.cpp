@@ -1258,7 +1258,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 				pushCell(s, cell(cell::typeIdentifier, "quote"));
 				pushData(s, el);
 				printState(s);
-				popCallStackLeaveData(s, eval(s, ev));
+				popCallStackLeaveData(s, eval(s, ev)); // hint: rotate
 				printState(s);
 			}
 			return popCallStackLeaveData(s, res);
