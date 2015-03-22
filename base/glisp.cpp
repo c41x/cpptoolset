@@ -86,7 +86,7 @@ struct lispState {
 
 namespace detail {
 
-//#define GLISP_DEBUG_LOG
+#define GLISP_DEBUG_LOG
 #ifdef GLISP_DEBUG_LOG
 #define dout(param) std::cout << param
 #else
@@ -1241,6 +1241,27 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 
 			// or return nil if not found
 			return s.c_nil;
+		}
+		else if (fxName->s == "mapcar") {
+			// TODO: draft
+			// fx_args->i must be == 1
+			pushCallStack(s);
+			cell_t fx = eval(s, d + 2, true);
+			cell_t lst = eval(s, nextCell(d + 2), true); // we must copy to bind variable
+			cell_t res = pushCell(s, cell(cell::typeList, lst->i));
+			printState(s);
+			for (cell_t el = lst + 1; el != endCell(lst); el = nextCell(el)) {
+				pushCallStack(s);
+				cell_t ev = pushCell(s, cell(cell::typeList, 2));
+				pushData(s, fx);
+				pushCell(s, cell(cell::typeList, 2));
+				pushCell(s, cell(cell::typeIdentifier, "quote"));
+				pushData(s, el);
+				printState(s);
+				popCallStackLeaveData(s, eval(s, ev));
+				printState(s);
+			}
+			return popCallStackLeaveData(s, res);
 		}
 
 		//- functions evaluation -

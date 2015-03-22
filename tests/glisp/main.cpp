@@ -122,6 +122,9 @@ int main(int argc, char **argv) {
 	test(gl, "(cond ((= 5 (+ 2 3)) 1235)(nil 555))", "1235");
 	test(gl, "(defvar trees '((pine cones) (oak acorns) (maple seeds)))", "trees");
 	test(gl, "(assoc 'oak trees)", "(oak acorns)");
+	test(gl, "(defun mycar (el) (car el))", "mycar");
+	test(gl, "(mapcar 'car '((a b) (c d) (e f)))", "(a c e)");
+	test(gl, "(mapcar 'mycar '((a b) (c d) (e f)))", "(a c e)");
 	#endif
 
 	gl.close();

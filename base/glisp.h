@@ -89,7 +89,8 @@ public:
 // TODO: error handling
 // TODO: temporary by default?
 // TODO: parsing strings
-
+// TODO: format string
+// TODO: eval
 /*
  * erase element / insert element
  * add-to-list (unique)
@@ -98,5 +99,4 @@ public:
  * sort
  * member
  * delete
- ** assoc **
  */
