@@ -129,6 +129,8 @@ int main(int argc, char **argv) {
 	test(gl, "(eval (eval ''trees))", "((pine cones) (oak acorns) (maple seeds))");
 	test(gl, "(member '(maple seeds) trees)", "t");
 	test(gl, "(member '(maple seeds nasty-thing) trees)", "nil");
+	test(gl, "(member 'nil '(1 2 3 nil b))", "t");
+	test(gl, "( member '       nil   '(1 2 3   nil- b )   )", "nil");
 	#endif
 
 	gl.close();
