@@ -11,9 +11,77 @@
 
 #include "glisp.h"
 
+#define GLISP_DEBUG_LOG
+#ifdef GLISP_DEBUG_LOG
+#define dout(param) std::cout << param
+#else
+#define dout(param)
+#endif
+
 namespace granite { namespace base {
 
 //- cell -
+// iterating over lists: first element
+cell_t firstCell(cell_t c) {
+	return c + 1;
+}
+
+// iterating over lists: ++
+cell_t nextCell(cell_t c) {
+	cell_t delim = c;
+	while (c <= delim) {
+		if(c->type == cell::typeList || c->type == cell::typeDetach) // TODO: leave detach test?
+			delim += c->i;
+		++c;
+	}
+	return c;
+}
+
+// iterating over list: nth element of list
+cell_t nthCell(cell_t c, size_t n) {
+	for (c = firstCell(c); n--; c = nextCell(c));
+	return c;
+}
+
+// iterating over lists: cell after last one
+cell_t endCell(cell_t c) {
+	return nextCell(c);
+}
+
+// last cell of list
+cell_t lastCell(cell_t c) {
+	cell_t e = endCell(c);
+	cell_t r = c;
+	c = firstCell(c);
+	while (true) {
+		if (c >= e)
+			return r;
+		else r = c;
+		c = nextCell(c);
+	}
+	return c;
+}
+
+// counts elements of given cell
+size_t countElements(cell_t c) {
+	return std::distance(c, endCell(c));
+}
+
+// nice print cell
+string toString(const cell_t c) {
+	if (c->type == cell::typeList) {
+		string s = "(";
+		for (auto i = firstCell(c); i != endCell(c); i = nextCell(i)) {
+			s += toString(i);
+			if (nextCell(i) != endCell(c))
+				s += " ";
+		}
+		s += ")";
+		return s;
+	}
+	return c->getStr();
+}
+
 const string cell::getStr() const {
 	if (type == typeInt) return strs(i);
 	else if (type == typeIdentifier || type == typeString) return s;
@@ -26,10 +94,11 @@ const string cell::getStr() const {
 	return "";
 }
 
-// TODO: comparing lists
 const bool operator==(const cell &l, const cell &r) {
 	if (l.type == r.type) {
-		if (l.type == cell::typeInt) return l.i == r.i;
+		if (l.type == cell::typeInt ||
+			l.type == cell::typeList ||
+			l.type == cell::typeDetach) return l.i == r.i;
 		else if (l.type == cell::typeString || l.type == cell::typeIdentifier) return l.s == r.s;
 		else if (l.type == cell::typeFloat) return l.f == r.f;
 		else if (l.type == cell::typeInt64) return l.ii == r.ii;
@@ -51,6 +120,21 @@ const bool operator!=(const cell &l, const cell &r) { return !(l == r); }
 const bool operator>=(const cell &l, const cell &r) { return !(l < r); }
 const bool operator>(const cell &l, const cell &r) { return r < l; }
 const bool operator<=(const cell &l, const cell &r) { return !(l > r); }
+
+bool cellsEqual(cell_t a, cell_t b) {
+	if (a->type == cell::typeList && a->type == b->type && a->i == b->i) {
+		int elems = countElements(a);
+		for (int i = 0; i < elems; ++i)
+			if (*(a + i) != *(b + i))
+				return false;
+		return true;
+	}
+	return *a == *b;
+}
+
+bool isNil(cell_t c) {
+	return c->type == cell::typeIdentifier && c->s == "nil";
+}
 
 cell cell::nil = cell(cell::typeIdentifier, "nil");
 cell cell::t = cell(cell::typeIdentifier, "t");
@@ -85,14 +169,6 @@ struct lispState {
 };
 
 namespace detail {
-
-#define GLISP_DEBUG_LOG
-#ifdef GLISP_DEBUG_LOG
-#define dout(param) std::cout << param
-#else
-#define dout(param)
-#endif
-
 //- parser -
 cells_t parse(const string &s) {
 	// create tokenizer
@@ -194,67 +270,6 @@ string toString(const cells_t &cells) {
 		r += " ";
 	}
 	return r;
-}
-
-// iterating over lists: first element
-cell_t firstCell(cell_t c) {
-	return c + 1;
-}
-
-// iterating over lists: ++
-cell_t nextCell(cell_t c) {
-	cell_t delim = c;
-	while (c <= delim) {
-		if(c->type == cell::typeList || c->type == cell::typeDetach) // TODO: leave detach test?
-			delim += c->i;
-		++c;
-	}
-	return c;
-}
-
-// iterating over list: nth element of list
-cell_t nthCell(cell_t c, size_t n) {
-	for (c = firstCell(c); n--; c = nextCell(c));
-	return c;
-}
-
-// iterating over lists: cell after last one
-cell_t endCell(cell_t c) {
-	return nextCell(c);
-}
-
-// last cell of list
-cell_t lastCell(cell_t c) {
-	cell_t e = endCell(c);
-	cell_t r = c;
-	c = firstCell(c);
-	while (true) {
-		if (c >= e)
-			return r;
-		else r = c;
-		c = nextCell(c);
-	}
-	return c;
-}
-
-// counts elements of given cell
-size_t countElements(cell_t c) {
-	return std::distance(c, endCell(c));
-}
-
-// nice print cell
-string toString(const cell_t c) {
-	if (c->type == cell::typeList) {
-		string s = "(";
-		for (auto i = firstCell(c); i != endCell(c); i = nextCell(i)) {
-			s += toString(i);
-			if (nextCell(i) != endCell(c))
-				s += " ";
-		}
-		s += ")";
-		return s;
-	}
-	return c->getStr();
 }
 
 //- dynamic scoping / stack / variable memory -
@@ -391,7 +406,7 @@ void pushVariable(lispState &s, const string &name, cell_t addr) {
 }
 
 // push data on top of stack (copy all addr cell) return data address on stack
-cell_t pushData(lispState &s, cell_t addr) {
+cell_t pushList(lispState &s, cell_t addr) {
 	size_t elemsCount = countElements(addr);
 	cell_t whence = s.stack.end();
 	s.stack.resize(s.stack.size() + elemsCount);
@@ -403,6 +418,13 @@ cell_t pushData(lispState &s, cell_t addr) {
 cell_t pushCell(lispState &s, cell c) {
 	s.stack.push_back(c);
 	return s.stack.begin() + s.stack.size() - 1;
+}
+
+// same as above but with temporary support
+cell_t pushCell(lispState &s, cell_t c, bool temporary) {
+	if (temporary)
+		return c;
+	return pushCell(s, *c);
 }
 
 // push cdr of given list (create list without first element)
@@ -484,18 +506,19 @@ void printState(lispState &s) {
 		}
 	}
 
-	// print last call stack frame
-	if (rcs.size() > 0 && rcs.top() == s.stack.size()) {
-		dout("| ");
-		rcs.pop();
+	if (rcs.size() > 0) {
+		while (rcs.size()) {
+			dout("|");
+			rcs.pop();
+		}
+		dout(" call stack corrupted! ");
 	}
 
-	// TODO: print counts
-	if (rcs.size() > 0)
-		dout("| call stack corrupted! ");
-
-	if (varsLeft > 0)
-		dout("| variables corrupted!");
+	if (varsLeft > 0) {
+		while (varsLeft-- > 0)
+			dout("|");
+		dout(" variables corrupted!");
+	}
 
 	dout(std::endl);
 }
@@ -526,14 +549,24 @@ void popCallStack(lispState &s) {
 
 // TODO: make backward version?
 // pops call stack and leaves given cell at bottom of current stack frame
-cell_t popCallStackLeaveData(lispState &s, cell_t addr) {
+cell_t popCallStackLeaveData(lispState &s, cell_t addr, bool temporary = false) {
 	// undefine all variables on this stack frame
 	popVariablesAbove(s, s.callStack.top());
 
-	// copy data
-	size_t elemsCount = countElements(addr);
-	cell_t whence = s.stack.begin() + s.callStack.top();
-	std::copy(addr, addr + elemsCount, whence); // safe, not overlapping (src > dst)
+	// return address and elements count
+	cell_t whence;
+	size_t elemsCount;
+
+	// copy data or just return passed value
+	if (!temporary) {
+		elemsCount = countElements(addr);
+		whence = s.stack.begin() + s.callStack.top();
+		std::copy(addr, addr + elemsCount, whence); // safe, not overlapping (src > dst)
+	}
+	else {
+		whence = addr;
+		elemsCount = 0;
+	}
 
 	// remove unused data and pop call stack frame
 	s.stack.resize(s.callStack.top() + elemsCount);
@@ -645,20 +678,20 @@ void init(lispState &s, size_t stackSize) {
 cell_t eval(lispState &s, cell_t d, bool temporary = false);
 
 // helper for evaluating lists, evals all elements and returns last
-cell_t evalreturn(lispState &s, cell_t begin, cell_t end) {
+cell_t evalreturn(lispState &s, cell_t begin, cell_t end, bool temporary = false) {
 	cell_t lastResult = s.c_nil; // return nil when evaluating empty list
 
 	// evaluate all cells
 	for (cell_t i = begin; i != end; i = nextCell(i))
-		lastResult = eval(s, i);
+		lastResult = eval(s, i, temporary);
 
 	return lastResult;
 }
 
 // evals all elements leaving results on stack (same as above but no address returned)
-void evalNoStack(lispState &s, cell_t begin, cell_t end) {
+void evalNoStack(lispState &s, cell_t begin, cell_t end, bool temporary = false) {
 	for (; begin != end; begin = nextCell(begin))
-		eval(s, begin);
+		eval(s, begin, temporary);
 }
 
 // calls [op] for all (evaluated) elements of list
@@ -717,7 +750,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 
 			// leave list on stack
 			if (addr->type == cell::typeList)
-				return pushData(s, addr);
+				return pushList(s, addr);
 
 			// it's an atom
 			s.stack.push_back(*addr);
@@ -727,8 +760,9 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 	}
 	else if (d->type == cell::typeList) {
 		// empty list evaluates to nil
-		if (d->i == 0)
-			return s.c_nil;
+		if (d->i == 0) {
+			return pushCell(s, s.c_nil, temporary);
+		}
 
 		// first argument must be identifier
 		cell_t fxName = d + 1;
@@ -738,7 +772,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 		}
 		else if (fxName->type != cell::typeIdentifier) {
 			dout("function name must be ID" << std::endl);
-			return s.c_nil;
+			return pushCell(s, s.c_nil, temporary);
 		}
 
 		//- builtins -
@@ -755,7 +789,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			pushVariable(s, varName->s, varValue);
 
 			// return identifier of created variable
-			return pushCell(s, *varName);
+			return pushCell(s, varName, temporary);
 		}
 		else if (fxName->s == "quote") {
 			// return back source, caller will only fetch data
@@ -763,7 +797,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 				return d + 2;
 
 			// just copy quote body to stack
-			return pushData(s, d + 2);
+			return pushList(s, d + 2);
 		}
 		else if (fxName->s == "lambda") {
 			// copy cdr of lambda, first element is "lambda" identifier, we dont need it
@@ -780,20 +814,20 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			// test, we dont need return value - discard it with call stack
 			pushCallStack(s);
 			cell_t testi = eval(s, d + 2, true);
-			bool test = *testi != *s.c_nil;
+			bool test = !isNil(testi);
 
 			// test and eval
 			if (test)
-				return popCallStackLeaveData(s, eval(s, nextCell(d + 2)));
+				return popCallStackLeaveData(s, eval(s, nextCell(d + 2), temporary), temporary);
 			else {
 				cell_t offset = nextCell(nextCell(d + 2)); // else statements offset
-				return popCallStackLeaveData(s, evalreturn(s, offset, endCell(d)));
+				return popCallStackLeaveData(s, evalreturn(s, offset, endCell(d), temporary), temporary);
 			}
 		}
 		else if (fxName->s == "progn") {
 			// d->i must be > 1
 			pushCallStack(s);
-			return popCallStackLeaveData(s, evalreturn(s, d + 2, endCell(d)));
+			return popCallStackLeaveData(s, evalreturn(s, d + 2, endCell(d), temporary), temporary);
 		}
 		else if (fxName->s == "let") {
 			// evaluate and push variables
@@ -805,14 +839,17 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			}
 
 			// evaluate function body
-			return popCallStackLeaveData(s, evalreturn(s, nextCell(args), endCell(d)));
+			return popCallStackLeaveData(s, evalreturn(s, nextCell(args), endCell(d), temporary),
+										 temporary);
 		}
 		else if (fxName->s == "boundp") {
 			// eval(d + 2) must be ID
-			return isVariableValid(s, findVariable(s, eval(s, d + 2, true)->s)) ? s.c_t : s.c_nil;
+			cell_t res = isVariableValid(s, findVariable(s, eval(s, d + 2, true)->s)) ? s.c_t : s.c_nil;
+			return pushCell(s, res, temporary);
 		}
 		else if (fxName->s == "unbound") {
 			// eval(d + 2) must be ID (we are not using stack frames)
+			pushCallStack(s);
 			cell r = *eval(s, d + 2, true);
 
 			// find and tag variable address as detached
@@ -823,6 +860,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			}
 
 			// return argument back
+			popCallStack(s);
 			return pushCell(s, r);
 		}
 		else if (fxName->s == "list") {
@@ -840,8 +878,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			// d->i > 1
 			pushCallStack(s);
 			auto ret = eval(s, d + 2, true)->type != cell::typeList ? s.c_nil : s.c_t;
-			popCallStack(s);
-			return ret;
+			return popCallStackLeaveData(s, ret, temporary);
 		}
 		else if (fxName->s == "car") {
 			// d->i must be > 1
@@ -863,14 +900,14 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			auto r = eval(s, arg);
 			if (r->type == cell::typeList) {
 				if (r->i > 0)
-					return popCallStackLeaveData(s, r + 1);
+					return popCallStackLeaveData(s, r + 1, temporary);
 
 				// we've got list with no elements - discard r and return nil
-				popCallStack(s);
-				return s.c_nil;
+				return popCallStackLeaveData(s, s.c_nil, temporary);
 			}
-			popCallStack(s);
-			return r;
+
+			// return nil
+			return popCallStackLeaveData(s, s.c_nil, temporary);
 		}
 		else if (fxName->s == "cdr") {
 			// d->i > 1
@@ -887,11 +924,9 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 				}
 
 				// empty list
-				popCallStack(s);
-				return s.c_nil;
+				return popCallStackLeaveData(s, s.c_nil, temporary);
 			}
-			popCallStack(s);
-			return r;
+			return popCallStackLeaveData(s, s.c_nil, temporary);
 		}
 		else if (fxName->s == "nth") {
 			// d->i > N
@@ -901,14 +936,12 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 
 			// find address
 			cell_t nth = eval(s, d + 3);
-			if (nth->type != cell::typeList){
-				popCallStack(s);
-				return s.c_nil; // error?
-			}
+			if (nth->type != cell::typeList)
+				return popCallStackLeaveData(s, s.c_nil, temporary); // error?
 
 			// nth->i must be < N
 			// find nth element in list and return result
-			return popCallStackLeaveData(s, nthCell(nth, n));
+			return popCallStackLeaveData(s, nthCell(nth, n), temporary);
 		}
 		else if (fxName->s == "defun") {
 			// d->i > 4
@@ -1015,7 +1048,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			if (isValid) {
 				// find last element and leave it on the stack
 				cell_t last = lastCell(addr);
-				cell_t ret = pushData(s, last);
+				cell_t ret = pushList(s, last);
 
 				// note: free space only for detached!
 				if (isDetached)
@@ -1132,9 +1165,9 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 				cell_t test = eval(s, d + 2, true);
 
 				// if test is not nil -> eval body, otherwise return last result
-				if (*test != *s.c_nil)
-					result = evalreturn(s, nextCell(d + 2), endCell(d));
-				else return popCallStackLeaveData(s, result);
+				if (!isNil(test))
+					result = evalreturn(s, nextCell(d + 2), endCell(d), temporary);
+				else return popCallStackLeaveData(s, result, temporary);
 				popCallStack(s);
 			}
 
@@ -1155,18 +1188,18 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			// update variable value and eval body
 			for (int i = 0; i < ntimes; ++i) {
 				*it = { cell::typeInt, i };
-				result = evalreturn(s, d + 4, endCell(d));
+				result = evalreturn(s, d + 4, endCell(d), temporary);
 			}
 
 			// return last eval result or nil
-			return popCallStackLeaveData(s, result);
+			return popCallStackLeaveData(s, result, temporary);
 		}
 		else if (fxName->s == "dolist") {
 			pushCallStack(s);
 
 			// extract iterator name, and eval list
 			string &name = (d + 2)->s;
-			cell_t lst = eval(s, d + 3);
+			cell_t lst = eval(s, d + 3); // must copy to stack, we are binding variable to that addr
 
 			// setup variable and get [var] reference
 			cell_t it = firstCell(lst);
@@ -1184,17 +1217,17 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 				std::get<1>(var) = std::distance(s.stack.begin(), it);
 
 				// eval body
-				result = evalreturn(s, nextCell(d + 3), endBody);
+				result = evalreturn(s, nextCell(d + 3), endBody, temporary);
 			}
 
 			// return last eval or nil
-			return popCallStackLeaveData(s, result);
+			return popCallStackLeaveData(s, result, temporary);
 		}
 		else if (fxName->s == "cond") {
 			// iterate through all clauses
 			for (cell_t c = d + 2; c != endCell(d); c = nextCell(c)) {
 				// check condition - if true return evaluated result
-				if (*eval(s, c + 1, true) != *s.c_nil) {
+				if (!isNil(eval(s, c + 1, true))) {
 					pushCallStack(s);
 					return popCallStackLeaveData(
 						s, evalreturn(s, nextCell(c + 1), endCell(c)));
@@ -1202,7 +1235,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			}
 
 			// no condition yielded true -> return nil
-			return s.c_nil;
+			return pushCell(s, s.c_nil, temporary);
 		}
 		else if (fxName->s == "=") {
 			pushCallStack(s);
@@ -1210,58 +1243,86 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			// checks if all evaluated cells are equal (supports multiple values)
 			cell_t result = evalUntilBinary(s, d + 2, endCell(d),
 											[&s](cell_t n, cell_t n1) -> bool {
-												return *n == *n1;
+												return cellsEqual(n, n1);
 											}, true) ? s.c_t : s.c_nil;
-			popCallStack(s);
-			return result;
+			return popCallStackLeaveData(s, result, temporary);
 		}
 		else if (fxName->s == "!=") {
 			pushCallStack(s);
 
 			// checks if all evaluated cells are not equal
 			// does not support multiple values
-			cell_t result = *eval(s, d + 2, true) != *eval(s, nextCell(d + 2), true) ?
-				s.c_t : s.c_nil;
-			popCallStack(s);
-			return result;
+			cell_t result = cellsEqual(eval(s, d + 2, true),
+									   eval(s, nextCell(d + 2), true)) ?
+				s.c_nil : s.c_t;
+			return popCallStackLeaveData(s, result, temporary);
 		}
 		else if (fxName->s == "assoc") {
+			pushCallStack(s);
+
 			// get key and list address
 			cell_t key = eval(s, d + 2, true);
 			cell_t lst = eval(s, nextCell(d + 2), true);
 
 			// search for first found key in list
 			for (cell_t it = firstCell(lst); it != endCell(lst); it = nextCell(it)) {
-				if (*key == *(it + 1)) {
-					if (temporary)
-						return it;
-					return pushData(s, it);
-				}
+				if (cellsEqual(key, it + 1))
+					return popCallStackLeaveData(s, it, temporary);
 			}
 
 			// or return nil if not found
-			return s.c_nil;
+			return popCallStackLeaveData(s, s.c_nil, temporary);
 		}
 		else if (fxName->s == "mapcar") {
-			// TODO: draft
-			// fx_args->i must be == 1
 			pushCallStack(s);
+
+			// evaluate map function and list
 			cell_t fx = eval(s, d + 2, true);
-			cell_t lst = eval(s, nextCell(d + 2), true); // we must copy to bind variable
+			cell_t lst = eval(s, nextCell(d + 2), true);
+
+			// initialize return list (size is equal to lst size)
 			cell_t res = pushCell(s, cell(cell::typeList, lst->i));
-			printState(s);
+
+			// build code to run map function
+			cell_t ev = pushCell(s, cell(cell::typeList, 2));
+			pushList(s, fx);
+			pushCell(s, cell(cell::typeList, 2));
+			pushCell(s, cell(cell::typeIdentifier, "quote"));
+
+			// mapping each cell
 			for (cell_t el = lst + 1; el != endCell(lst); el = nextCell(el)) {
-				pushCallStack(s);
-				cell_t ev = pushCell(s, cell(cell::typeList, 2));
-				pushData(s, fx);
-				pushCell(s, cell(cell::typeList, 2));
-				pushCell(s, cell(cell::typeIdentifier, "quote"));
-				pushData(s, el);
-				printState(s);
-				popCallStackLeaveData(s, eval(s, ev)); // hint: rotate
-				printState(s);
+				// push cell
+				cell_t argBegin = pushList(s, el);
+
+				// eval result
+				cell_t resultBegin = eval(s, ev);
+
+				// move data to beginning and (rotate with swap function)
+				// TODO: note that GCC's version of std::rotate is not C++11 compilant -
+				// it does not return offset pointer :| will be fixed in GCC 5.0
+				size_t resultSize = std::distance(resultBegin, s.stack.end());
+				s.stack.erase(argBegin, resultBegin);
+				std::rotate(ev, argBegin, s.stack.end());
+				ev += resultSize;
 			}
 			return popCallStackLeaveData(s, res);
+		}
+		else if (fxName->s == "eval") {
+			return eval(s, eval(s, d + 2, temporary), temporary);
+		}
+		else if (fxName->s == "member") {
+			pushCallStack(s);
+
+			// eval object to find and list itself
+			cell_t obj = eval(s, d + 2, true);
+			cell_t lst = eval(s, nextCell(d + 2), true);
+
+			// iterate through list and return t if object found
+			for (cell_t it = firstCell(lst); it != endCell(lst); it = nextCell(it)) {
+				if (cellsEqual(it, obj))
+					return popCallStackLeaveData(s, s.c_t, temporary);
+			}
+			return popCallStackLeaveData(s, s.c_nil, temporary);
 		}
 
 		//- functions evaluation -
@@ -1286,7 +1347,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 
 				// evaluate body
 				cell_t body = nextCell(args);
-				return popCallStackLeaveData(s, evalreturn(s, body, endCell(fx)));
+				return popCallStackLeaveData(s, evalreturn(s, body, endCell(fx), temporary), temporary);
 			}
 			dout("not function!" << std::endl);
 			return fx;
@@ -1304,7 +1365,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 				evalNoStack(s, d + 2, endCell(d));
 
 				// call procedure
-				return popCallStackLeaveData(s, std::get<1>(*i)(r, s.stack));
+				return popCallStackLeaveData(s, std::get<1>(*i)(r, s.stack), temporary);
 			}
 			dout("procedure not found" << std::endl); // not a function?
 		}
@@ -1335,9 +1396,9 @@ string lisp::eval(const string &s) {
 	auto code = detail::parse(s);
 	dout(detail::toString(code) << std::endl);
 	auto retAddr = detail::eval(*_s, code.begin(), true);
-	string r = detail::toString(retAddr);
+	string r = toString(retAddr);
 	dout("return addr: " << detail::getAddress(*_s, retAddr)
-		 << " | " << detail::toString(retAddr) << std::endl);
+		 << " | " << toString(retAddr) << std::endl);
 	detail::printState(*_s);
 	dout("sweep..." << std::endl);
 	detail::sweepStack(*_s);
