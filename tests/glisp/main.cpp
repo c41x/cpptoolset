@@ -125,6 +125,10 @@ int main(int argc, char **argv) {
 	test(gl, "(defun mycar (el) (car el))", "mycar");
 	test(gl, "(mapcar 'car '((a b) (c d) (e f)))", "(a c e)");
 	test(gl, "(mapcar 'mycar '((a b) (c d) (e f)))", "(a c e)");
+	test(gl, "(eval 'trees)", "((pine cones) (oak acorns) (maple seeds))");
+	test(gl, "(eval (eval ''trees))", "((pine cones) (oak acorns) (maple seeds))");
+	test(gl, "(member '(maple seeds) trees)", "t");
+	test(gl, "(member '(maple seeds nasty-thing) trees)", "nil");
 	#endif
 
 	gl.close();
