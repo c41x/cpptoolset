@@ -48,6 +48,7 @@ public:
 	cell(type_t t, int v) : type(t), i(v) {}
 	cell(type_t t, int _i, int _j, const string &_s) : type(t), s(_s), i(_i), j(_j) {}
 	cell(float _f) : type(typeFloat), f(_f) {}
+	cell(int _i) : type(typeInt), i(_i) {}
 	cell(int64 _i64) : type(typeInt64), ii(_i64) {}
 	cell(vec _xmm) : type(typeVector), xmm(_xmm) {}
 	cell(const string &_s) : type(typeString), s(_s) {}
@@ -86,8 +87,7 @@ public:
 
 // TODO: numeric operations
 // TODO: error handling
-// TODO: parsing strings
-// TODO: format string
+// TODO: change __m128 to vec4f, maybe add some math 2d stuff
 /*
  * add-to-list (unique)
  * add-to-ordered-list (sorted)

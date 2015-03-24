@@ -11,7 +11,7 @@
 
 #include "glisp.h"
 
-//#define GLISP_DEBUG_LOG
+#define GLISP_DEBUG_LOG
 #ifdef GLISP_DEBUG_LOG
 #define dout(param) std::cout << param
 #else
@@ -79,9 +79,12 @@ string toString(const cell_t c) {
 		s += ")";
 		return s;
 	}
+	else if (c->type == cell::typeString)
+		return strs("\"", c->s, "\"");
 	return c->getStr();
 }
 
+// convert containing variant value to string
 const string cell::getStr() const {
 	if (type == typeInt) return strs(i);
 	else if (type == typeIdentifier || type == typeString) return s;
@@ -92,6 +95,33 @@ const string cell::getStr() const {
 		return strs(v.x, v.y, v.z, v.w);
 	}
 	return "";
+}
+
+// prints all cells (use for debug purposes only)
+string toString(const cells_t &cells) {
+	string r;
+	for(const cell &c : cells) {
+		if(c.type == cell::typeList) {
+			r += "[list:" + toStr(c.i) + "]";
+		}
+		else if (c.type == cell::typeInt) {
+			r += toStr(c.i);
+		}
+		else if (c.type == cell::typeFloat) {
+			r += toStr(c.f);
+		}
+		else if (c.type == cell::typeIdentifier) {
+			r += c.s;
+		}
+		else if (c.type == cell::typeString) {
+			r += strs("\"", c.s, "\"");
+		}
+		else {
+			r += "[unknown]";
+		}
+		r += " ";
+	}
+	return r;
 }
 
 const bool operator==(const cell &l, const cell &r) {
@@ -235,13 +265,17 @@ cells_t parse(const string &s) {
 			openPars.pop();
 			checkQuoteDelim();
 		}
-		else if (t.id == tokenSymbol) {
+		else if (t.id == tokenSymbol || t.id == tokenString) {
 			// adds new element
 			onNewElement();
 
 			// determine token type and add atom to cells
-			if (isInteger(t.value))
-				cells.push_back(cell(cell::typeInt, fromStr<int>(t.value)));
+			if (t.id == tokenString)
+				cells.push_back(cell(t.value));
+			else if (isInteger(t.value))
+				cells.push_back(cell(fromStr<int>(t.value)));
+			else if (isFloat(t.value))
+				cells.push_back(cell(fromStr<float>(t.value)));
 			else cells.push_back(cell(cell::typeIdentifier, t.value));
 
 			// after element is added - check if we need to close quote
@@ -250,26 +284,6 @@ cells_t parse(const string &s) {
 	}
 
 	return cells;
-}
-
-string toString(const cells_t &cells) {
-	string r;
-	for(const cell &c : cells) {
-		if(c.type == cell::typeList) {
-			r += "[list:" + toStr(c.i) + "]";
-		}
-		else if(c.type == cell::typeInt) {
-			r += toStr(c.i);
-		}
-		else if(c.type == cell::typeIdentifier) {
-			r += c.s;
-		}
-		else {
-			r += "[unknown]";
-		}
-		r += " ";
-	}
-	return r;
 }
 
 //- dynamic scoping / stack / variable memory -
@@ -475,7 +489,7 @@ void printState(lispState &s) {
 	size_t varsLeft = s.variables.size();
 	for (size_t i = 0; i < s.stack.size(); ++i) {
 		// put call stack bottom frame
-		if (rcs.size() > 0 && i == rcs.top()) {
+		while (rcs.size() > 0 && i == rcs.top()) {
 			dout("| ");
 			rcs.pop();
 		}
@@ -497,6 +511,12 @@ void printState(lispState &s) {
 		else if (e.type == cell::typeIdentifier) {
 			dout(e.s << " ");
 		}
+		else if (e.type == cell::typeFloat) {
+			dout(e.f << " ");
+		}
+		else if (e.type == cell::typeString) {
+			dout("\"" << e.s << "\" ");
+		}
 		else if (e.type == cell::typeInt) {
 			dout(e.i << " ");
 		}
@@ -507,11 +527,13 @@ void printState(lispState &s) {
 	}
 
 	if (rcs.size() > 0) {
+		bool firstFrame = rcs.size() == 1;
 		while (rcs.size()) {
 			dout("|");
 			rcs.pop();
 		}
-		dout(" call stack corrupted! ");
+		if (!firstFrame)
+			dout(" call stack corrupted! ");
 	}
 
 	if (varsLeft > 0) {
@@ -730,7 +752,9 @@ bool evalUntilBinary(lispState &s, cell_t begin, cell_t end, T_OP op, bool tempo
 cell_t eval(lispState &s, cell_t d, bool temporary) {
 	tab(s); dout("eval: " << toString(d) << std::endl);
 
-	if (d->type == cell::typeInt) {
+	if (d->type == cell::typeInt ||
+		d->type == cell::typeString ||
+		d->type == cell::typeFloat) {
 		// when temporary is true - return value directly (it's in input array!)
 		if (temporary)
 			return d;
@@ -1324,6 +1348,48 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			}
 			return popCallStackLeaveData(s, s.c_nil, temporary);
 		}
+		else if (fxName->s == "strs") {
+			// result string
+			string res;
+
+			// convert to strings and concatenate elements
+			pushCallStack(s);
+			evalmap(s, d + 2, endCell(d),
+					[&res](cell_t el) {
+						res += el->getStr();
+					}, true);
+
+			// push return on stack
+			return popCallStackLeaveData(s, pushCell(s, cell(cell::typeString, res)));
+		}
+		else if (fxName->s == "strf") {
+			// number of arguments
+			int nArgs = d->i - 2;
+
+			// evaluate arguments (leave them on stack)
+			pushCallStack(s);
+			const string &format = eval(s, d + 2, true)->s;
+			cell_t args = s.stack.end();
+			evalNoStack(s, nextCell(d + 2), endCell(d));
+
+			// pass arguemnts to strf
+			#define FA(NUM) (args + NUM)->getStr()
+			string res;
+			switch (nArgs) {
+				case 1: res = strf(format, FA(0)); break;
+				case 2: res = strf(format, FA(0), FA(1)); break;
+				case 3: res = strf(format, FA(0), FA(1), FA(2)); break;
+				case 4: res = strf(format, FA(0), FA(1), FA(2), FA(3)); break;
+				case 5: res = strf(format, FA(0), FA(1), FA(2), FA(3), FA(4)); break;
+				case 6: res = strf(format, FA(0), FA(1), FA(2), FA(3), FA(4), FA(5)); break;
+				case 7: res = strf(format, FA(0), FA(1), FA(2), FA(3), FA(4), FA(5), FA(6)); break;
+				default: res = "";
+			}
+			#undef FA
+
+			// return result on stack
+			return popCallStackLeaveData(s, pushCell(s, {cell::typeString, res}));
+		}
 
 		//- functions evaluation -
 		// get fx address
@@ -1391,10 +1457,12 @@ void lisp::close() {
 	detail::popCallStack(*_s);
 }
 
+// TODO: return cell_t
+// TODO: eval cell_t (already parsed)
 string lisp::eval(const string &s) {
 	dout(std::endl << std::endl);
 	auto code = detail::parse(s);
-	dout(detail::toString(code) << std::endl);
+	dout(toString(code) << std::endl);
 	auto retAddr = detail::eval(*_s, code.begin(), true);
 	string r = toString(retAddr);
 	dout("return addr: " << detail::getAddress(*_s, retAddr)
