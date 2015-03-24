@@ -1,4 +1,4 @@
-//#define REPL
+#define REPL
 
 #include <base/base.h>
 
@@ -131,6 +131,11 @@ int main(int argc, char **argv) {
 	test(gl, "(member '(maple seeds nasty-thing) trees)", "nil");
 	test(gl, "(member 'nil '(1 2 3 nil b))", "t");
 	test(gl, "( member '       nil   '(1 2 3   nil- b )   )", "nil");
+	test(gl, "(defvar t-str \"-some test string \\\"\")", "t-str");
+	test(gl, "(defvar t-int 678)", "t-int");
+	test(gl, "(strs \"-\" 666 \"-\")", "\"-666-\"");
+	test(gl, "(strs \"-\" t-int t-str \"-\")", "\"-678-some test string \\\"-\"");
+	test(gl, "(strf \"int test: %, %\" t-int \"string test\")", "\"int test: 678, string test\"");
 	#endif
 
 	gl.close();
