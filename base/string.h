@@ -41,6 +41,30 @@ struct stringRange {
 	operator string() const { return string(begin, end); }
 };
 
+namespace detail {
+// required space for string estimator
+template <typename T> inline size_t estimateSize(const T &v) { return 0; }
+inline size_t estimateSize(const int8 &v) { return 4; }
+inline size_t estimateSize(const uint8 &v) { return 3; }
+inline size_t estimateSize(const int16 &v) { return 6; }
+inline size_t estimateSize(const uint16 &v) { return 5; }
+inline size_t estimateSize(const int32 &v) { return 11; }
+inline size_t estimateSize(const uint32 &v) { return 10; }
+inline size_t estimateSize(const int64 &v) { return 21; }
+inline size_t estimateSize(const uint64 &v) { return 20; }
+inline size_t estimateSize(const float &v) { return 14; }
+inline size_t estimateSize(const double &v) { return 26; }
+inline size_t estimateSize(const bool &v) { return 5; }
+inline size_t estimateSize(const string &v) { return v.size(); }
+inline size_t estimateSize(const char *v) { return strlen(v); }
+template <typename T, typename... Args> inline size_t estimateSize(const T &v, const Args&... args) {
+	return estimateSize(args...) + estimateSize(v);
+}
+template <typename... Args> size_t estimateSize(const Args&... args) {
+	return detail::estimateSize(args...);
+}
+}
+
 // inlines char fxs:
 inline bool isDigit(char c) { return c >= '0' && c <= '9'; }
 inline bool isAlpha(char c) { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'); }
@@ -166,23 +190,23 @@ stringRange toStr(const string &s, string &os);
 stringRange toStr(const char *s, string &os);
 
 // full string versions
-inline string toStr(const int8 &i) { string r(0, ' '); r.resize(20); return signedToStr<int8>(i, r).str(); }
-inline string toStr(const uint8 &i) { string r(0, ' '); r.resize(20); return unsignedToStr<uint8>(i, r).str(); }
-inline string toStr(const int16 &i) { string r(0, ' '); r.resize(20); return signedToStr<int16>(i, r).str(); }
-inline string toStr(const uint16 &i) { string r(0, ' '); r.resize(20); return unsignedToStr<uint16>(i, r).str(); }
-inline string toStr(const int32 &i) { string r(0, ' '); r.resize(20); return signedToStr<int32>(i, r).str(); }
-inline string toStr(const uint32 &i) { string r(0, ' '); r.resize(20); return unsignedToStr<uint32>(i, r).str(); }
-inline string toStr(const int64 &i) { string r(0, ' '); r.resize(20); return signedToStr<int64>(i, r).str(); }
-inline string toStr(const uint64 &i) { string r(0, ' '); r.resize(20); return unsignedToStr<uint64>(i, r).str(); }
-inline string toStr(const float &i) { string r(0, ' '); r.resize(20); return realToStr<float>(i, r, 7).str(); }
-inline string toStr(const double &i) { string r(0, ' '); r.resize(20); return realToStr<double>(i, r, 13).str(); }
-inline string toStr(const bool &i) { string r(0, ' '); r.resize(20); return boolToStr(i, r).str(); }
-inline string toStr(const string &s) { string r(0, ' '); r.resize(20); return toStr(s, r).str(); }
-inline string toStr(const char *s) { string r(0, ' '); r.resize(20); return toStr(s, r).str(); }
+inline string toStr(const int8 &i) { string r(0, ' '); r.resize(detail::estimateSize(i)); return signedToStr<int8>(i, r).str(); }
+inline string toStr(const uint8 &i) { string r(0, ' '); r.resize(detail::estimateSize(i)); return unsignedToStr<uint8>(i, r).str(); }
+inline string toStr(const int16 &i) { string r(0, ' '); r.resize(detail::estimateSize(i)); return signedToStr<int16>(i, r).str(); }
+inline string toStr(const uint16 &i) { string r(0, ' '); r.resize(detail::estimateSize(i)); return unsignedToStr<uint16>(i, r).str(); }
+inline string toStr(const int32 &i) { string r(0, ' '); r.resize(detail::estimateSize(i)); return signedToStr<int32>(i, r).str(); }
+inline string toStr(const uint32 &i) { string r(0, ' '); r.resize(detail::estimateSize(i)); return unsignedToStr<uint32>(i, r).str(); }
+inline string toStr(const int64 &i) { string r(0, ' '); r.resize(detail::estimateSize(i)); return signedToStr<int64>(i, r).str(); }
+inline string toStr(const uint64 &i) { string r(0, ' '); r.resize(detail::estimateSize(i)); return unsignedToStr<uint64>(i, r).str(); }
+inline string toStr(const float &i) { string r(0, ' '); r.resize(detail::estimateSize(i)); return realToStr<float>(i, r, 7).str(); }
+inline string toStr(const double &i) { string r(0, ' '); r.resize(detail::estimateSize(i)); return realToStr<double>(i, r, 13).str(); }
+inline string toStr(const bool &i) { string r(0, ' '); r.resize(detail::estimateSize(i)); return boolToStr(i, r).str(); }
+inline string toStr(const string &s) { string r(0, ' '); r.resize(detail::estimateSize(s)); return toStr(s, r).str(); }
+inline string toStr(const char *s) { string r(0, ' '); r.resize(detail::estimateSize(s)); return toStr(s, r).str(); }
 
 // string building (here just prototypes - for clarity)
 template<typename... Args> string strs(const Args&... args);
-template<typename... Args> string strf(const char *format, const Args&... args);
+template<typename... Args> string strf(const string &format, const Args&... args);
 
 
 // implementations:
@@ -350,8 +374,8 @@ inline string boolToStr(const bool &b) {
 
 // detail:
 namespace detail {
-inline void strf(string &buffer, string &out, const char *format) {
-	while (*format) {
+inline void strf_(string &buffer, string &out, string::const_iterator format, string::const_iterator formatEnd) {
+	while (format != formatEnd) {
 		if (*format == '%') {
 			gassert(*(format + 1) == '%', "formatted string: missing function arguments");
 			if(*(format + 1) == '%')
@@ -361,15 +385,17 @@ inline void strf(string &buffer, string &out, const char *format) {
 		++format;
 	}
 }
-template <typename T, typename... Args> void strf(string &buffer, string &out, const char *format, const T &v, const Args&... args) {
-	while (*format) {
+
+template <typename T, typename... Args> void strf_(string &buffer, string &out, string::const_iterator format,
+												   string::const_iterator formatEnd, const T &v, const Args&... args) {
+	while (format != formatEnd) {
 		if (*format == '%') {
 			if (*(format + 1) == '%') // replace %% -> %
 				++format;
 			else {
 				stringRange r = toStr(v, buffer);
 				out.append(r.begin, r.end);
-				strf(buffer, out, format + 1, args...);
+				strf_(buffer, out, format + 1, formatEnd, args...);
 				return;
 			}
 		}
@@ -378,29 +404,30 @@ template <typename T, typename... Args> void strf(string &buffer, string &out, c
 	}
 	gassert(false, "formatted string: extra arguments passed to function");
 }
-template <typename T> void strs(string &buffer, string &out, const T &v) {
+
+template <typename T> void strs_(string &buffer, string &out, const T &v) {
 	stringRange r = toStr(v, buffer);
 	out.append(r.begin, r.end);
 }
-template <typename T,typename... Args> void strs(string &buffer, string &out, const T &val, const Args&... args) {
-	strs(buffer, out, val);
-	strs(buffer, out, args...);
+template <typename T,typename... Args> void strs_(string &buffer, string &out, const T &val, const Args&... args) {
+	strs_(buffer, out, val);
+	strs_(buffer, out, args...);
 }
 }
 
-template<typename... Args> string strf(const char *format, const Args&... args) {
-	size_t s = strlen(format);
-	string ret,buffer;
+template <typename... Args> string strf(const string &format, const Args&... args) {
+	size_t s = format.size();
+	string ret, buffer;
 	buffer.resize(30);
 	ret.reserve(s + sizeof...(Args) * 5); // 5 chars per argument
-	detail::strf(buffer, ret, format, args...);
+	detail::strf_(buffer, ret, format.begin(), format.end(), args...);
 	return ret;
 }
 
-template<typename... Args> string strs(const Args&... args) {
-	string buff,ret;
-	buff.resize(30);
-	detail::strs(buff, ret, args...);
+template <typename... Args> string strs(const Args&... args) {
+	string buff, ret;
+	buff.resize(detail::estimateSize(args...));
+	detail::strs_(buff, ret, args...);
 	return ret;
 }
 
