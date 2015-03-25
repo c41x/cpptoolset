@@ -1,4 +1,4 @@
-#define REPL
+//#define REPL
 
 #include <base/base.h>
 
@@ -139,6 +139,10 @@ int main(int argc, char **argv) {
 	test(gl, "(/ 1.0 2.0 2.0)", "0.250000");
 	test(gl, "(- 6 (* 2 3 ))", "0");
 	test(gl, "|1 2 3 4|", "1.000000 2.000000 3.000000 4.000000");
+	test(gl, "(defvar x '(12 223 -31415 24 100 0 3 123 33))", "x");
+	test(gl, "x", "(12 223 -31415 24 100 0 3 123 33)");
+	test(gl, "(sort 'x)", "(-31415 0 3 12 24 33 100 123 223)");
+	test(gl, "(sort '(-31415 0 2 3))", "(-31415 0 2 3)");
 	#endif
 
 	gl.close();
