@@ -12,7 +12,7 @@
 #include "glisp.h"
 #include "math_string.h"
 
-#define GLISP_DEBUG_LOG
+//#define GLISP_DEBUG_LOG
 #ifdef GLISP_DEBUG_LOG
 #define dout(param) std::cout << param
 #else
@@ -1425,15 +1425,22 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return popCallStackLeaveData(s, pushCell(s, {cell::typeString, res}));
 		}
 		else if (fxName == "sort") {
-			// TODO: check if evaled d + 2 is ID or list -> wrap as fx
 			// all elements must be atoms
-			var_t var = findVariable(s, (d + 2)->s);
-			if (isVariableValid(s, var)) {
-				cell_t lst = getVariableAddress(s, var);
-				std::sort(lst, endCell(lst));
-				return lst;
-			}
-			return s.c_nil;
+			pushCallStack(s);
+
+			// eval list
+			cell_t lst = eval(s, d + 2);
+
+			// list is ID - we must fetch variable
+			if (lst->type == cell::typeIdentifier)
+				lst = eval(s, lst, true);
+			else if (lst->type != cell::typeList)
+				// not supported type
+				return popCallStackLeaveData(s, pushCell(s, s.c_nil, temporary), temporary);
+
+			// perform sort and return sorted list
+			std::sort(lst + 1, endCell(lst));
+			return popCallStackLeaveData(s, lst, temporary);
 		}
 
 		//- functions evaluation -
