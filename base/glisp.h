@@ -91,6 +91,7 @@ public:
 
 }}
 
+// TODO: -float
 // TODO: error handling
 /*
  * add-to-list (unique)
