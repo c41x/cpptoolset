@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8)
 project(granite)
 
 if(CMAKE_COMPILER_IS_GNUCXX)
-  set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -msse -msse2 -msse3")
+  set(CMAKE_CXX_FLAGS "-std=c++1y -Wall -msse -msse2 -msse3")
   set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 endif()
 

@@ -10,6 +10,7 @@
  */
 
 #include "glisp.h"
+#include "math_string.h"
 
 #define GLISP_DEBUG_LOG
 #ifdef GLISP_DEBUG_LOG
@@ -19,7 +20,6 @@
 #endif
 
 namespace granite { namespace base {
-
 //- cell -
 // iterating over lists: first element
 cell_t firstCell(cell_t c) {
@@ -90,10 +90,7 @@ const string cell::getStr() const {
 	else if (type == typeIdentifier || type == typeString) return s;
 	else if (type == typeInt64) return strs(ii);
 	else if (type == typeFloat) return strs(f);
-	else if (type == typeVector) {
-		vec4f v = vec(xmm);
-		return strs(v.x, v.y, v.z, v.w);
-	}
+	else if (type == typeVector) return toStr(vec4f(xmm));
 	return "";
 }
 
@@ -109,6 +106,9 @@ string toString(const cells_t &cells) {
 		}
 		else if (c.type == cell::typeFloat) {
 			r += toStr(c.f);
+		}
+		else if (c.type == cell::typeVector) {
+			r += strs("| ", toStr(vec4f(c.xmm)), " |");
 		}
 		else if (c.type == cell::typeIdentifier) {
 			r += c.s;
@@ -166,6 +166,16 @@ bool isNil(cell_t c) {
 	return c->type == cell::typeIdentifier && c->s == "nil";
 }
 
+// operator generator for all types
+std::function<void(cell_t)> getOperator(cell &acc, auto op) {
+	switch (acc.type) {
+		case cell::typeInt: return [&acc,&op](cell_t c) { op(acc.i, c->i); }; break;
+		case cell::typeFloat: return [&acc, &op](cell_t c) { op(acc.f, c->f); }; break;
+		default: return [](cell_t){};
+	}
+}
+
+// some static constants
 cell cell::nil = cell(cell::typeIdentifier, "nil");
 cell cell::t = cell(cell::typeIdentifier, "t");
 
@@ -209,7 +219,8 @@ cells_t parse(const string &s) {
 		tokenClosePar,
 		tokenComment,
 		tokenString,
-		tokenQuote
+		tokenQuote,
+		tokenVec
 	};
 
 	// define rules
@@ -220,6 +231,7 @@ cells_t parse(const string &s) {
 	tok.addRule(tokenComment, true, ";", "", "\n\r");
 	tok.addRule(tokenString, false, "\"", "\\", "\"");
 	tok.addRule(tokenQuote, false, "\'");
+	tok.addRule(tokenVec, false, "|", "", "|");
 
 	// actual parsing
 	std::stack<std::tuple<size_t, bool>> openPars; // index, quote
@@ -265,13 +277,15 @@ cells_t parse(const string &s) {
 			openPars.pop();
 			checkQuoteDelim();
 		}
-		else if (t.id == tokenSymbol || t.id == tokenString) {
+		else if (t.id == tokenSymbol || t.id == tokenString || t.id == tokenVec) {
 			// adds new element
 			onNewElement();
 
 			// determine token type and add atom to cells
 			if (t.id == tokenString)
 				cells.push_back(cell(t.value));
+			else if (t.id == tokenVec)
+				cells.push_back(cell(fromStr<vec4f>(t.value)));
 			else if (isInteger(t.value))
 				cells.push_back(cell(fromStr<int>(t.value)));
 			else if (isFloat(t.value))
@@ -520,6 +534,10 @@ void printState(lispState &s) {
 		else if (e.type == cell::typeInt) {
 			dout(e.i << " ");
 		}
+		else if (e.type == cell::typeVector) {
+			vec4f v(e.xmm);
+			dout("/" << v.x << " " << v.y << " " << v.z << " " << v.w << "/ ");
+		}
 		else if (e.type == cell::typeDetach) {
 			dout("[detach:" << e.i << ":" << e.j << ":" <<
 				 (e.j != -1 ? toString(getVariableAddress(s, v)) : "?") << "] ");
@@ -749,12 +767,22 @@ bool evalUntilBinary(lispState &s, cell_t begin, cell_t end, T_OP op, bool tempo
 	return true;
 }
 
+// evaluates op on each cell accumulating result
+template <typename T>
+cell_t evalAccumulate(lispState &s, cell_t first, cell_t last, T op) {
+	pushCallStack(s);
+	cell acc = *eval(s, first);
+	evalmap(s, nextCell(first), last, getOperator(acc, op), true);
+	return popCallStackLeaveData(s, pushCell(s, acc));
+}
+
 cell_t eval(lispState &s, cell_t d, bool temporary) {
 	tab(s); dout("eval: " << toString(d) << std::endl);
 
 	if (d->type == cell::typeInt ||
 		d->type == cell::typeString ||
-		d->type == cell::typeFloat) {
+		d->type == cell::typeFloat ||
+		d->type == cell::typeVector) {
 		// when temporary is true - return value directly (it's in input array!)
 		if (temporary)
 			return d;
@@ -789,12 +817,13 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 		}
 
 		// first argument must be identifier
-		cell_t fxName = d + 1;
+		cell_t fxNameCell = d + 1;
+		const string &fxName = fxNameCell->s;
 		if ((d + 1)->type == cell::typeList) {
 			// first list element is list -> evaluating lambda
 			return eval(s, d + 1, temporary);
 		}
-		else if (fxName->type != cell::typeIdentifier) {
+		else if (fxNameCell->type != cell::typeIdentifier) {
 			dout("function name must be ID" << std::endl);
 			return pushCell(s, s.c_nil, temporary);
 		}
@@ -806,7 +835,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 		//    c) can use temporary memory in read only
 		// 2) a) leaves stack frame at the same point as before execution
 		//    b) unbounds all unused variables that ran out of scope
-		if (fxName->s == "defvar") {
+		if (fxName == "defvar") {
 			// 3 elements min!
 			cell_t varName = d + 2;
 			cell_t varValue = eval(s, d + 3);
@@ -815,7 +844,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			// return identifier of created variable
 			return pushCell(s, varName, temporary);
 		}
-		else if (fxName->s == "quote") {
+		else if (fxName == "quote") {
 			// return back source, caller will only fetch data
 			if (temporary)
 				return d + 2;
@@ -823,18 +852,23 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			// just copy quote body to stack
 			return pushList(s, d + 2);
 		}
-		else if (fxName->s == "lambda") {
+		else if (fxName == "lambda") {
 			// copy cdr of lambda, first element is "lambda" identifier, we dont need it
 			return pushCdr(s, d);
 		}
-		else if (fxName->s == "+") {
-			int sum = 0;
-			evalmap(s, firstCell(d) + 1, endCell(d), [&sum](cell_t i){ sum += i->i; });
-
-			// leave return value on stack
-			return pushCell(s, {cell::typeInt, sum});
+		else if (fxName == "+") {
+			return evalAccumulate(s, d + 2, endCell(d), [](auto &acc, auto v) { acc += v; });
 		}
-		else if (fxName->s == "if") {
+		else if (fxName == "-") {
+			return evalAccumulate(s, d + 2, endCell(d), [](auto &acc, auto v) { acc -= v; });
+		}
+		else if (fxName == "/") {
+			return evalAccumulate(s, d + 2, endCell(d), [](auto &acc, auto v) { acc /= v; });
+		}
+		else if (fxName == "*") {
+			return evalAccumulate(s, d + 2, endCell(d), [](auto &acc, auto v) { acc *= v; });
+		}
+		else if (fxName == "if") {
 			// test, we dont need return value - discard it with call stack
 			pushCallStack(s);
 			cell_t testi = eval(s, d + 2, true);
@@ -848,12 +882,12 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 				return popCallStackLeaveData(s, evalreturn(s, offset, endCell(d), temporary), temporary);
 			}
 		}
-		else if (fxName->s == "progn") {
+		else if (fxName == "progn") {
 			// d->i must be > 1
 			pushCallStack(s);
 			return popCallStackLeaveData(s, evalreturn(s, d + 2, endCell(d), temporary), temporary);
 		}
-		else if (fxName->s == "let") {
+		else if (fxName == "let") {
 			// evaluate and push variables
 			pushCallStack(s);
 			cell_t args = d + 2;
@@ -866,12 +900,12 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return popCallStackLeaveData(s, evalreturn(s, nextCell(args), endCell(d), temporary),
 										 temporary);
 		}
-		else if (fxName->s == "boundp") {
+		else if (fxName == "boundp") {
 			// eval(d + 2) must be ID
 			cell_t res = isVariableValid(s, findVariable(s, eval(s, d + 2, true)->s)) ? s.c_t : s.c_nil;
 			return pushCell(s, res, temporary);
 		}
-		else if (fxName->s == "unbound") {
+		else if (fxName == "unbound") {
 			// eval(d + 2) must be ID (we are not using stack frames)
 			pushCallStack(s);
 			cell r = *eval(s, d + 2, true);
@@ -887,7 +921,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			popCallStack(s);
 			return pushCell(s, r);
 		}
-		else if (fxName->s == "list") {
+		else if (fxName == "list") {
 			// empty list evaluates to nil
 			if (d->i < 2)
 				return s.c_nil;
@@ -898,13 +932,13 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			evalNoStack(s, d + 2, endCell(d));
 			return ret;
 		}
-		else if (fxName->s == "listp") {
+		else if (fxName == "listp") {
 			// d->i > 1
 			pushCallStack(s);
 			auto ret = eval(s, d + 2, true)->type != cell::typeList ? s.c_nil : s.c_t;
 			return popCallStackLeaveData(s, ret, temporary);
 		}
-		else if (fxName->s == "car") {
+		else if (fxName == "car") {
 			// d->i must be > 1
 			auto arg = d + 2;
 
@@ -933,7 +967,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			// return nil
 			return popCallStackLeaveData(s, s.c_nil, temporary);
 		}
-		else if (fxName->s == "cdr") {
+		else if (fxName == "cdr") {
 			// d->i > 1
 			auto arg = d + 2;
 
@@ -952,7 +986,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			}
 			return popCallStackLeaveData(s, s.c_nil, temporary);
 		}
-		else if (fxName->s == "nth") {
+		else if (fxName == "nth") {
 			// d->i > N
 			// calc N
 			pushCallStack(s);
@@ -967,7 +1001,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			// find nth element in list and return result
 			return popCallStackLeaveData(s, nthCell(nth, n), temporary);
 		}
-		else if (fxName->s == "defun") {
+		else if (fxName == "defun") {
 			// d->i > 4
 			cell_t fnName = d + 2;
 
@@ -979,11 +1013,11 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			// return function id
 			return pushCell(s, *fnName);
 		}
-		else if (fxName->s == "setq" || fxName->s == "set") {
+		else if (fxName == "setq" || fxName == "set") {
 			pushCallStack(s);
 
 			// gather data
-			const bool isSetq = fxName->s == "setq";
+			const bool isSetq = fxName == "setq";
 			bool isValid;
 			bool isDetached;
 			cell_t addr;
@@ -1021,14 +1055,14 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			popCallStack(s);
 			return addr;
 		}
-		else if (fxName->s == "length") {
+		else if (fxName == "length") {
 			pushCallStack(s);
 			cell_t addr = eval(s, d + 2, true);
 			int len = addr->type == cell::typeList ? addr->i : 1;
 			popCallStack(s);
 			return pushCell(s, {cell::typeInt, len});
 		}
-		else if (fxName->s == "push") {
+		else if (fxName == "push") {
 			// addr must be list, d + 3 must be id
 			pushCallStack(s);
 			bool isValid;
@@ -1058,7 +1092,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			popCallStack(s);
 			return addr;
 		}
-		else if (fxName->s == "pop") {
+		else if (fxName == "pop") {
 			// addr must be list, d + 3 must be id
 			pushCallStack(s);
 			bool isValid;
@@ -1089,7 +1123,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			popCallStack(s);
 			return addr;
 		}
-		else if (fxName->s == "append") {
+		else if (fxName == "append") {
 			// addr must be list, d + 3 must be id
 			pushCallStack(s);
 			bool isValid;
@@ -1120,7 +1154,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			popCallStack(s);
 			return addr;
 		}
-		else if (fxName->s == "setcar") {
+		else if (fxName == "setcar") {
 			pushCallStack(s);
 			bool isValid;
 			bool isDetached;
@@ -1147,7 +1181,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 
 			return popCallStackLeaveData(s);
 		}
-		else if (fxName->s == "setcdr") {
+		else if (fxName == "setcdr") {
 			pushCallStack(s);
 			bool isValid;
 			bool isDetached;
@@ -1180,7 +1214,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 
 			return popCallStackLeaveData(s);
 		}
-		else if (fxName->s == "while") {
+		else if (fxName == "while") {
 			cell_t result = s.c_nil;
 			while (true) {
 				pushCallStack(s);
@@ -1198,7 +1232,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			// will never reach here
 			return s.c_nil;
 		}
-		else if (fxName->s == "dotimes") {
+		else if (fxName == "dotimes") {
 			pushCallStack(s);
 
 			// extract name and loop iteration count
@@ -1218,7 +1252,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			// return last eval result or nil
 			return popCallStackLeaveData(s, result, temporary);
 		}
-		else if (fxName->s == "dolist") {
+		else if (fxName == "dolist") {
 			pushCallStack(s);
 
 			// extract iterator name, and eval list
@@ -1247,7 +1281,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			// return last eval or nil
 			return popCallStackLeaveData(s, result, temporary);
 		}
-		else if (fxName->s == "cond") {
+		else if (fxName == "cond") {
 			// iterate through all clauses
 			for (cell_t c = d + 2; c != endCell(d); c = nextCell(c)) {
 				// check condition - if true return evaluated result
@@ -1261,7 +1295,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			// no condition yielded true -> return nil
 			return pushCell(s, s.c_nil, temporary);
 		}
-		else if (fxName->s == "=") {
+		else if (fxName == "=") {
 			pushCallStack(s);
 
 			// checks if all evaluated cells are equal (supports multiple values)
@@ -1271,7 +1305,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 											}, true) ? s.c_t : s.c_nil;
 			return popCallStackLeaveData(s, result, temporary);
 		}
-		else if (fxName->s == "!=") {
+		else if (fxName == "!=") {
 			pushCallStack(s);
 
 			// checks if all evaluated cells are not equal
@@ -1281,7 +1315,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 				s.c_nil : s.c_t;
 			return popCallStackLeaveData(s, result, temporary);
 		}
-		else if (fxName->s == "assoc") {
+		else if (fxName == "assoc") {
 			pushCallStack(s);
 
 			// get key and list address
@@ -1297,7 +1331,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			// or return nil if not found
 			return popCallStackLeaveData(s, s.c_nil, temporary);
 		}
-		else if (fxName->s == "mapcar") {
+		else if (fxName == "mapcar") {
 			pushCallStack(s);
 
 			// evaluate map function and list
@@ -1331,10 +1365,10 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			}
 			return popCallStackLeaveData(s, res);
 		}
-		else if (fxName->s == "eval") {
+		else if (fxName == "eval") {
 			return eval(s, eval(s, d + 2, temporary), temporary);
 		}
-		else if (fxName->s == "member") {
+		else if (fxName == "member") {
 			pushCallStack(s);
 
 			// eval object to find and list itself
@@ -1348,7 +1382,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			}
 			return popCallStackLeaveData(s, s.c_nil, temporary);
 		}
-		else if (fxName->s == "strs") {
+		else if (fxName == "strs") {
 			// result string
 			string res;
 
@@ -1362,7 +1396,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			// push return on stack
 			return popCallStackLeaveData(s, pushCell(s, cell(cell::typeString, res)));
 		}
-		else if (fxName->s == "strf") {
+		else if (fxName == "strf") {
 			// number of arguments
 			int nArgs = d->i - 2;
 
@@ -1390,10 +1424,21 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			// return result on stack
 			return popCallStackLeaveData(s, pushCell(s, {cell::typeString, res}));
 		}
+		else if (fxName == "sort") {
+			// TODO: check if evaled d + 2 is ID or list -> wrap as fx
+			// all elements must be atoms
+			var_t var = findVariable(s, (d + 2)->s);
+			if (isVariableValid(s, var)) {
+				cell_t lst = getVariableAddress(s, var);
+				std::sort(lst, endCell(lst));
+				return lst;
+			}
+			return s.c_nil;
+		}
 
 		//- functions evaluation -
 		// get fx address
-		var_t var = findVariable(s, fxName->s);
+		var_t var = findVariable(s, fxName);
 		if (isVariableValid(s, var)) {
 			cell_t fx = getVariableAddress(s, var);
 			if (fx->type == cell::typeList) {
@@ -1419,7 +1464,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return fx;
 		}
 		else {
-			proc_t i = getProcedure(s, fxName->s);
+			proc_t i = getProcedure(s, fxName);
 			if (isProcedureValid(s, i)) {
 				pushCallStack(s);
 

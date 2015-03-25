@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
 	gl.init();
 
 	// add custom procedures
-	gl.addProcedure("*", &c_mul);
+	gl.addProcedure("**", &c_mul);
 	gl.addProcedure("message", &c_message);
 
 	#ifdef REPL
@@ -59,7 +59,7 @@ int main(int argc, char **argv) {
 	test(gl, "()", "nil");
 	test(gl, "(= 44 66)", "nil");
 	test(gl, "(= 66 66)", "t");
-	test(gl, "(defvar l (lambda (a bc ) (+ a bc (* 2 bc) 1000)))", "l");
+	test(gl, "(defvar l (lambda (a bc ) (+ a bc (** 2 bc) 1000)))", "l");
 	test(gl, "(l 2 3)", "1011");
 	test(gl, "(progn 1 2 3)", "3");
 	test(gl, "(if t (progn 11 22) 33)", "22");
@@ -136,6 +136,9 @@ int main(int argc, char **argv) {
 	test(gl, "(strs \"-\" 666 \"-\")", "\"-666-\"");
 	test(gl, "(strs \"-\" t-int t-str \"-\")", "\"-678-some test string \\\"-\"");
 	test(gl, "(strf \"int test: %, %\" t-int \"string test\")", "\"int test: 678, string test\"");
+	test(gl, "(/ 1.0 2.0 2.0)", "0.250000");
+	test(gl, "(- 6 (* 2 3 ))", "0");
+	test(gl, "|1 2 3 4|", "1.000000 2.000000 3.000000 4.000000");
 	#endif
 
 	gl.close();

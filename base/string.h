@@ -262,8 +262,11 @@ template <typename T> T strToReal(const stringRange &range) {
 
 bool isInteger(const stringRange &range) {
 	string::const_iterator it(range.begin);
-	if ((*range.begin) == '-')
+	if ((*range.begin) == '-') {
 		it++;
+		if (it == range.end)
+			return false;
+	}
 	for (; it != range.end; ++it) {
 		if (!isDigit(*it))
 			return false;
@@ -273,8 +276,11 @@ bool isInteger(const stringRange &range) {
 
 bool isFloat(const stringRange &range) {
 	string::const_iterator it(range.begin);
-	if ((*range.begin) == '-')
+	if ((*range.begin) == '-') {
 		++it;
+		if (it == range.end)
+			return false;
+	}
 	bool dotFound = false;
 	for (; it != range.end; it++) {
 		if (*it == '.' && !dotFound){
@@ -344,6 +350,7 @@ template <typename T> stringRange realToStr(const T &r, string &os, int precisio
 		i /= 10;
 		p++;
 	}
+	std::reverse(os.begin(), p);
 
 	// dot
 	*p = '.';

@@ -40,7 +40,12 @@ public:
 		};
 		float f;
 		int64 ii;
-		__m128 xmm;
+		GE_ALIGN_BEGIN(16) union {
+			struct{
+				float x, y, z, w;
+			};
+			float xmm[4];
+		} GE_ALIGN_END(16);
 	};
 
 	cell() {}
@@ -50,7 +55,8 @@ public:
 	cell(float _f) : type(typeFloat), f(_f) {}
 	cell(int _i) : type(typeInt), i(_i) {}
 	cell(int64 _i64) : type(typeInt64), ii(_i64) {}
-	cell(vec _xmm) : type(typeVector), xmm(_xmm) {}
+	cell(vec _vec) : type(typeVector) { memcpy(xmm, &_vec, sizeof(xmm)); }
+	cell(vec4f _vec) : type(typeVector) { memcpy(xmm, &_vec, sizeof(xmm)); }
 	cell(const string &_s) : type(typeString), s(_s) {}
 
 	const string getStr() const;
@@ -85,9 +91,7 @@ public:
 
 }}
 
-// TODO: numeric operations
 // TODO: error handling
-// TODO: change __m128 to vec4f, maybe add some math 2d stuff
 /*
  * add-to-list (unique)
  * add-to-ordered-list (sorted)
