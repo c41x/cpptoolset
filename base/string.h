@@ -1,5 +1,5 @@
 /*
- * granite engine 1.0 | 2006-2014 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
+ * granite engine 1.0 | 2006-2015 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
  * file: string.h
  * created: 16-01-2013
  *
@@ -21,10 +21,12 @@
 #pragma once
 
 #include "includes.h"
-#include "math.h"
 #include "log.h"
 
 namespace granite { namespace base {
+
+// 6 by default
+extern int8 floatPrecision;
 
 // 2 iterators for substring positions in string
 struct stringRange {
@@ -32,6 +34,7 @@ struct stringRange {
 	string::const_iterator end;
 	stringRange(string::const_iterator ibegin, string::const_iterator iend) : begin(ibegin), end(iend) {}
 	explicit stringRange(const string &s) : begin(s.begin()), end(s.end()) {}
+	explicit stringRange(const char *c) : begin(c), end(c + strlen(c)) {}
 	stringRange &operator()(string::const_iterator ibegin, string::const_iterator iend) { begin = ibegin; end = iend; return *this; }
 	stringRange &operator()(const string &s) { begin = s.begin(); end = s.end(); return *this; }
 	size_t ibegin(const string &s) const { return std::distance(s.begin(), begin); }
@@ -41,29 +44,8 @@ struct stringRange {
 	operator string() const { return string(begin, end); }
 };
 
-namespace detail {
 // required space for string estimator
-template <typename T> inline size_t estimateSize(const T &v) { return 0; }
-inline size_t estimateSize(const int8 &v) { return 4; }
-inline size_t estimateSize(const uint8 &v) { return 3; }
-inline size_t estimateSize(const int16 &v) { return 6; }
-inline size_t estimateSize(const uint16 &v) { return 5; }
-inline size_t estimateSize(const int32 &v) { return 11; }
-inline size_t estimateSize(const uint32 &v) { return 10; }
-inline size_t estimateSize(const int64 &v) { return 21; }
-inline size_t estimateSize(const uint64 &v) { return 20; }
-inline size_t estimateSize(const float &v) { return 14; }
-inline size_t estimateSize(const double &v) { return 26; }
-inline size_t estimateSize(const bool &v) { return 5; }
-inline size_t estimateSize(const string &v) { return v.size(); }
-inline size_t estimateSize(const char *v) { return strlen(v); }
-template <typename T, typename... Args> inline size_t estimateSize(const T &v, const Args&... args) {
-	return estimateSize(args...) + estimateSize(v);
-}
-template <typename... Args> size_t estimateSize(const Args&... args) {
-	return detail::estimateSize(args...);
-}
-}
+template <typename T> size_t estimateSize(const T &v) { return 0; }
 
 // inlines char fxs:
 inline bool isDigit(char c) { return c >= '0' && c <= '9'; }
@@ -107,335 +89,23 @@ string changeExt(const string &s, const string &ext);
 string cutLongPath(const string &s);
 
 // conversions: from string to T
-// fast iterator versions:
-template <typename T> T strToSigned(const stringRange &range);
-template <typename T> T strToUnsigned(const stringRange &range);
-template <typename T> T strToReal(const stringRange &range);
-bool strToBool(const stringRange &range);
+// testing functions - returns if given string can be converted to type T
+template <typename T> bool strIs(const stringRange &) { gassert(false, "string conversion test: unknown type, test template not specialized"); return false; }
+template <typename T> bool strIs(const string &s) { return strIs<T>(stringRange(s)); }
 
-// testing functions
-inline bool isInteger(const stringRange &range);
-inline bool isFloat(const stringRange &range);
-inline bool isInteger(const string &s) { return isInteger(stringRange(s)); };
-inline bool isFloat(const string &s) { return isFloat(stringRange(s)); };
-
-// templated (can not be overloaded thats why template)
-template<typename T> inline T fromStr(const stringRange &range) { gassert(false, "conversion from string: unknown type, conversion not specialized"); return T(); }
-template<> inline int8 fromStr<int8>(const stringRange &range) { return strToSigned<int8>(range); }
-template<> inline uint8 fromStr<uint8>(const stringRange &range) { return strToUnsigned<uint8>(range); }
-template<> inline int16 fromStr<int16>(const stringRange &range) { return strToSigned<int16>(range); }
-template<> inline uint16 fromStr<uint16>(const stringRange &range) { return strToUnsigned<uint16>(range); }
-template<> inline int32 fromStr<int32>(const stringRange &range) { return strToSigned<int32>(range); }
-template<> inline uint32 fromStr<uint32>(const stringRange &range) { return strToUnsigned<uint32>(range); }
-template<> inline int64 fromStr<int64>(const stringRange &range) { return strToSigned<int64>(range); }
-template<> inline uint64 fromStr<uint64>(const stringRange &range) { return strToUnsigned<uint64>(range); }
-template<> inline float fromStr<float>(const stringRange &range) { return strToReal<float>(range); }
-template<> inline double fromStr<double>(const stringRange &range) { return strToReal<double>(range); }
-template<> inline bool fromStr<bool>(const stringRange &range) { return strToBool(range); }
-
-// whole string
-inline int8 strToInt8(const string &s) { return strToSigned<int8>(stringRange(s)); }
-inline uint8 strToUInt8(const string &s) { return strToUnsigned<int8>(stringRange(s)); }
-inline int16 strToInt16(const string &s) { return strToSigned<int16>(stringRange(s)); }
-inline uint16 strToUInt16(const string &s) { return strToUnsigned<int16>(stringRange(s)); }
-inline int32 strToInt32(const string &s) { return strToSigned<int32>(stringRange(s)); }
-inline uint32 strToUInt32(const string &s) { return strToUnsigned<uint32>(stringRange(s)); }
-inline int64 strToInt64(const string &s) { return strToSigned<int64>(stringRange(s)); }
-inline uint64 strToUInt64(const string &s) { return strToUnsigned<uint64>(stringRange(s)); }
-inline int strToInt(const string &s) { return strToSigned<int>(stringRange(s)); }
-inline uint strToUInt(const string &s) { return strToUnsigned<uint>(stringRange(s)); }
-inline float strToFloat(const string &s) { return strToReal<float>(stringRange(s)); }
-inline double strToDouble(const string &s) { return strToReal<double>(stringRange(s)); }
-inline bool strToBool(const string &s) { return strToBool(stringRange(s)); }
-
-// templated (no int and uint! using int32 and uint32)
-template<typename T> inline T fromStr(const string &s) { gassert(false, "conversion from string: unknown type, conversion not specialized"); return T(); }
-template<> inline int8 fromStr<int8>(const string &s) { return strToInt8(s); }
-template<> inline uint8 fromStr<uint8>(const string &s) { return strToUInt8(s); }
-template<> inline int16 fromStr<int16>(const string &s) { return strToInt16(s); }
-template<> inline uint16 fromStr<uint16>(const string &s) { return strToUInt16(s); }
-template<> inline int32 fromStr<int32>(const string &s) { return strToInt32(s); }
-template<> inline uint32 fromStr<uint32>(const string &s) { return strToUInt32(s); }
-template<> inline int64 fromStr<int64>(const string &s) { return strToInt64(s); }
-template<> inline uint64 fromStr<uint64>(const string &s) { return strToUInt64(s); }
-template<> inline float fromStr<float>(const string &s) { return strToFloat(s); }
-template<> inline double fromStr<double>(const string &s) { return strToDouble(s); }
-template<> inline bool fromStr<bool>(const string &s) { return strToBool(s); }
+// conversion from string from string range
+template<typename T> T fromStr(const stringRange &range) { gassert(false, "conversion from string: unknown type, conversion template not specialized"); return T(); }
+template<typename T> T fromStr(const string &s) { return fromStr<T>(stringRange(s)); }
 
 // conversions: from T to string
-// conversion functions
-template <typename T> stringRange signedToStr(const T &i, string &os);
-template <typename T> stringRange unsignedToStr(const T &u, string &os);
-template <typename T> stringRange realToStr(const T &r, string &os, int precision);
-inline stringRange floatToStr(const float &f, string &os, int precision = 7) { return realToStr<float>(f, os, precision); }
-inline stringRange doubleToStr(const double &f, string &os, int precision = 13) { return realToStr<double>(f, os, precision); }
-stringRange boolToStr(const bool &b, string &os);
-inline string floatToStr(const float &f, int precision = 7) { string os(0, ' '); os.resize(7 + precision); return realToStr<float>(f, os, precision).str(); }
-inline string doubleToStr(const double &f, int precision = 13) { string os(0, ' '); os.resize(13 + precision); return realToStr<double>(f, os, precision).str(); }
-inline string boolToStr(const bool &b);
+template <typename T> stringRange toStr(const T &, string &os) { gassert(false, "conversion to stringRange: unknown type, conversion template not specialized"); return stringRange(os); }
+template <typename T> string toStr(const T &t) { string s; s.resize(estimateSize<T>(t)); return toStr<T>(t, s).str(); }
 
-// overloaded (there is no point templating this)
-inline stringRange toStr(const int8 &i, string &os) { return signedToStr<int8>(i, os); }
-inline stringRange toStr(const uint8 &i, string &os) { return unsignedToStr<uint8>(i, os); }
-inline stringRange toStr(const int16 &i, string &os) { return signedToStr<int16>(i, os); }
-inline stringRange toStr(const uint16 &i, string &os) { return unsignedToStr<uint16>(i, os); }
-inline stringRange toStr(const int32 &i, string &os) { return signedToStr<int32>(i, os); }
-inline stringRange toStr(const uint32 &i, string &os) { return unsignedToStr<uint32>(i, os); }
-inline stringRange toStr(const int64 &i, string &os) { return signedToStr<int64>(i, os); }
-inline stringRange toStr(const uint64 &i, string &os) { return unsignedToStr<uint64>(i, os); }
-inline stringRange toStr(const float &i, string &os) { return realToStr<float>(i, os, 7); }
-inline stringRange toStr(const double &i, string &os) { return realToStr<double>(i, os, 13); }
-inline stringRange toStr(const bool &i, string &os) { return boolToStr(i, os); }
-stringRange toStr(const string &s, string &os);
-stringRange toStr(const char *s, string &os);
-
-// full string versions
-inline string toStr(const int8 &i) { string r(0, ' '); r.resize(detail::estimateSize(i)); return signedToStr<int8>(i, r).str(); }
-inline string toStr(const uint8 &i) { string r(0, ' '); r.resize(detail::estimateSize(i)); return unsignedToStr<uint8>(i, r).str(); }
-inline string toStr(const int16 &i) { string r(0, ' '); r.resize(detail::estimateSize(i)); return signedToStr<int16>(i, r).str(); }
-inline string toStr(const uint16 &i) { string r(0, ' '); r.resize(detail::estimateSize(i)); return unsignedToStr<uint16>(i, r).str(); }
-inline string toStr(const int32 &i) { string r(0, ' '); r.resize(detail::estimateSize(i)); return signedToStr<int32>(i, r).str(); }
-inline string toStr(const uint32 &i) { string r(0, ' '); r.resize(detail::estimateSize(i)); return unsignedToStr<uint32>(i, r).str(); }
-inline string toStr(const int64 &i) { string r(0, ' '); r.resize(detail::estimateSize(i)); return signedToStr<int64>(i, r).str(); }
-inline string toStr(const uint64 &i) { string r(0, ' '); r.resize(detail::estimateSize(i)); return unsignedToStr<uint64>(i, r).str(); }
-inline string toStr(const float &i) { string r(0, ' '); r.resize(detail::estimateSize(i)); return realToStr<float>(i, r, 7).str(); }
-inline string toStr(const double &i) { string r(0, ' '); r.resize(detail::estimateSize(i)); return realToStr<double>(i, r, 13).str(); }
-inline string toStr(const bool &i) { string r(0, ' '); r.resize(detail::estimateSize(i)); return boolToStr(i, r).str(); }
-inline string toStr(const string &s) { string r(0, ' '); r.resize(detail::estimateSize(s)); return toStr(s, r).str(); }
-inline string toStr(const char *s) { string r(0, ' '); r.resize(detail::estimateSize(s)); return toStr(s, r).str(); }
-
-// string building (here just prototypes - for clarity)
+// string building
 template<typename... Args> string strs(const Args&... args);
 template<typename... Args> string strf(const string &format, const Args&... args);
 
-
-// implementations:
-template <typename T> T strToSigned(const stringRange &range) {
-	string::const_iterator it(range.begin);
-	T sign, ret = 0;
-	if ((*range.begin) == '-') {
-		it++;
-		sign = -1;
-	}
-	else sign = 1;
-	for(; it != range.end; ++it) {
-		gassert(isDigit(*it), "parsing string to integer - non numeric character");
-		ret = ret * 10 + getAlphaToDigit(*it);
-	}
-	return ret * sign;
-}
-
-template <typename T> T strToUnsigned(const stringRange &range) {
-	T ret = 0;
-	for (string::const_iterator it(range.begin); it != range.end; ++it) {
-		gassert(isDigit(*it), "parsing string to integer - non numeric character");
-		ret = ret * 10 + getAlphaToDigit(*it);
-	}
-	return ret;
-}
-
-template <typename T> T strToReal(const stringRange &range) {
-	string::const_iterator it(range.begin);
-	T sign;
-	if ((*range.begin) == '-') {
-		++it;
-		sign = -static_cast<T>(1.0);
-	}
-	else sign = static_cast<T>(1.0);
-	T ret = static_cast<T>(0.0);
-	for (; it!=range.end; it++) {
-		if (*it == '.'){
-			++it;
-			break;
-		}
-		ret = ret * static_cast<T>(10.0) + static_cast<T>(getAlphaToDigit(*it));
-		gassert(isDigit(*it), "parsing string to real - non numeric character");
-	}
-	T mant = static_cast<T>(0.0), fact=static_cast<T>(1.0);
-	for (; it!=range.end; it++){
-		fact *= static_cast<T>(0.1);
-		mant += static_cast<T>(getAlphaToDigit(*it)) * fact;
-		gassert(isDigit(*it), "parsing string to real - non numeric character");
-	}
-	return (mant + ret) * sign;
-}
-
-bool isInteger(const stringRange &range) {
-	string::const_iterator it(range.begin);
-	if ((*range.begin) == '-') {
-		it++;
-		if (it == range.end)
-			return false;
-	}
-	for (; it != range.end; ++it) {
-		if (!isDigit(*it))
-			return false;
-	}
-	return true;
-}
-
-bool isFloat(const stringRange &range) {
-	string::const_iterator it(range.begin);
-	if ((*range.begin) == '-') {
-		++it;
-		if (it == range.end)
-			return false;
-	}
-	bool dotFound = false;
-	for (; it != range.end; it++) {
-		if (*it == '.' && !dotFound){
-			++it;
-			dotFound = true;
-		}
-		if (!isDigit(*it))
-			return false;
-	}
-	return true;
-}
-
-template <typename T> stringRange signedToStr(const T &i, string &os) {
-	string::iterator p = os.begin() + os.size() - 1;
-	if (i == 0) {
-		gassert(p >= os.begin(), "string to signed - index out of buffer");
-		*p = '0';
-		return stringRange(p, os.end());
-	}
-	T v = i < 0 ? -i : i;
-	while (v) {
-		gassert(p + 1 >= os.begin(), "string to unsigned - index out of buffer");
-		*p = getDigitToAlpha(v % 10);
-		v /= 10;
-		p--;
-	}
-	if (i < 0) {
-		*p = '-';
-		p--;
-	}
-	gassert(p + 1 >= os.begin(), "string to unsigned - index out of buffer");
-	return stringRange(p + 1, os.end());
-}
-
-template <typename T> stringRange unsignedToStr(const T &u, string &os) {
-	string::iterator p = os.begin() + os.size() - 1;
-	if (u == 0) {
-		gassert(p >= os.begin(), "string to unsigned - index out of buffer");
-		*p = '0';
-		return stringRange(p, os.end());
-	}
-	T v = u;
-	while (v) {
-		gassert(p + 1 >= os.begin(), "string to unsigned - index out of buffer");
-		*p = getDigitToAlpha(v % 10);
-		v /= 10;
-		p--;
-	}
-	gassert(p + 1 >= os.begin(), "string to unsigned - index out of buffer");
-	return stringRange(p + 1, os.end());
-}
-
-template <typename T> stringRange realToStr(const T &r, string &os, int precision) {
-	string::iterator p = os.begin();
-
-	// base ###.
-	uint32 i = uint32(r);
-	i = i < 0 ? -i : i;
-	T base = T(i);
-	T sbase = r < static_cast<T>(0.0) ? - r : r;
-	if (i == 0) {
-		*p = '0';
-		p++;
-	}
-	while (i) {
-		*p = getDigitToAlpha(i % 10);
-		i /= 10;
-		p++;
-	}
-	std::reverse(os.begin(), p);
-
-	// dot
-	*p = '.';
-	p++;
-
-	// mantissa .###
-	T man = sbase - base;
-	while (precision--) {
-		gassert(p < os.end(), "real to unsigned - index out of buffer");
-		char dig = char(man *= static_cast<T>(10.0));
-		*p = getDigitToAlpha(dig);
-		man -= T(dig);
-		p++;
-	}
-
-	// sign
-	if (r < static_cast<T>(0.0)) {
-		*p = '-';
-		p++;
-	}
-	gassert(p < os.end(), "real to unsigned - index out of buffer");
-	return stringRange(os.begin(), p - 1);
-}
-
-inline string boolToStr(const bool &b) {
-	return string(b ? "true" : "false");
-}
-
-// detail:
-namespace detail {
-inline void strf_(string &buffer, string &out, string::const_iterator format, string::const_iterator formatEnd) {
-	while (format != formatEnd) {
-		if (*format == '%') {
-			gassert(*(format + 1) == '%', "formatted string: missing function arguments");
-			if(*(format + 1) == '%')
-				++format;
-		}
-		out.append(1, *format);
-		++format;
-	}
-}
-
-template <typename T, typename... Args> void strf_(string &buffer, string &out, string::const_iterator format,
-												   string::const_iterator formatEnd, const T &v, const Args&... args) {
-	while (format != formatEnd) {
-		if (*format == '%') {
-			if (*(format + 1) == '%') // replace %% -> %
-				++format;
-			else {
-				stringRange r = toStr(v, buffer);
-				out.append(r.begin, r.end);
-				strf_(buffer, out, format + 1, formatEnd, args...);
-				return;
-			}
-		}
-		out.append(1, *format);
-		++format;
-	}
-	gassert(false, "formatted string: extra arguments passed to function");
-}
-
-template <typename T> void strs_(string &buffer, string &out, const T &v) {
-	stringRange r = toStr(v, buffer);
-	out.append(r.begin, r.end);
-}
-template <typename T,typename... Args> void strs_(string &buffer, string &out, const T &val, const Args&... args) {
-	strs_(buffer, out, val);
-	strs_(buffer, out, args...);
-}
-}
-
-template <typename... Args> string strf(const string &format, const Args&... args) {
-	size_t s = format.size();
-	string ret, buffer;
-	buffer.resize(30);
-	ret.reserve(s + sizeof...(Args) * 5); // 5 chars per argument
-	detail::strf_(buffer, ret, format.begin(), format.end(), args...);
-	return ret;
-}
-
-template <typename... Args> string strs(const Args&... args) {
-	string buff, ret;
-	buff.resize(detail::estimateSize(args...));
-	detail::strs_(buff, ret, args...);
-	return ret;
-}
+// implementations
+#include "string.inc.h"
 
 }}

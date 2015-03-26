@@ -1,6 +1,9 @@
 #include "string.h"
+#include "math.h"
 
 namespace granite { namespace base {
+
+int8 floatPrecision = 6;
 
 void lowerCase(string &s) {
 	for (auto &it : s)
@@ -158,48 +161,6 @@ string cutLongPath(const string &s) {
 		ret += s.substr(last_sep);
 
 	return ret;
-}
-
-bool strToBool(const stringRange &range) {
-	string::const_iterator it(range.begin);
-	if (it != range.end && (*it) != 't') return false; ++it;
-	if (it != range.end && (*it) != 'r') return false; ++it;
-	if (it != range.end && (*it) != 'u') return false; ++it;
-	if (it != range.end && (*it) != 'e') return false; ++it;
-	if (it == range.end) return true;
-	return false;
-}
-
-stringRange boolToStr(const bool &b, string &os) {
-	const char *t = b ? "true" : "false", *it = t;
-	string::iterator p = os.begin();
-	do {
-		gassert(p < os.end(), "conversion from bool to string: index out of buffer size");
-		*p = *it;
-		++p;
-	}
-	while (*it++);
-	return stringRange(os.begin(), p - 1);
-}
-
-stringRange toStr(const string &ss, string &os) {
-	size_t s = ss.length();
-	if (s > os.capacity())
-		os.resize(s);
-	string::iterator p = os.begin();
-	for (const auto &it : ss)
-		*p++ = it;
-	return stringRange(os.begin(), p);
-}
-
-stringRange toStr(const char *cs, string &os) {
-	size_t s = strlen(cs);
-	if (s > os.capacity())
-		os.resize(s);
-	string::iterator p = os.begin();
-	for (size_t i = 0; i < s; ++i)
-		*p++ = cs[i];
-	return stringRange(os.begin(), p);
 }
 
 }}
