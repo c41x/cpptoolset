@@ -1295,16 +1295,6 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			// no condition yielded true -> return nil
 			return pushCell(s, s.c_nil, temporary);
 		}
-		else if (fxName == "=") {
-			pushCallStack(s);
-
-			// checks if all evaluated cells are equal (supports multiple values)
-			cell_t result = evalUntilBinary(s, d + 2, endCell(d),
-											[&s](cell_t n, cell_t n1) -> bool {
-												return cellsEqual(n, n1);
-											}, true) ? s.c_t : s.c_nil;
-			return popCallStackLeaveData(s, result, temporary);
-		}
 		else if (fxName == "!=") {
 			pushCallStack(s);
 
@@ -1315,13 +1305,15 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 				s.c_nil : s.c_t;
 			return popCallStackLeaveData(s, result, temporary);
 		}
-		else if (fxName == "<" ||
+		else if (fxName == "=" ||
+				 fxName == "<" ||
 				 fxName == ">" ||
 				 fxName == "<=" ||
 				 fxName == ">=") {
 			// determine comparing function
 			std::function<bool(cell_t, cell_t)> fx;
-			if (fxName == "<") fx = [](cell_t n, cell_t n1) { return *n < *n1; };
+			if (fxName == "=") fx = [](cell_t n, cell_t n1) { return cellsEqual(n, n1); };
+			else if (fxName == "<") fx = [](cell_t n, cell_t n1) { return *n < *n1; };
 			else if (fxName == ">") fx = [](cell_t n, cell_t n1) { return *n > *n1; };
 			else if (fxName == "<=") fx = [](cell_t n, cell_t n1) { return *n <= *n1; };
 			else fx = [](cell_t n, cell_t n1) { return *n >= *n1; };
