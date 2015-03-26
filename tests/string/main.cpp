@@ -141,15 +141,15 @@ int main(int argc, char**argv){
 	std::cout<<cutLongPath("/home/calx/GraniteED/GED/src/test.cpp")<<std::endl;
 #endif
 
-	std::cout<<strToInt32("-667")<<std::endl;
-	std::cout<<strToInt32("6677")<<std::endl;
-	std::cout<<strToUInt64("1234567890123")<<std::endl;
-	std::cout<<strToFloat("3.141521")<<std::endl;
-	std::cout<<strToDouble("3.141521519")<<std::endl;
-	std::cout<<strToBool("true")<<std::endl;
-	std::cout<<strToBool("truet")<<std::endl;
-	std::cout<<strToBool("tru")<<std::endl;
-	std::cout<<strToBool("false")<<std::endl;
+	std::cout<<fromStr<int32>("-667")<<std::endl;
+	std::cout<<fromStr<int32>("6677")<<std::endl;
+	std::cout<<fromStr<uint64>("1234567890123")<<std::endl;
+	std::cout<<fromStr<float>("3.141521")<<std::endl;
+	std::cout<<fromStr<double>("3.141521519")<<std::endl;
+	std::cout<<fromStr<bool>("true")<<std::endl;
+	std::cout<<fromStr<bool>("truet")<<std::endl;
+	std::cout<<fromStr<bool>("tru")<<std::endl;
+	std::cout<<fromStr<bool>("false")<<std::endl;
 
 	std::cout<<"now the same but templated version:"<<std::endl;
 	std::cout<<fromStr<int>("-667")<<std::endl;
@@ -164,16 +164,16 @@ int main(int argc, char**argv){
 
 	string buff(0,' ');
 	buff.resize(20);
-	std::cout<<signedToStr<int>(96661,buff).str()<<std::endl;
-	std::cout<<signedToStr<int>(-96661,buff).str()<<std::endl;
-	std::cout<<signedToStr<int64>(1234567890123,buff).str()<<std::endl;
-	std::cout<<signedToStr<int64>(-1234567890,buff).str()<<std::endl;
-	std::cout<<unsignedToStr<int>(26668,buff).str()<<std::endl;
-	std::cout<<unsignedToStr<int64>(123321000666,buff).str()<<std::endl;
-	std::cout<<realToStr<float>(3.141521,buff,7).str()<<std::endl;
-	std::cout<<realToStr<double>(3.1415213642,buff,13).str()<<std::endl;
-	std::cout<<floatToStr(3.141521)<<std::endl;
-	std::cout<<doubleToStr(3.1415213642)<<std::endl;
+	std::cout<<toStr<int>(96661,buff).str()<<std::endl;
+	std::cout<<toStr<int>(-96661,buff).str()<<std::endl;
+	std::cout<<toStr<int64>(1234567890123,buff).str()<<std::endl;
+	std::cout<<toStr<int64>(-1234567890,buff).str()<<std::endl;
+	std::cout<<toStr<int>(26668,buff).str()<<std::endl;
+	std::cout<<toStr<int64>(123321000666,buff).str()<<std::endl;
+	std::cout<<toStr<float>(3.141521,buff).str()<<std::endl;
+	std::cout<<toStr<double>(3.1415213642,buff).str()<<std::endl;
+	std::cout<<toStr(3.141521)<<std::endl;
+	std::cout<<toStr(3.1415213642)<<std::endl;
 
 	std::cout<<"now the same but overloaded:"<<std::endl;
    	std::cout<<toStr(96661,buff).str()<<std::endl;
@@ -220,7 +220,7 @@ int main(int argc, char**argv){
 			t.reset();
             for (size_t i=0 ; i<nums.size() ; ++i) {
                 double x = 0.0;
-                x=strToDouble(nums[i]);
+                x=fromStr<double>(nums[i]);
                 tsum += x;
             }
             timings.push_back(t.timeS());
