@@ -145,6 +145,14 @@ int main(int argc, char **argv) {
 	test(gl, "(sort '(-31415 0 2 3))", "(-31415 0 2 3)");
 	test(gl, "(reverse '(-31415 0 2 3))", "(3 2 0 -31415)");
 	test(gl, "(sort '(\"cohobator\" \"reamalgamate\" \"disbarring\" \"weathertight\" \"vad\"))", "(\"cohobator\" \"disbarring\" \"reamalgamate\" \"vad\" \"weathertight\")");
+	test(gl, "(> 5 4 -1)", "t");
+	test(gl, "(> 5 5 4 -1)", "nil");
+	test(gl, "(>= 5 5 4 -1)", "t");
+	test(gl, "(> 5 4 -1 55)", "nil");
+	test(gl, "(< 1 2 3)", "t");
+	test(gl, "(< 1 1 2 3)", "nil");
+	test(gl, "(<= 1 1 2 3)", "t");
+	test(gl, "(< 1 2 3 1)", "nil");
 	#endif
 
 	gl.close();
