@@ -91,13 +91,10 @@ public:
 
 }}
 
-// TODO: -float
 // TODO: error handling
 /*
  * add-to-list (unique)
  * add-to-ordered-list (sorted)
- * reverse
- * sort
  * delete
  * assoc-delete
  */

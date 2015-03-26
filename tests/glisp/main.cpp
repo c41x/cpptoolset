@@ -143,6 +143,8 @@ int main(int argc, char **argv) {
 	test(gl, "x", "(12 223 -31415 24 100 0 3 123 33)");
 	test(gl, "(sort 'x)", "(-31415 0 3 12 24 33 100 123 223)");
 	test(gl, "(sort '(-31415 0 2 3))", "(-31415 0 2 3)");
+	test(gl, "(reverse '(-31415 0 2 3))", "(3 2 0 -31415)");
+	test(gl, "(sort '(\"cohobator\" \"reamalgamate\" \"disbarring\" \"weathertight\" \"vad\"))", "(\"cohobator\" \"disbarring\" \"reamalgamate\" \"vad\" \"weathertight\")");
 	#endif
 
 	gl.close();

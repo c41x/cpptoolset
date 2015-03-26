@@ -10,7 +10,7 @@
  */
 
 #include "glisp.h"
-#include "math_string.h"
+#include "math.string.h"
 
 //#define GLISP_DEBUG_LOG
 #ifdef GLISP_DEBUG_LOG
@@ -30,7 +30,7 @@ cell_t firstCell(cell_t c) {
 cell_t nextCell(cell_t c) {
 	cell_t delim = c;
 	while (c <= delim) {
-		if(c->type == cell::typeList || c->type == cell::typeDetach) // TODO: leave detach test?
+		if(c->type == cell::typeList || c->type == cell::typeDetach)
 			delim += c->i;
 		++c;
 	}
@@ -1424,7 +1424,8 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			// return result on stack
 			return popCallStackLeaveData(s, pushCell(s, {cell::typeString, res}));
 		}
-		else if (fxName == "sort") {
+		else if (fxName == "sort" ||
+				 fxName == "reverse") {
 			// all elements must be atoms
 			pushCallStack(s);
 
@@ -1438,8 +1439,10 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 				// not supported type
 				return popCallStackLeaveData(s, pushCell(s, s.c_nil, temporary), temporary);
 
-			// perform sort and return sorted list
-			std::sort(lst + 1, endCell(lst));
+			// perform sort and return sorted / reversed list
+			if (fxName == "sort")
+				std::sort(lst + 1, endCell(lst));
+			else std::reverse(lst + 1, endCell(lst));
 			return popCallStackLeaveData(s, lst, temporary);
 		}
 
