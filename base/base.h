@@ -17,6 +17,7 @@
 #include "sigslot.h"
 #include "timer.h"
 #include "string.h"
+#include "math.string.h"
 #include "tokenizer.h"
 #include "glisp.h"
 #include "gstdlib.h"

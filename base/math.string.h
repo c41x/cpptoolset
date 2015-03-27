@@ -17,40 +17,34 @@
 
 namespace granite { namespace base {
 
-template<> inline vec4f fromStr<vec4f>(const stringRange &range) {
-	auto fetchToken = [](auto begin, auto end) {
-		for (auto i = begin; i != end; ++i) {
-			if (isWhiteSpace(*i)) {
-				if (i == begin)
-					++begin;
-				else return stringRange(begin, i);
-			}
-		}
-		return stringRange(begin, end);
-	};
+template<> inline size_t estimateSize(const vec4f &v) {
+	return estimateSize<float>(v.x) * 4 + 3;
+}
 
+template<> inline bool strIs<vec4f>(const stringRange &s) {
+	auto tok = initToken(s);
+	int n = 4;
+	while(n--) {
+		if (endToken(s, tok))
+			return false;
+		if (!strIs<float>(nextToken(s, tok)))
+			return false;
+	}
+	return endToken(s, tok);
+}
+
+template<> inline vec4f fromStr<vec4f>(const stringRange &s) {
 	vec4f r;
-	auto tok = fetchToken(range.begin, range.end);
-	r.x = fromStr<float>(tok);
-	tok = fetchToken(tok.end, range.end);
-	r.y = fromStr<float>(tok);
-	tok = fetchToken(tok.end, range.end);
-	r.z = fromStr<float>(tok);
-	tok = fetchToken(tok.end, range.end);
-	r.w = fromStr<float>(tok);
+	auto tok = initToken(s);
+	r.x = fromStr<float>(nextToken(s, tok));
+	r.y = fromStr<float>(nextToken(s, tok));
+	r.z = fromStr<float>(nextToken(s, tok));
+	r.w = fromStr<float>(nextToken(s, tok));
 	return r;
 }
 
 inline string toStr(const vec4f &v) {
-	string r;
-	r += toStr(v.x);
-	r += " ";
-	r += toStr(v.y);
-	r += " ";
-	r += toStr(v.z);
-	r += " ";
-	r += toStr(v.w);
-	return r;
+	return strs(v.x, " ", v.y, " ", v.z, " ", v.w);
 }
 
 }}

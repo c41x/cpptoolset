@@ -163,4 +163,25 @@ string cutLongPath(const string &s) {
 	return ret;
 }
 
+stringRange initToken(stringRange s) {
+	return stringRange(s.begin, s.begin);
+}
+
+stringRange nextToken(stringRange s, stringRange &tok) {
+	for (tok.begin = tok.end; tok.end != s.end; ++tok.end) {
+		if (isWhiteSpace(*tok.end)) {
+			if (tok.end == tok.begin)
+				++tok.begin;
+			else return tok;
+		}
+	}
+	return tok;
+}
+
+bool endToken(stringRange s, stringRange tok) {
+	while(tok.end != s.end && isWhiteSpace(*tok.end))
+		++tok.end;
+	return tok.end == s.end;
+}
+
 }}

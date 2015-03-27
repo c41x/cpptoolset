@@ -44,9 +44,6 @@ struct stringRange {
 	operator string() const { return string(begin, end); }
 };
 
-// required space for string estimator
-template <typename T> size_t estimateSize(const T &v) { return 0; }
-
 // inlines char fxs:
 inline bool isDigit(char c) { return c >= '0' && c <= '9'; }
 inline bool isAlpha(char c) { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'); }
@@ -80,6 +77,9 @@ bool containsSubstr(const string &s, const string &search);
 void divideString(const string &s, char divChar, std::vector<string> &result);
 void divideString(const string &s, char divChar, std::vector<stringRange> &result);
 float matchString(const string &a, const string &b);
+stringRange initToken(stringRange s);
+stringRange nextToken(stringRange s, stringRange &tok);
+bool endToken(stringRange s, stringRange tok);
 
 // paths/file names string utilities
 string extractFileName(const string &s);
@@ -88,12 +88,14 @@ string extractExt(const string &s);
 string changeExt(const string &s, const string &ext);
 string cutLongPath(const string &s);
 
-// conversions: from string to T
+// required space for string estimator
+template <typename T> size_t estimateSize(const T &v) { return 0; }
+
 // testing functions - returns if given string can be converted to type T
 template <typename T> bool strIs(const stringRange &) { gassert(false, "string conversion test: unknown type, test template not specialized"); return false; }
 template <typename T> bool strIs(const string &s) { return strIs<T>(stringRange(s)); }
 
-// conversion from string from string range
+// conversions: from string to T
 template<typename T> T fromStr(const stringRange &range) { gassert(false, "conversion from string: unknown type, conversion template not specialized"); return T(); }
 template<typename T> T fromStr(const string &s) { return fromStr<T>(stringRange(s)); }
 
