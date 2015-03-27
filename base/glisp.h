@@ -93,8 +93,8 @@ public:
 
 // TODO: error handling
 /*
- * add-to-list (unique)
+ * refactor detaching, and:
  * add-to-ordered-list (sorted)
- * delete
- * assoc-delete
+ * delete (by value)
+ * assoc-delete (by key)
  */

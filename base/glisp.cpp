@@ -175,6 +175,23 @@ std::function<void(cell_t)> getOperator(cell &acc, auto op) {
 	}
 }
 
+// search for element in list, return element or last if not found
+cell_t findCell(cell_t lst, cell_t e) {
+	cell_t end = endCell(lst);
+	for (cell_t i = firstCell(lst); i != end; i = nextCell(i))
+		if (cellsEqual(e, i))
+			return i;
+	return end;
+}
+
+// search for element in list, return t / nil if found / not found
+bool cellFound(cell_t lst, cell_t e) {
+	for (cell_t i = firstCell(lst); i != endCell(lst); i = nextCell(i))
+		if (cellsEqual(e, i))
+			return true;
+	return false;
+}
+
 // some static constants
 cell cell::nil = cell(cell::typeIdentifier, "nil");
 cell cell::t = cell(cell::typeIdentifier, "t");
@@ -400,6 +417,7 @@ cells_t &getVariableContainer(lispState &s, var_t v) {
 
 // gather all variable data <is valid, is detached, data address, variable it, container>
 std::tuple<bool, bool, cell_t, var_t, cells_t*> fetchVariable(lispState &s, cell_t addr) {
+	// TODO: detect if addr is ID
 	const string &name = addr->s;
 	var_t var = findVariable(s, name);
 	bool isValid = isVariableValid(s, var);
@@ -714,7 +732,7 @@ void init(lispState &s, size_t stackSize) {
 	s.c_t = t;
 }
 
-//- eval -
+//- eval / utils -
 cell_t eval(lispState &s, cell_t d, bool temporary = false);
 
 // helper for evaluating lists, evals all elements and returns last
@@ -737,20 +755,16 @@ void evalNoStack(lispState &s, cell_t begin, cell_t end, bool temporary = false)
 // calls [op] for all (evaluated) elements of list
 template <typename T_OP>
 void evalmap(lispState &s, cell_t begin, cell_t end, T_OP op, bool temporary = false) {
-	for (cell_t i = begin; i != end; i = nextCell(i)) {
-		cell_t lastResult = eval(s, i, temporary);
-		op(lastResult);
-	}
+	for (cell_t i = begin; i != end; i = nextCell(i))
+		op(eval(s, i, temporary));
 }
 
 // evals all list elements until [op] returns false
 template <typename T_OP>
 bool evalUntilUnary(lispState &s, cell_t begin, cell_t end, T_OP op, bool temporary = false) {
-	for (cell_t i = begin; i != end; i = nextCell(i)) {
-		cell_t lastResult = eval(s, i, temporary);
-		if (!op(lastResult))
+	for (cell_t i = begin; i != end; i = nextCell(i))
+		if (!op(eval(s, i, temporary)))
 			return false;
-	}
 	return true;
 }
 
@@ -776,6 +790,11 @@ cell_t evalAccumulate(lispState &s, cell_t first, cell_t last, T op) {
 	return popCallStackLeaveData(s, pushCell(s, acc));
 }
 
+cell_t boolToCell(lispState &s, bool v) {
+	return v ? s.c_t : s.c_nil;
+}
+
+//- eval -
 cell_t eval(lispState &s, cell_t d, bool temporary) {
 	tab(s); dout("eval: " << toString(d) << std::endl);
 
@@ -1154,6 +1173,35 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			popCallStack(s);
 			return addr;
 		}
+		else if (fxName == "add-to-list") {
+			pushCallStack(s);
+			bool isValid;
+			bool isDetached;
+			cell_t addr;
+			var_t var;
+			cells_t *cont;
+			std::tie(isValid, isDetached, addr, var, cont) = fetchVariable(s, d + 2);
+
+			if (isValid) {
+				cell_t el = eval(s, nextCell(d + 2), true);
+				if (!cellFound(addr, el)) {
+					// TODO: push
+					// insert cell
+					if (isDetached) {
+						cont->insert(cont->end(), el, el + countElements(el));
+						addr = cont->begin();
+					}
+					else addr = detachVariable(s, addr, addr + countElements(addr),
+											   el, el + countElements(el), *var);
+
+					// update count
+					addr->i += 1;
+				}
+			}
+
+			popCallStack(s);
+			return addr;
+		}
 		else if (fxName == "setcar") {
 			pushCallStack(s);
 			bool isValid;
@@ -1384,11 +1432,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			cell_t lst = eval(s, nextCell(d + 2), true);
 
 			// iterate through list and return t if object found
-			for (cell_t it = firstCell(lst); it != endCell(lst); it = nextCell(it)) {
-				if (cellsEqual(it, obj))
-					return popCallStackLeaveData(s, s.c_t, temporary);
-			}
-			return popCallStackLeaveData(s, s.c_nil, temporary);
+			return popCallStackLeaveData(s, boolToCell(s, cellFound(lst, obj)), temporary);
 		}
 		else if (fxName == "strs") {
 			// result string
