@@ -153,6 +153,8 @@ int main(int argc, char **argv) {
 	test(gl, "(< 1 1 2 3)", "nil");
 	test(gl, "(<= 1 1 2 3)", "t");
 	test(gl, "(< 1 2 3 1)", "nil");
+	test(gl, "(add-to-list trees '(my tree))", "((pine cones) (oak acorns) (maple seeds) (my tree))");
+	test(gl, "(add-to-list trees '(oak acorns))", "((pine cones) (oak acorns) (maple seeds) (my tree))");
 	#endif
 
 	gl.close();
