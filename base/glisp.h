@@ -92,6 +92,8 @@ public:
 }}
 
 // TODO: error handling
+// TODO: return cell_t
+// TODO: eval cell_t (already parsed)
 /*
  * refactor detaching, and:
  * add-to-ordered-list (sorted)

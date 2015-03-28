@@ -1564,8 +1564,6 @@ void lisp::close() {
 	detail::popCallStack(*_s);
 }
 
-// TODO: return cell_t
-// TODO: eval cell_t (already parsed)
 string lisp::eval(const string &s) {
 	dout(std::endl << std::endl);
 	auto code = detail::parse(s);
