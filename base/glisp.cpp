@@ -1129,7 +1129,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 
 				// note: free space only for detached!
 				if (isDetached)
-					cont->erase(last, cont->end());
+					cont->erase(last, last + countElements(last));
 
 				// update count
 				addr->i -= 1;
