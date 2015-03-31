@@ -12,7 +12,7 @@
 #include "glisp.h"
 #include "math.string.h"
 
-//#define GLISP_DEBUG_LOG
+#define GLISP_DEBUG_LOG
 #ifdef GLISP_DEBUG_LOG
 #define dout(param) std::cout << param
 #else
@@ -175,21 +175,32 @@ std::function<void(cell_t)> getOperator(cell &acc, auto op) {
 	}
 }
 
-// search for element in list, return element or last if not found
+// search for element in list, return element or lst if not found
 cell_t findCell(cell_t lst, cell_t e) {
 	cell_t end = endCell(lst);
 	for (cell_t i = firstCell(lst); i != end; i = nextCell(i))
 		if (cellsEqual(e, i))
 			return i;
-	return end;
+	return lst;
 }
 
 // search for element in list, return t / nil if found / not found
 bool cellFound(cell_t lst, cell_t e) {
-	for (cell_t i = firstCell(lst); i != endCell(lst); i = nextCell(i))
-		if (cellsEqual(e, i))
-			return true;
-	return false;
+	return lst != findCell(lst, e);
+}
+
+// search for first found key in list
+cell_t findValue(cell_t lst, cell_t key) {
+	for (cell_t it = firstCell(lst); it != endCell(lst); it = nextCell(it)) {
+		if (cellsEqual(key, it + 1))
+			return it;
+	}
+	return lst;
+}
+
+// same as above but returns true/false
+bool valueFound(cell_t lst, cell_t key) {
+	return lst != findValue(lst, key);
 }
 
 // some static constants
@@ -1121,6 +1132,31 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			lst = listOp(s, lst, actionOp, detachOp, peekOp);
 			return popCallStackLeaveData(s, lst, temporary);
 		}
+		else if (fxName == "add-to-ordered-list") {
+			pushCallStack(s);
+
+			// eval list and element to insert
+			cell_t val = eval(s, d + 2, true);
+			cell_t lst = eval(s, nextCell(d + 2));
+			size_t offset;
+
+			// add element to list (set)
+			auto peekOp = [&offset, val](cell_t lst) {
+				for (cell_t e = firstCell(lst);; e = nextCell(e)) {
+					offset = std::distance(lst, e);
+					if (e == endCell(lst) || *e >= *val)
+						return;
+				}
+			};
+			auto detachOp = [](){ return true; };
+			auto actionOp = [&offset, val](cells_t &c, cell_t lst) {
+				cell_t whence = lst + offset;
+				lst->i += 1;
+				c.insert(whence, val, val + countElements(val));
+			};
+			lst = listOp(s, lst, actionOp, detachOp, peekOp);
+			return popCallStackLeaveData(s, lst, temporary);
+		}
 		else if (fxName == "setq" || fxName == "set") {
 			pushCallStack(s);
 
@@ -1210,6 +1246,39 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 
 			// return address and pop all temporary mess
 			return popCallStackLeaveData(s, pushCell(s, last), temporary);
+		}
+		else if (fxName == "delete" ||
+				 fxName == "assoc-delete" ||
+				 fxName == "nth-delete") {
+			pushCallStack(s);
+
+			// gather data
+			cell_t var = eval(s, nextCell(d + 2));
+			cell_t item = eval(s, d + 2, true);
+			size_t delIndex;
+
+			// peek op will search for index to delete
+			auto peekOp = [&delIndex, item, fxName](cell_t lst) {
+				if (fxName == "delete")
+					delIndex = std::distance(lst, findCell(lst, item));
+				else if (fxName == "assoc-delete")
+					delIndex = std::distance(lst, findValue(lst, item));
+				else delIndex = std::distance(lst, nthCell(lst, item->i));
+			};
+
+			// define ops & process
+			auto detachOp = [&delIndex]() { return delIndex > 0; };
+			auto actionOp = [&delIndex](cells_t &c, cell_t lst) {
+				if (delIndex > 0) {
+					cell_t whence = lst + delIndex;
+					lst->i = std::max(0, lst->i - 1);
+					c.erase(whence, whence + countElements(whence));
+				}
+			};
+			var = listOp(s, var, actionOp, detachOp, peekOp);
+
+			// return address and pop all temporary mess
+			return popCallStackLeaveData(s, var, temporary);
 		}
 		else if (fxName == "while") {
 			cell_t result = s.c_nil;
@@ -1328,10 +1397,9 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			cell_t lst = eval(s, nextCell(d + 2), true);
 
 			// search for first found key in list
-			for (cell_t it = firstCell(lst); it != endCell(lst); it = nextCell(it)) {
-				if (cellsEqual(key, it + 1))
-					return popCallStackLeaveData(s, it, temporary);
-			}
+			cell_t val = findValue(lst, key);
+			if (lst != val)
+				return popCallStackLeaveData(s, val, temporary);
 
 			// or return nil if not found
 			return popCallStackLeaveData(s, s.c_nil, temporary);
