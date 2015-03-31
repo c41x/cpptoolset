@@ -12,7 +12,7 @@
 #include "glisp.h"
 #include "math.string.h"
 
-#define GLISP_DEBUG_LOG
+//#define GLISP_DEBUG_LOG
 #ifdef GLISP_DEBUG_LOG
 #define dout(param) std::cout << param
 #else
@@ -324,42 +324,30 @@ bool operator<(const var_key_t &a, const var_key_t &b) {
 }
 
 // detach variable to aux memory
-cell_t detachVariable(lispState &s, cell_t addr, cell_t addr_end, cell_t val_begin, cell_t val_end, var_key_t key) {
+cells_t &detachVariable(lispState &s, cell_t addr, var_key_t key) {
 	// move data
 	auto e = s.lists.find(key);
 	if (e == s.lists.end()) {
 		cells_t &m = s.lists[key];
 
 		// reserve space
-		size_t selfSize = std::distance(addr, addr_end);
-		size_t valSize = std::distance(val_begin, val_end);
-		m.reserve(selfSize + valSize);
+		size_t selfSize = countElements(addr);
+		m.reserve(selfSize);
 
 		// copy contents
-		m.insert(m.end(), addr, addr_end);
-		m.insert(m.end(), val_begin, val_end);
+		m.insert(m.end(), addr, addr + selfSize);
 
 		// leave id on stack
 		*addr = {cell::typeDetach,
 				 addr->type == cell::typeList ? addr->i : 1,
 				 (int)std::get<1>(key), std::get<0>(key)};
 
-		// return new address
-		return m.begin();
+		// return new container
+		return m;
 	}
 
 	// return existing variable
-	return e->second.begin();
-}
-
-// shortcuts for detach variable
-cell_t detachVariable(lispState &s, cell_t addr, var_key_t key) {
-	return detachVariable(s, addr, addr + countElements(addr), addr, addr, key);
-}
-
-cell_t detachVariable(lispState &s, cell_t addr, cell_t val, var_key_t key) {
-	return detachVariable(s, addr, addr,
-						  val, val + countElements(val), key);
+	return e->second;
 }
 
 // checks if given iterator is valid
@@ -415,71 +403,49 @@ cells_t &getVariableContainer(lispState &s, var_t v) {
 	return s.lists[*v];
 }
 
-// gather all variable data <is valid, is detached, data address, variable it, container>
-std::tuple<bool, bool, cell_t, var_t, cells_t*> fetchVariable(lispState &s, cell_t addr) {
-	// TODO: detect if addr is ID
-	const string &name = addr->s;
-	var_t var = findVariable(s, name);
-	bool isValid = isVariableValid(s, var);
-	if (isValid) {
-		bool isDetached = getVariableStackAddress(s, var)->type == cell::typeDetach;
-		if (isDetached)
-			return std::make_tuple(true, true,
-								   getVariableContainer(s, var).begin(),
-								   var,
-								   &getVariableContainer(s, var));
-		return std::make_tuple(true, false, getVariableStackAddress(s, var), var, &s.stack);
-	}
-	return std::make_tuple(false, false, s.stack.end(), var, &s.stack);
-}
-
-cell_t listInsert(lispState &s, cell_t addr, std::function<void(cells_t&, cell_t)> processInsertion) {
-	if (addr->type == cell::typeList) {
-		processInsertion(s.stack, addr);
-		return addr;
-	}
-
-	var_t var = findVariable(s, addr->s);
-	if (isVariableValid(s, var)) {
-		cell_t stackAddr = getVariableStackAddress(s, var);
-		if (stackAddr->type != cell::typeDetach) {
-			detachVariable(s, stackAddr, stackAddr + countElements(stackAddr),
-										 stackAddr, stackAddr, *var);
-		}
-
-		cells_t &cont = getVariableContainer(s, var);
-		processInsertion(cont, cont.begin());
-		return cont.begin();
-	}
-
-	return addr;
-}
-
+// template to list operations, call order:
+// - peekOp - access to list itself
+// - detachOp (optional) - if yields true -> variable is detached
+// - processOp - operation, access to list pointer and container
 cell_t listOp(lispState &s, cell_t addr,
 			  std::function<void(cells_t&, cell_t)> processOp,
-			  std::function<bool(cell_t)> detachOp) {
+			  std::function<bool()> detachOp = []() { return true; },
+			  std::function<void(cell_t)> peekOp = [](cell_t) {}) {
+	// if list is placed on stack -> allow to modify - just be careful,
+	// list must be on stack top, otherwise cells may have invalid iterators after processOp call
 	if (addr->type == cell::typeList) {
+		peekOp(addr);
 		processOp(s.stack, addr);
 		return addr;
 	}
 
+	// search for variable
 	var_t var = findVariable(s, addr->s);
 	if (isVariableValid(s, var)) {
 		cell_t stackAddr = getVariableStackAddress(s, var);
+		cells_t *con = nullptr;
 		if (stackAddr->type != cell::typeDetach) {
-			if (detachOp(getVariableAddress(s, var))) {
-				detachVariable(s, stackAddr, stackAddr + countElements(stackAddr),
-							   stackAddr, stackAddr, *var);
+			// maybe detach
+			peekOp(stackAddr);
+			if (detachOp()) {
+				con = &detachVariable(s, stackAddr, *var);
 			}
 			else {
+				// or allow to modify stack directly
 				processOp(s.stack, stackAddr);
 				return stackAddr;
 			}
 		}
 
-		cells_t &cont = getVariableContainer(s, var);
-		processOp(cont, cont.begin());
-		return cont.begin();
+		// already detached
+		if (!con) {
+			con = &getVariableContainer(s, var);
+			peekOp(con->begin());
+		}
+
+		// continue with detached
+		processOp(*con, con->begin());
+		return con->begin();
 	}
 
 	return addr;
@@ -562,6 +528,7 @@ void printVariables(lispState &s) {
 
 void printState(lispState &s) {
 	// TODO: print detached
+	// TODO: print detached anomalies
 	// reverse call stack
 	auto cs = s.callStack;
 	call_stack_t rcs;
@@ -1108,12 +1075,12 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			cell_t lst = eval(s, nextCell(d + 2));
 
 			// insert value at list end and update list count
-			auto op = [&val](cells_t &c, cell_t lst) {
+			auto actionOp = [val](cells_t &c, cell_t lst) {
 				cell_t end = endCell(lst);
 				lst->i += 1;
 				c.insert(end, val, val + countElements(val));
 			};
-			lst = listInsert(s, lst, op);
+			lst = listOp(s, lst, actionOp);
 			return popCallStackLeaveData(s, lst, temporary);
 		}
 		else if (fxName == "append") {
@@ -1122,15 +1089,15 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			// eval source and target lists
 			cell_t val = eval(s, d + 2, true);
 			cell_t lst = eval(s, nextCell(d + 2));
+			size_t elems = countElements(val);
 
 			// merge lists and update count
-			int elems = countElements(val);
-			auto op = [&val, &elems](cells_t &c, cell_t lst) {
+			auto actionOp = [val, elems](cells_t &c, cell_t lst) {
 				cell_t end = endCell(lst);
-				lst->i += elems - 1;
+				lst->i += val->i;
 				c.insert(end, val + 1, val + elems);
 			};
-			lst = listInsert(s, lst, op);
+			lst = listOp(s, lst, actionOp);
 			return popCallStackLeaveData(s, lst, temporary);
 		}
 		else if (fxName == "add-to-list") {
@@ -1139,16 +1106,19 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			// eval list and element to insert
 			cell_t val = eval(s, d + 2, true);
 			cell_t lst = eval(s, nextCell(d + 2));
+			bool doInsert;
 
 			// add element to list (set)
-			auto op = [&val](cells_t &c, cell_t lst) {
-				if (!cellFound(lst, val)) {
+			auto peekOp = [&doInsert, val](cell_t lst) { doInsert = !cellFound(lst, val); };
+			auto detachOp = [&doInsert](){ return doInsert; };
+			auto actionOp = [&doInsert, val](cells_t &c, cell_t lst) {
+				if (doInsert) {
 					cell_t end = endCell(lst);
 					lst->i += 1;
 					c.insert(end, val, val + countElements(val));
 				}
 			};
-			lst = listInsert(s, lst, op);
+			lst = listOp(s, lst, actionOp, detachOp, peekOp);
 			return popCallStackLeaveData(s, lst, temporary);
 		}
 		else if (fxName == "setq" || fxName == "set") {
@@ -1156,19 +1126,18 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 
 			// gather data
 			const bool isSetq = fxName == "setq";
-			cell_t var = isSetq ? (d + 2) : eval(s, d + 2);
+			cell_t var = isSetq ? (d + 2) : eval(s, d + 2, true);
 			cell_t val = eval(s, nextCell(d + 2), true);
-			size_t sourceSize = countElements(var);
 			size_t targetSize = countElements(val);
+			size_t srcSize;
 
 			// define ops & process
-			auto detachOp = [targetSize, sourceSize](cell_t e) {
-				return targetSize > sourceSize;
+			auto peekOp = [&srcSize](cell_t lst) { srcSize = countElements(lst); };
+			auto detachOp = [&srcSize, targetSize]() { return targetSize != srcSize; };
+			auto actionOp = [&srcSize, targetSize, val](cells_t &c, cell_t lst) {
+				remove_copy(c, lst, lst + srcSize, val, val + targetSize);
 			};
-			auto actionOp = [targetSize, sourceSize, val](cells_t &c, cell_t e) {
-				remove_copy(c, e, e + sourceSize, val, val + targetSize);
-			};
-			var = listOp(s, var, actionOp, detachOp);
+			var = listOp(s, var, actionOp, detachOp, peekOp);
 
 			// return address and pop all temporary mess
 			return popCallStackLeaveData(s, var, temporary);
@@ -1180,15 +1149,15 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			cell_t var = d + 2;
 			cell_t val = eval(s, nextCell(d + 2), true);
 			size_t targetSize = countElements(val);
+			size_t srcCarSize;
 
 			// define ops & process
-			auto detachOp = [targetSize](cell_t e) {
-				return targetSize > countElements(e + 1);
+			auto peekOp = [&srcCarSize](cell_t lst) { srcCarSize = countElements(lst + 1); };
+			auto detachOp = [&srcCarSize, targetSize]() { return targetSize != srcCarSize; };
+			auto actionOp = [&srcCarSize, targetSize, val](cells_t &c, cell_t lst) {
+				remove_copy(c, lst + 1, lst + 1 + srcCarSize, val, val + targetSize);
 			};
-			auto actionOp = [&s, targetSize, val](cells_t &c, cell_t e) {
-				remove_copy(c, e + 1, e + 1 + countElements(e + 1), val, val + targetSize);
-			};
-			listOp(s, var, actionOp, detachOp);
+			listOp(s, var, actionOp, detachOp, peekOp);
 
 			// return address and pop all temporary mess
 			return popCallStackLeaveData(s, val, temporary);
@@ -1199,30 +1168,25 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			// gather data
 			cell_t var = d + 2;
 			cell_t val = eval(s, nextCell(d + 2), true);
-			size_t srcOffset = countElements(var + 1) + 1; // list head + car size
-			size_t srcSize = countElements(var) - srcOffset; // car size
 			size_t targetOffset = val->type == cell::typeList ? 1 : 0;
 			size_t targetSize = countElements(val) - targetOffset;
+			size_t srcOffset; // list head + car size
+			size_t srcSize; // car size
 
 			// define ops & process
-			auto detachOp = [targetSize](cell_t e) {
-				return true;
-				size_t srcOffset = countElements(e + 1) + 1; // list head + car size
-				size_t srcSize = countElements(e) - srcOffset; // car size
-				return targetSize > srcSize;
+			auto peekOp = [&srcOffset, &srcSize](cell_t lst) {
+				srcOffset = countElements(lst + 1) + 1;
+				srcSize = countElements(lst);
 			};
-			auto actionOp = [targetSize, targetOffset, val] (cells_t &c, cell_t e) {
-				size_t srcOffset = countElements(e + 1) + 1; // list head + car size
-				e->i += val->type == cell::typeList ? val->i : 1;
-				std::cout << toString(e) << " -> " << toString(val) << std::endl;
-				std::cout << srcOffset << " / " << targetSize << std::endl;
-				remove_copy(c,
-							e + srcOffset,
-							e + countElements(e),
-							val + targetOffset,
-							val + targetOffset + targetSize);
+			auto detachOp = [&srcOffset, &srcSize, targetSize]() {
+				return targetSize != (srcSize - srcOffset);
 			};
-			listOp(s, var, actionOp, detachOp);
+			auto actionOp = [&srcOffset, &srcSize, targetSize, targetOffset, val](cells_t &c, cell_t lst) {
+				lst->i = 1 + (val->type == cell::typeList ? val->i : 1);
+				remove_copy(c, lst + srcOffset, lst + srcSize,
+							val + targetOffset, val + targetOffset + targetSize);
+			};
+			listOp(s, var, actionOp, detachOp, peekOp);
 
 			// return address and pop all temporary mess
 			return popCallStackLeaveData(s, val, temporary);
@@ -1236,16 +1200,13 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			cell last;
 
 			// define ops & process
-			auto detachOp = [](cell_t e) { return false; };
-			auto actionOp = [sourceSize, &last](cells_t &c, cell_t e) {
-				cell_t end = lastCell(e);
+			auto actionOp = [sourceSize, &last](cells_t &c, cell_t lst) {
+				cell_t end = lastCell(lst);
 				last = *end;
-				e->i = std::max(0, e->i - 1);
-				std::cout << toString(end) << std::endl;
-				std::cout << toString(c) << std::endl;
+				lst->i = std::max(0, lst->i - 1);
 				c.erase(end, end + countElements(end));
 			};
-			listOp(s, var, actionOp, detachOp);
+			listOp(s, var, actionOp);
 
 			// return address and pop all temporary mess
 			return popCallStackLeaveData(s, pushCell(s, last), temporary);

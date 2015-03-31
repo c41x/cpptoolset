@@ -47,7 +47,6 @@ int main(int argc, char **argv) {
 		gl.eval(inp);
 	}
 	#else
-	/*
 	test(gl, "(defvar my-test-x 55)", "my-test-x");
 	test(gl, "my-test-x", "55");
 	test(gl, "(defun my-test-l () (setq my-test-x 66))", "my-test-l");
@@ -75,7 +74,6 @@ int main(int argc, char **argv) {
 	test(gl, "(unbound 'l)", "l");
 	test(gl, "(quote (asd sdf dfg fgh))", "(asd sdf dfg fgh)");
 	test(gl, "(progn (progn 1 2 3 'asd) 44)", "44");
-*/
 	test(gl, "(defvar x 123)", "x");
 	test(gl, "x", "123");
 	test(gl, "(setq x '(1 2 3))", "(1 2 3)");
@@ -113,7 +111,7 @@ int main(int argc, char **argv) {
 	test(gl, "(setcdr ll2 '(ugly parabola wolfram))", "(ugly parabola wolfram)");
 	test(gl, "ll2", "(1 ugly parabola wolfram)");
 	test(gl, "(setcdr ll2 '(ugly parabola))", "(ugly parabola)");
-	test(gl, "ll2", "(1 ugly parabola)");/*
+	test(gl, "ll2", "(1 ugly parabola)");
 	test(gl, "(defvar ll3 '(1 2))", "ll3");
 	test(gl, "(setcar ll3 '(1 2))", "(1 2)");
 	test(gl, "ll3", "((1 2) 2)");
@@ -161,9 +159,8 @@ int main(int argc, char **argv) {
 	test(gl, "(< 1 1 2 3)", "nil");
 	test(gl, "(<= 1 1 2 3)", "t");
 	test(gl, "(< 1 2 3 1)", "nil");
-	test(gl, "(add-to-list trees '(my tree))", "((pine cones) (oak acorns) (maple seeds) (my tree))");
-	test(gl, "(add-to-list trees '(oak acorns))", "((pine cones) (oak acorns) (maple seeds) (my tree))");
-	*/
+	test(gl, "(add-to-list '(my tree) 'trees)", "((pine cones) (oak acorns) (maple seeds) (my tree))");
+	test(gl, "(add-to-list '(oak acorns) 'trees)", "((pine cones) (oak acorns) (maple seeds) (my tree))");
 	#endif
 
 	gl.close();
