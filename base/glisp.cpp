@@ -1581,12 +1581,14 @@ void lisp::close() {
 	detail::popCallStack(*_s);
 }
 
-// TODO: return cell_t
-// TODO: eval cell_t (already parsed)
-string lisp::eval(const string &s) {
+cells_t lisp::parse(const string &s) {
 	dout(std::endl << std::endl);
 	auto code = detail::parse(s);
 	dout(toString(code) << std::endl);
+	return code;
+}
+
+string lisp::eval(cells_t &code) {
 	auto retAddr = detail::eval(*_s, code.begin(), true);
 	string r = toString(retAddr);
 	dout("return addr: " << detail::getAddress(*_s, retAddr)
@@ -1596,6 +1598,11 @@ string lisp::eval(const string &s) {
 	detail::sweepStack(*_s);
 	detail::printState(*_s);
 	return r;
+}
+
+string lisp::eval(const string &s) {
+	cells_t code = parse(s);
+	return eval(code);
 }
 
 void lisp::addProcedure(const string &name, procedure_t fx) {

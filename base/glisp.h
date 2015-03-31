@@ -84,6 +84,9 @@ public:
 
 	void init(size_t memSize = 100000);
 	void close();
+
+	cells_t parse(const string &s);
+	string eval(cells_t &code);
 	string eval(const string &s);
 	void addProcedure(const string &name, procedure_t fx);
 	void addVariable(const string &name, cell value);
