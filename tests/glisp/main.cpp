@@ -161,6 +161,17 @@ int main(int argc, char **argv) {
 	test(gl, "(< 1 2 3 1)", "nil");
 	test(gl, "(add-to-list '(my tree) 'trees)", "((pine cones) (oak acorns) (maple seeds) (my tree))");
 	test(gl, "(add-to-list '(oak acorns) 'trees)", "((pine cones) (oak acorns) (maple seeds) (my tree))");
+	test(gl, "(delete '(my tree) 'trees)", "((pine cones) (oak acorns) (maple seeds))");
+	test(gl, "(delete '(my tree) 'trees)", "((pine cones) (oak acorns) (maple seeds))");
+	test(gl, "(assoc-delete 'pine 'trees)", "((oak acorns) (maple seeds))");
+	test(gl, "(nth-delete '1 'trees)", "((oak acorns))");
+	test(gl, "(nth-delete '0 'trees)", "()");
+	test(gl, "(delete '5 '(8 73 3 2 5 -44))", "(8 73 3 2 -44)");
+	test(gl, "(defvar ai '(-12 -1 0 1 33 44 67 77 666))", "ai");
+	test(gl, "(add-to-ordered-list '2 'ai)", "(-12 -1 0 1 2 33 44 67 77 666)");
+	test(gl, "(add-to-ordered-list '-2 '(1 2 4))", "(-2 1 2 4)");
+	test(gl, "(add-to-ordered-list '2 '(1 2 4))", "(1 2 2 4)");
+	test(gl, "(add-to-ordered-list '88 '(1 2 4))", "(1 2 4 88)");
 	#endif
 
 	gl.close();
