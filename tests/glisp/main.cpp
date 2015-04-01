@@ -172,6 +172,9 @@ int main(int argc, char **argv) {
 	test(gl, "(add-to-ordered-list '-2 '(1 2 4))", "(-2 1 2 4)");
 	test(gl, "(add-to-ordered-list '2 '(1 2 4))", "(1 2 2 4)");
 	test(gl, "(add-to-ordered-list '88 '(1 2 4))", "(1 2 4 88)");
+	test(gl, "(progn (defvar x '(1 2 3)) (push '6 'x))", "(1 2 3 6)");
+	test(gl, "(progn (defvar x '(1 2 3)) (push '6 'x))", "(1 2 3 6)");
+	test(gl, "(progn (defvar xa '(1 2 3)) (push '6 'xa))", "(1 2 3 6)");
 	#endif
 
 	gl.close();

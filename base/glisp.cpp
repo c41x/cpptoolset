@@ -210,6 +210,7 @@ cell cell::t = cell(cell::typeIdentifier, "t");
 //- state -
 typedef std::tuple<string, size_t> var_key_t; // name, stack position
 typedef std::vector<var_key_t> vars_t;
+typedef std::set<var_key_t> list_pool_t;
 typedef std::map<var_key_t, cells_t> lists_t;
 typedef vars_t::iterator var_t;
 typedef std::stack<size_t> call_stack_t;
@@ -224,6 +225,7 @@ struct lispState {
 
 	// aux memory
 	lists_t lists;
+	list_pool_t listsPool;
 
 	// shortcuts to constants
 	cell_t c_nil;
@@ -336,29 +338,39 @@ bool operator<(const var_key_t &a, const var_key_t &b) {
 
 // detach variable to aux memory
 cells_t &detachVariable(lispState &s, cell_t addr, var_key_t key) {
-	// move data
+	// initialize storage
 	auto e = s.lists.find(key);
 	if (e == s.lists.end()) {
-		cells_t &m = s.lists[key];
-
-		// reserve space
-		size_t selfSize = countElements(addr);
-		m.reserve(selfSize);
-
-		// copy contents
-		m.insert(m.end(), addr, addr + selfSize);
-
-		// leave id on stack
-		*addr = {cell::typeDetach,
-				 addr->type == cell::typeList ? addr->i : 1,
-				 (int)std::get<1>(key), std::get<0>(key)};
-
-		// return new container
-		return m;
+		// if we have something in pool -> use it (move semantics)
+		if (s.listsPool.size() > 0) {
+			auto pe = s.lists.find(*s.listsPool.begin());
+			e = s.lists.insert({key, std::move(pe->second)}).first;
+			s.lists.erase(pe);
+			s.listsPool.erase(s.listsPool.begin());
+		}
+		else
+			// or create new one
+			e = s.lists.insert({key, cells_t()}).first;
 	}
 
-	// return existing variable
-	return e->second;
+	// reserve space
+	size_t selfSize = countElements(addr);
+	// it's ok - shrinking vector does not reallocate memory
+	// its neccessary because there may be some garbage in vector
+	cells_t &m = e->second;
+	m.resize(0);
+	m.reserve(selfSize);
+
+	// copy contents
+	m.insert(m.end(), addr, addr + selfSize);
+
+	// leave id on stack
+	*addr = {cell::typeDetach,
+			 addr->type == cell::typeList ? addr->i : 1,
+			 (int)std::get<1>(key), std::get<0>(key)};
+
+	// return container
+	return m;
 }
 
 // checks if given iterator is valid
@@ -538,8 +550,6 @@ void printVariables(lispState &s) {
 }
 
 void printState(lispState &s) {
-	// TODO: print detached
-	// TODO: print detached anomalies
 	// reverse call stack
 	auto cs = s.callStack;
 	call_stack_t rcs;
@@ -547,6 +557,11 @@ void printState(lispState &s) {
 		rcs.push(cs.top());
 		cs.pop();
 	}
+
+	// list of unlisted detach variables
+	std::set<var_key_t> keysLeft;
+	for (const auto &e : s.lists)
+		keysLeft.insert(e.first);
 
 	// print all elements
 	size_t varsLeft = s.variables.size();
@@ -590,6 +605,7 @@ void printState(lispState &s) {
 		else if (e.type == cell::typeDetach) {
 			dout("[detach:" << e.i << ":" << e.j << ":" <<
 				 (e.j != -1 ? toString(getVariableAddress(s, v)) : "?") << "] ");
+			keysLeft.erase(*v);
 		}
 	}
 
@@ -601,12 +617,24 @@ void printState(lispState &s) {
 		}
 		if (!firstFrame)
 			dout(" call stack corrupted! ");
+		else dout(" ");
 	}
 
 	if (varsLeft > 0) {
-		while (varsLeft-- > 0)
-			dout("|");
-		dout(" variables corrupted!");
+		dout("/ variables corrupted (" << varsLeft << ") ");
+	}
+
+	if (keysLeft.size() > 0) {
+		dout("/ hanging detached variables: ");
+		for (const auto &e : keysLeft)
+			dout("<" << std::get<0>(e) << ">");
+		dout(" ");
+	}
+
+	if (s.listsPool.size() > 0) {
+		dout("/ detached variables pool: ");
+		for (const auto &e : s.listsPool)
+			dout("<" << std::get<0>(e) << ">");
 	}
 
 	dout(std::endl);
@@ -617,13 +645,20 @@ void pushCallStack(lispState &s) {
 }
 
 void popVariablesAbove(lispState &s, size_t addr) {
-	// TODO: delete all detached vars
 	// no variables defined with address above given (warning - asserting that variables is not empty)
 	if (addr <= std::get<1>(s.variables.back())) {
 		// there are some variables above addr find last (should always delete sth)
 		s.variables.erase(backwards_until(s.variables.begin(), s.variables.end(),
-										  [&addr](var_key_t var) {
-											  return std::get<1>(var) < addr;
+										  [&s, &addr](var_key_t var) {
+											  // stop
+											  if (std::get<1>(var) < addr)
+												  return true;
+
+											  // continue iterating
+											  // we have variable to delete -> throw to pool if needed
+											  if (s.lists.end() != s.lists.find(var))
+												  s.listsPool.insert(var);
+											  return false;
 										  }), s.variables.end());
 	}
 }
@@ -637,7 +672,6 @@ void popCallStack(lispState &s) {
 	s.callStack.pop();
 }
 
-// TODO: make backward version?
 // pops call stack and leaves given cell at bottom of current stack frame
 cell_t popCallStackLeaveData(lispState &s, cell_t addr, bool temporary = false) {
 	// undefine all variables on this stack frame
@@ -725,12 +759,17 @@ void sweepStack(lispState &s) {
 		varTop = findFirstVar();
 	}
 
+	// free hanging detached (leave 5 buffer)
+	for (auto &e : s.listsPool) {
+		if (s.listsPool.size() <= 5)
+			break;
+		dout("erasing from pool: " << std::get<0>(e) << std::endl);
+		s.lists.erase(e);
+	}
+
 	// discard rest
 	s.stack.resize(stackTopOffset);
 }
-
-// TODO: removes all unused data (moved previously by detach) - rebuild callstack
-// void sweepAll();
 
 //- initialization consts and procedures -
 // search for procedure address
