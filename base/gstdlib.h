@@ -15,7 +15,7 @@ namespace granite { namespace base {
 
 // ELISP mapc
 template <typename T_ITERATOR, typename T_OPERATION>
-void mapc(T_ITERATOR begin, T_ITERATOR end, T_OPERATION op) {
+void mapc(T_ITERATOR begin, T_ITERATOR end, const T_OPERATION &op) {
 	for(T_ITERATOR it = begin; it != end; ++it) {
 		op(*it);
 	}
@@ -23,7 +23,7 @@ void mapc(T_ITERATOR begin, T_ITERATOR end, T_OPERATION op) {
 
 // ELISP mapcar
 template <typename T_ITERATOR, typename T_OPERATION, typename T_CONTAINER>
-T_CONTAINER mapcar(T_ITERATOR begin, T_ITERATOR end, T_OPERATION op) {
+T_CONTAINER mapcar(T_ITERATOR begin, T_ITERATOR end, const T_OPERATION &op) {
 	T_CONTAINER v;
 	for(T_ITERATOR it = begin; it != end; ++it)
 		v.push_back(op(*it));
@@ -54,7 +54,7 @@ T_AGG concat(T_ITERATOR begin, T_ITERATOR end, T_AGG separator) {
 
 // ELISP mapconcat
 template <typename T_ITERATOR, typename T_OPERATION, typename T_AGG>
-T_AGG mapconcat(T_ITERATOR begin, T_ITERATOR end, T_OPERATION op, T_AGG separator) {
+T_AGG mapconcat(T_ITERATOR begin, T_ITERATOR end, const T_OPERATION &op, T_AGG separator) {
 	T_AGG r;
 
 	// return "" if no elements
@@ -77,7 +77,7 @@ T_AGG mapconcat(T_ITERATOR begin, T_ITERATOR end, T_OPERATION op, T_AGG separato
 // same as std::find_if but performes search backward
 // using reverse iterators is annoying and std::end is overkill
 template <typename T_ITERATOR, typename T_OPERATION>
-T_ITERATOR find_if_backwards(T_ITERATOR begin, T_ITERATOR end, T_OPERATION pred) {
+T_ITERATOR find_if_backwards(T_ITERATOR begin, T_ITERATOR end, const T_OPERATION &pred) {
 	// empty sequence
 	if (begin == end)
 		return end;
@@ -97,7 +97,7 @@ T_ITERATOR find_if_backwards(T_ITERATOR begin, T_ITERATOR end, T_OPERATION pred)
 // search for last element, break if pred returns false
 // returns last element [e] that [pred(e)] == true
 template <typename T_ITERATOR, typename T_OPERATION>
-T_ITERATOR backwards_until(T_ITERATOR begin, T_ITERATOR end, T_OPERATION pred) {
+T_ITERATOR backwards_until(T_ITERATOR begin, T_ITERATOR end, const T_OPERATION &pred) {
 	// empty sequence
 	if (begin == end)
 		return end;
@@ -144,6 +144,16 @@ T_ITERATOR remove_copy(T_CONTAINER &container,
 
 	// return valid iterator
 	return container.begin() + delPosition;
+}
+
+// erase_if - remove_if equivalent for associative containers
+template <typename T_CONTAINER, typename T_OP>
+void erase_if(T_CONTAINER &container, const T_OP &pred) {
+	for (auto it = container.begin(); it != container.end(); ) {
+		if (pred(*it))
+			it = container.erase(it);
+		else ++it;
+	}
 }
 
 }}
