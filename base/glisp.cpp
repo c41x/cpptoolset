@@ -11,8 +11,10 @@
 
 #include "glisp.h"
 #include "math.string.h"
+#include "tokenizer.h"
+#include "gstdlib.h"
 
-#define GLISP_DEBUG_LOG
+//#define GLISP_DEBUG_LOG
 #ifdef GLISP_DEBUG_LOG
 #define dout(param) std::cout << param
 #else
@@ -763,7 +765,6 @@ void sweepStack(lispState &s) {
 	for (auto &e : s.listsPool) {
 		if (s.listsPool.size() <= 5)
 			break;
-		dout("erasing from pool: " << std::get<0>(e) << std::endl);
 		s.lists.erase(e);
 	}
 
