@@ -47,19 +47,13 @@
 #endif
 
 #ifdef GLISP_DEBUG_STATE
-#define ddeb(...) std::cout << strs(__VA_ARGS__) << std::endl;
+#define ddebnt(...) std::cout << strs(__VA_ARGS__) << std::endl;
+#define ddeb(...) for (size_t i = 1; i < s.callStack.size(); ++i) std::cout << "  "; std::cout << strs(__VA_ARGS__) << std::endl;
 #define ddebc(COND, ...) if (!(COND)) std::cout << strs(__VA_ARGS__) << std::endl; else ;
 #else
 #define ddeb(...)
+#define ddebnt(...)
 #define ddebc(COND, ...)
-#endif
-
-
-//#define GLISP_DEBUG_LOG
-#ifdef GLISP_DEBUG_LOG
-#define dout(param) std::cout << param
-#else
-#define dout(param)
 #endif
 
 namespace granite { namespace base {
@@ -256,8 +250,8 @@ bool valueFound(cell_t lst, cell_t key) {
 }
 
 // some static constants
-cell cell::nil = cell(cell::typeIdentifier, "nil");
-cell cell::t = cell(cell::typeIdentifier, "t");
+const cell cell::nil = cell(cell::typeIdentifier, "nil");
+const cell cell::t = cell(cell::typeIdentifier, "t");
 
 //- state -
 typedef std::tuple<string, size_t> var_key_t; // name, stack position
@@ -532,6 +526,8 @@ cell_t listOp(lispState &s, cell_t addr,
 
 // push variable and allocate memory
 cell_t pushVariable(lispState &s, const string &name, size_t count) {
+	ddeb("pushing variable \"", name, "\" on stack top, count: ", count);
+
 	// add new variable
 	s.variables.push_back(std::make_tuple(name, s.stack.size()));
 
@@ -542,8 +538,7 @@ cell_t pushVariable(lispState &s, const string &name, size_t count) {
 
 // assign address to memory
 void pushVariable(lispState &s, const string &name, cell_t addr) {
-	dout("push variable (" << name << ") addr: " << std::distance(s.stack.begin(), addr)
-		 << " value: " << toString(addr) << std::endl);
+	ddeb("pushing variable \"", name, "\" addr: ", std::distance(s.stack.begin(), addr), " value: ", toString(addr));
 
 	// find address offset
 	size_t dst = std::distance(s.stack.begin(), addr);
@@ -597,21 +592,6 @@ size_t getAddress(lispState &s, cell_t c) {
 	return std::distance(s.stack.begin(), c);
 }
 
-void tab(lispState &s) {
-	for(size_t i = 0; i < s.callStack.size(); ++i) {
-		dout("  ");
-	}
-}
-
-void printVariables(lispState &s) {
-	#ifdef GLISP_DEBUG_LOG
-	dout("defined variables(" << s.variables.size() << ")" << std::endl);
-	for (auto &v : s.variables) {
-		dout(std::get<0>(v) << " = " << s.stack[std::get<1>(v)].getStr() << std::endl);
-	}
-	#endif
-}
-
 void printState(lispState &s) {
 	// reverse call stack
 	auto cs = s.callStack;
@@ -627,11 +607,12 @@ void printState(lispState &s) {
 		keysLeft.insert(e.first);
 
 	// print all elements
+	string out;
 	size_t varsLeft = s.variables.size();
 	for (size_t i = 0; i < s.stack.size(); ++i) {
 		// put call stack bottom frame
 		while (rcs.size() > 0 && i == rcs.top()) {
-			dout("| ");
+			out += "| ";
 			rcs.pop();
 		}
 
@@ -641,33 +622,32 @@ void printState(lispState &s) {
 			});
 		if (v != s.variables.end()) {
 			--varsLeft;
-			dout("#" << std::get<0>(*v) << " ");
+			out += strs("#", getVariableName(v), " ");
 		}
 
 		// print element
 		auto &e = s.stack[i];
 		if (e.type == cell::typeList) {
-			dout("[list:" << e.i << "] ");
+			out += strs("[list:",e.i, "] ");
 		}
 		else if (e.type == cell::typeIdentifier) {
-			dout(e.s << " ");
+			out += strs(e.s, " ");
 		}
 		else if (e.type == cell::typeFloat) {
-			dout(e.f << " ");
+			out += strs(e.f, " ");
 		}
 		else if (e.type == cell::typeString) {
-			dout("\"" << e.s << "\" ");
+			out += strs("\"", e.s, "\" ");
 		}
 		else if (e.type == cell::typeInt) {
-			dout(e.i << " ");
+			out += strs(e.i, " ");
 		}
 		else if (e.type == cell::typeVector) {
-			vec4f v(e.xmm);
-			dout("/" << v.x << " " << v.y << " " << v.z << " " << v.w << "/ ");
+			out += strs("/", vec4f(e.xmm), "/ ");
 		}
 		else if (e.type == cell::typeDetach) {
-			dout("[detach:" << e.i << ":" << e.j << ":" <<
-				 (e.j != -1 ? toString(getVariableAddress(s, v)) : "?") << "] ");
+			out += strs("[detach:", e.i, ":", e.j, ":",
+						(e.j != -1 ? toString(getVariableAddress(s, v)) : "?"), "] ");
 			keysLeft.erase(*v);
 		}
 	}
@@ -675,32 +655,32 @@ void printState(lispState &s) {
 	if (rcs.size() > 0) {
 		bool firstFrame = rcs.size() == 1;
 		while (rcs.size()) {
-			dout("|");
+			out += "|";
 			rcs.pop();
 		}
 		if (!firstFrame)
-			dout(" call stack corrupted! ");
-		else dout(" ");
+			out += " call stack corrupted! ";
+		else out += " ";
 	}
 
 	if (varsLeft > 0) {
-		dout("/ variables corrupted (" << varsLeft << ") ");
+		out += strs("/ variables corrupted (", varsLeft, ") ");
 	}
 
 	if (keysLeft.size() > 0) {
-		dout("/ hanging detached variables: ");
+		out += "/ hanging detached variables: ";
 		for (const auto &e : keysLeft)
-			dout("<" << std::get<0>(e) << ">");
-		dout(" ");
+			out += strs("<", std::get<0>(e), ">");
+		out += " ";
 	}
 
 	if (s.listsPool.size() > 0) {
-		dout("/ detached variables pool: ");
+		out += "/ detached variables pool: ";
 		for (const auto &e : s.listsPool)
-			dout("<" << std::get<0>(e) << ">");
+			out += strs("<", std::get<0>(e), ">");
 	}
 
-	dout(std::endl);
+	ddeb(out);
 }
 
 void pushCallStack(lispState &s) {
@@ -935,7 +915,7 @@ cell_t boolToCell(lispState &s, bool v) {
 
 //- eval -
 cell_t eval(lispState &s, cell_t d, bool temporary) {
-	tab(s); dout("eval: " << toString(d) << std::endl);
+	ddeb("eval: ", toString(d));
 
 	if (d->type == cell::typeInt ||
 		d->type == cell::typeString ||
@@ -1756,9 +1736,9 @@ void lisp::close() {
 }
 
 cells_t lisp::parse(const string &s) {
-	dout(std::endl << std::endl);
+	ddebnt("");
 	auto code = detail::parse(s);
-	dout(toString(code) << std::endl);
+	ddebnt("");
 	return code;
 }
 
@@ -1775,10 +1755,10 @@ string lisp::eval(cells_t &code) {
 	#endif
 
 	string r = toString(retAddr);
-	dout("return addr: " << detail::getAddress(*_s, retAddr)
-		 << " | " << toString(retAddr) << std::endl);
+	ddebnt("return addr: ", detail::getAddress(*_s, retAddr),
+		 " | ", toString(retAddr));
 	detail::printState(*_s);
-	dout("sweep..." << std::endl);
+	ddebnt("sweep...");
 	detail::sweepStack(*_s);
 	detail::printState(*_s);
 	return r;

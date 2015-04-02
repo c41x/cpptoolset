@@ -23,7 +23,7 @@
 //#define GLISP_DEBUG_ERROR_STDOUT
 
 // when defined - prints debug info on std output
-#define GLISP_DEBUG_STATE
+//#define GLISP_DEBUG_STATE
 
 
 namespace granite { namespace base {
@@ -73,8 +73,8 @@ public:
 	const string getStr() const;
 
 	// constants
-	static cell nil;
-	static cell t;
+	const static cell nil;
+	const static cell t;
 };
 
 // lisp state
