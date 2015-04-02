@@ -624,30 +624,24 @@ string getState(lispState &s) {
 
 	if (rcs.size() > 0) {
 		bool firstFrame = rcs.size() == 1;
-		while (rcs.size()) {
-			out += "|";
-			rcs.pop();
-		}
 		if (!firstFrame)
-			out += " call stack corrupted! ";
-		else out += " ";
+			out += strs("\ncall stack corrupted: ", rcs.size(), "frames");
 	}
 
 	if (varsLeft > 0) {
-		out += strs("/ variables corrupted (", varsLeft, ") ");
+		out += strs("\nvariables corrupted: ", varsLeft, " variables");
 	}
 
 	if (keysLeft.size() > 0) {
-		out += "/ hanging detached variables: ";
+		out += "\nhanging detached variables: ";
 		for (const auto &e : keysLeft)
-			out += strs("<", std::get<0>(e), ">");
-		out += " ";
+			out += strs("<", std::get<0>(e), "> ");
 	}
 
 	if (s.listsPool.size() > 0) {
-		out += "/ detached variables pool: ";
+		out += "\ndetached variables pool: ";
 		for (const auto &e : s.listsPool)
-			out += strs("<", std::get<0>(e), ">");
+			out += strs("<", std::get<0>(e), "> ");
 	}
 
 	return out;
