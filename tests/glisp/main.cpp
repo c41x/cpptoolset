@@ -178,6 +178,7 @@ int main(int argc, char **argv) {
 	test(gl, "(progn (defvar x '(1 2 3)) (push '6 'x))", "(1 2 3 6)");
 	test(gl, "(progn (defvar x '(1 2 3)) (push '6 'x))", "(1 2 3 6)");
 	test(gl, "(progn (defvar xa '(1 2 3)) (push '6 'xa))", "(1 2 3 6)");
+	std::cout << gl.eval("(print-state)");
 	#endif
 
 	gl.close();

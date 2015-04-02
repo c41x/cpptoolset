@@ -131,36 +131,6 @@ const string cell::getStr() const {
 	return "";
 }
 
-// prints all cells (use for debug purposes only)
-string toString(const cells_t &cells) {
-	string r;
-	for(const cell &c : cells) {
-		if(c.type == cell::typeList) {
-			r += "[list:" + toStr(c.i) + "]";
-		}
-		else if (c.type == cell::typeInt) {
-			r += toStr(c.i);
-		}
-		else if (c.type == cell::typeFloat) {
-			r += toStr(c.f);
-		}
-		else if (c.type == cell::typeVector) {
-			r += strs("| ", toStr(vec4f(c.xmm)), " |");
-		}
-		else if (c.type == cell::typeIdentifier) {
-			r += c.s;
-		}
-		else if (c.type == cell::typeString) {
-			r += strs("\"", c.s, "\"");
-		}
-		else {
-			r += "[unknown]";
-		}
-		r += " ";
-	}
-	return r;
-}
-
 const bool operator==(const cell &l, const cell &r) {
 	if (l.type == r.type) {
 		if (l.type == cell::typeInt ||
@@ -592,7 +562,7 @@ size_t getAddress(lispState &s, cell_t c) {
 	return std::distance(s.stack.begin(), c);
 }
 
-void printState(lispState &s) {
+string getState(lispState &s) {
 	// reverse call stack
 	auto cs = s.callStack;
 	call_stack_t rcs;
@@ -680,7 +650,7 @@ void printState(lispState &s) {
 			out += strs("<", std::get<0>(e), ">");
 	}
 
-	ddeb(out);
+	return out;
 }
 
 void pushCallStack(lispState &s) {
@@ -1666,6 +1636,9 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			else std::reverse(lst + 1, endCell(lst));
 			return popCallStackLeaveData(s, lst, temporary);
 		}
+		else if (fxName == "print-state") {
+			return pushCell(s, {getState(s)});
+		}
 
 		//- functions evaluation -
 		// get fx address
@@ -1757,10 +1730,10 @@ string lisp::eval(cells_t &code) {
 	string r = toString(retAddr);
 	ddebnt("return addr: ", detail::getAddress(*_s, retAddr),
 		 " | ", toString(retAddr));
-	detail::printState(*_s);
+	ddebnt(detail::getState(*_s));
 	ddebnt("sweep...");
 	detail::sweepStack(*_s);
-	detail::printState(*_s);
+	ddebnt(detail::getState(*_s));
 	return r;
 }
 
