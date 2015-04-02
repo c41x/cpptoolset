@@ -13,6 +13,19 @@
 #include "includes.h"
 #include "math.h"
 
+// when defined - enables error checking via assert
+//#define GLISP_DEBUG_ERROR
+
+// when defined - enables error checking via array (getErrors)
+#define GLISP_DEBUG_ERROR_ARRAY
+
+// when defined - enables error checking via std output
+//#define GLISP_DEBUG_ERROR_STDOUT
+
+// when defined - prints debug info on std output
+#define GLISP_DEBUG_STATE
+
+
 namespace granite { namespace base {
 
 // just data (variant)
@@ -86,10 +99,10 @@ public:
 	cells_t parse(const string &s);
 	string eval(cells_t &code);
 	string eval(const string &s);
+	const std::vector<string> &getError();
 	void addProcedure(const string &name, procedure_t fx);
 	void addVariable(const string &name, cell value);
 };
 
 }}
-
-// TODO: error handling
+//~

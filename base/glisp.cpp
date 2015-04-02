@@ -14,6 +14,47 @@
 #include "tokenizer.h"
 #include "gstdlib.h"
 
+// error checking
+#ifdef GLISP_DEBUG_ERROR
+#define derr_ERR(...) gassert(false, strs(__VA_ARGS__));
+#else
+#define derr_ERR(...)
+#endif
+
+#ifdef GLISP_DEBUG_ERROR_ARRAY
+#define derr_ERR_ARR(...) s.errors.push_back(strs(__VA_ARGS__));
+#else
+#define derr_ERR_ARR(...)
+#endif
+
+#ifdef GLISP_DEBUG_ERROR_STDOUT
+#define derr_ERR_STD(...) std::cout << strs(__VA_ARGS__) << std::endl;
+#else
+#define derr_ERR_STD(...)
+#endif
+
+#if defined(GLISP_DEBUG_ERROR) || defined(GLISP_DEBUG_ERROR_ARRAY) || defined(GLISP_DEBUG_ERROR_STDOUT)
+#define derr(COND, ...) if (!(COND)) { derr_ERR(__VA_ARGS__); derr_ERR_ARR(__VA_ARGS__); derr_ERR_STD(__VA_ARGS__); } else;
+#define derrr(COND, RET, ...) if (!(COND)) { derr_ERR(__VA_ARGS__); derr_ERR_ARR(__VA_ARGS__); derr_ERR_STD(__VA_ARGS__); return RET; } else;
+#define derrnil(COND, RET, ...) if (!(COND)) { derr_ERR(__VA_ARGS__); derr_ERR_ARR(__VA_ARGS__); derr_ERR_STD(__VA_ARGS__); return s.c_nil; } else;
+#define derrpnil(COND, ...) if (!(COND)) { derr_ERR(__VA_ARGS__); derr_ERR_ARR(__VA_ARGS__); derr_ERR_STD(__VA_ARGS__); return pushCell(s, s.c_nil, temporary); } else;
+#define derrppnil(COND, ...) if (!(COND)) { derr_ERR(__VA_ARGS__); derr_ERR_ARR(__VA_ARGS__); derr_ERR_STD(__VA_ARGS__); return popCallStackLeaveData(s, pushCell(s, s.c_nil, temporary), temporary); } else;
+#else
+#define derr(COND, ...)
+#define derrnil(COND, ...)
+#define derrpnil(COND, ...)
+#define derrppnil(COND, ...)
+#endif
+
+#ifdef GLISP_DEBUG_STATE
+#define ddeb(...) std::cout << strs(__VA_ARGS__) << std::endl;
+#define ddebc(COND, ...) if (!(COND)) std::cout << strs(__VA_ARGS__) << std::endl; else ;
+#else
+#define ddeb(...)
+#define ddebc(COND, ...)
+#endif
+
+
 //#define GLISP_DEBUG_LOG
 #ifdef GLISP_DEBUG_LOG
 #define dout(param) std::cout << param
@@ -164,6 +205,14 @@ bool cellsEqual(cell_t a, cell_t b) {
 	return *a == *b;
 }
 
+// checks if all cells in range are type t
+bool cellsType(cell_t begin, cell_t end, cell::type_t t) {
+	for (; begin != end; begin = nextCell(begin))
+		if (begin->type != t)
+			return false;
+	return true;
+}
+
 bool isNil(cell_t c) {
 	return c->type == cell::typeIdentifier && c->s == "nil";
 }
@@ -172,6 +221,7 @@ bool isNil(cell_t c) {
 std::function<void(cell_t)> getOperator(cell &acc, auto op) {
 	switch (acc.type) {
 		case cell::typeInt: return [&acc,&op](cell_t c) { op(acc.i, c->i); }; break;
+		case cell::typeInt64: return [&acc,&op](cell_t c) { op(acc.ii, c->ii); }; break;
 		case cell::typeFloat: return [&acc, &op](cell_t c) { op(acc.f, c->f); }; break;
 		default: return [](cell_t){};
 	}
@@ -238,6 +288,11 @@ struct lispState {
 
 	// procedures list (user fx)
 	procedures_t procedures;
+
+	// error list
+	#ifdef GLISP_DEBUG_ERROR_ARRAY
+	std::vector<string> errors;
+	#endif
 };
 
 namespace detail {
@@ -388,13 +443,7 @@ var_t findVariable(lispState &s, const string &name) {
 								 });
 
 	// just prints info that variable is not found
-	if (!isVariableValid(s, ret)) {
-		// variable name not found
-		dout("variable \"" << name << "\" not found" << std::endl);
-		for(auto v : s.variables) {
-			dout(" > " << std::get<0>(v) << " = " << std::get<1>(v) << std::endl);
-		}
-	}
+	ddebc(isVariableValid(s, ret), "variable \"", name, "\" not found");
 
 	return ret;
 }
@@ -416,15 +465,16 @@ size_t &getVariablePosition(var_t v) {
 cell_t getVariableAddress(lispState &s, var_t v) {
 	cell_t addr = getVariableStackAddress(s, v);
 
-	if (addr->type == cell::typeDetach)
-		// TODO: check?
+	if (addr->type == cell::typeDetach) {
+		derrnil(s.lists.find(*v) != s.lists.end(), "detach variable \"", getVariableName(v), "\" empty");
 		return s.lists[*v].begin();
+	}
 	return addr;
 }
 
 // gets detached memory vector
 cells_t &getVariableContainer(lispState &s, var_t v) {
-	// TODO: check?
+	derrr(s.lists.find(*v) != s.lists.end(), s.stack, "detach variable \"", getVariableName(v), "\" empty");
 	return s.lists[*v];
 }
 
@@ -443,6 +493,9 @@ cell_t listOp(lispState &s, cell_t addr,
 		processOp(s.stack, addr);
 		return addr;
 	}
+
+	// if this is not ID -> signal error
+	derrnil(addr->type == cell::typeIdentifier, "list operation failed: expected identifier: ", toString(addr));
 
 	// search for variable
 	var_t var = findVariable(s, addr->s);
@@ -473,7 +526,8 @@ cell_t listOp(lispState &s, cell_t addr,
 		return con->begin();
 	}
 
-	return addr;
+	derr(false, "list operation failed: variable \"", addr->s, "\" not found");
+	return s.c_nil;
 }
 
 // push variable and allocate memory
@@ -486,12 +540,19 @@ cell_t pushVariable(lispState &s, const string &name, size_t count) {
 	return s.stack.begin() + std::get<1>(s.variables.back());
 }
 
-// TODO: detect if inserting to variables in order
 // assign address to memory
 void pushVariable(lispState &s, const string &name, cell_t addr) {
 	dout("push variable (" << name << ") addr: " << std::distance(s.stack.begin(), addr)
 		 << " value: " << toString(addr) << std::endl);
-	s.variables.push_back(std::make_tuple(name, std::distance(s.stack.begin(), addr)));
+
+	// find address offset
+	size_t dst = std::distance(s.stack.begin(), addr);
+	bool inOrder = std::get<1>(s.variables.back()) < dst;
+	derr(inOrder, "inserting variable \"", name, "\" in wrong order, data corrupted");
+
+	// must insert variables in order
+	if (inOrder)
+		s.variables.push_back(std::make_tuple(name, dst));
 }
 
 // push data on top of stack (copy all addr cell) return data address on stack
@@ -905,7 +966,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			s.stack.push_back(*addr);
 			return --s.stack.end();
 		}
-		// variable not found
+		derr(false, "variable \"", d->s, "\" not found");
 	}
 	else if (d->type == cell::typeList) {
 		// empty list evaluates to nil
@@ -913,7 +974,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return pushCell(s, s.c_nil, temporary);
 		}
 
-		// first argument must be identifier
+		// first argument must be identifier or list
 		cell_t fxNameCell = d + 1;
 		const string &fxName = fxNameCell->s;
 		if ((d + 1)->type == cell::typeList) {
@@ -921,7 +982,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return eval(s, d + 1, temporary);
 		}
 		else if (fxNameCell->type != cell::typeIdentifier) {
-			dout("function name must be ID" << std::endl);
+			derr(false, "syntax error: function name must be ID or list - return nil");
 			return pushCell(s, s.c_nil, temporary);
 		}
 
@@ -933,7 +994,10 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 		// 2) a) leaves stack frame at the same point as before execution
 		//    b) unbounds all unused variables that ran out of scope
 		if (fxName == "defvar") {
-			// 3 elements min!
+			derrpnil(d->i == 3, "defvar: expecting 2 arguments, passed: ", d->i - 1);
+			derrpnil((d + 2)->type == cell::typeIdentifier, "defvar: variable name (1) must be ID");
+
+			// check name and eval value
 			cell_t varName = d + 2;
 			cell_t varValue = eval(s, d + 3);
 			pushVariable(s, varName->s, varValue);
@@ -942,6 +1006,8 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return pushCell(s, varName, temporary);
 		}
 		else if (fxName == "quote") {
+			derrpnil(d->i == 2, "quote: expecting 1 argument, passed: ", d->i - 1);
+
 			// return back source, caller will only fetch data
 			if (temporary)
 				return d + 2;
@@ -950,22 +1016,30 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return pushList(s, d + 2);
 		}
 		else if (fxName == "lambda") {
+			derrpnil(d->i == 3, "lambda: invalid syntax, expecting 2 arguments, passed: ", d->i - 1);
+
 			// copy cdr of lambda, first element is "lambda" identifier, we dont need it
 			return pushCdr(s, d);
 		}
 		else if (fxName == "+") {
+			derrpnil(d->i > 2, "+: expecting > 1 arguments, passed: ", d->i - 1);
 			return evalAccumulate(s, d + 2, endCell(d), [](auto &acc, auto v) { acc += v; });
 		}
 		else if (fxName == "-") {
+			derrpnil(d->i > 2, "-: expecting > 1 arguments, passed: ", d->i - 1);
 			return evalAccumulate(s, d + 2, endCell(d), [](auto &acc, auto v) { acc -= v; });
 		}
 		else if (fxName == "/") {
+			derrpnil(d->i > 2, "/: expecting > 1 arguments, passed: ", d->i - 1);
 			return evalAccumulate(s, d + 2, endCell(d), [](auto &acc, auto v) { acc /= v; });
 		}
 		else if (fxName == "*") {
+			derrpnil(d->i > 2, "*: expecting > 1 arguments, passed: ", d->i - 1);
 			return evalAccumulate(s, d + 2, endCell(d), [](auto &acc, auto v) { acc *= v; });
 		}
 		else if (fxName == "if") {
+			derrpnil(d->i > 2, "if: expecting > 1 arguments, passed: ", d->i - 1);
+
 			// test, we dont need return value - discard it with call stack
 			pushCallStack(s);
 			cell_t testi = eval(s, d + 2, true);
@@ -974,17 +1048,23 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			// test and eval
 			if (test)
 				return popCallStackLeaveData(s, eval(s, nextCell(d + 2), temporary), temporary);
-			else {
+			else if (d->i > 3) {
 				cell_t offset = nextCell(nextCell(d + 2)); // else statements offset
 				return popCallStackLeaveData(s, evalreturn(s, offset, endCell(d), temporary), temporary);
 			}
+
+			// return nil if there are no else statements
+			return popCallStackLeaveData(s, pushCell(s, s.c_nil, temporary), temporary);
 		}
 		else if (fxName == "progn") {
-			// d->i must be > 1
+			derrpnil(d->i > 1, "progn: expecting > 0 arguments, passed: ", d->i - 1);
 			pushCallStack(s);
 			return popCallStackLeaveData(s, evalreturn(s, d + 2, endCell(d), temporary), temporary);
 		}
 		else if (fxName == "let") {
+			derrpnil(d->i > 2, "let: expecting > 1 arguments, passed: ", d->i - 1);
+			derrpnil((d + 2)->type == cell::typeList, "let: variable list invalid type (should be list)");
+
 			// evaluate and push variables
 			pushCallStack(s);
 			cell_t args = d + 2;
@@ -998,14 +1078,18 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 										 temporary);
 		}
 		else if (fxName == "boundp") {
-			// eval(d + 2) must be ID
-			cell_t res = isVariableValid(s, findVariable(s, eval(s, d + 2, true)->s)) ? s.c_t : s.c_nil;
-			return pushCell(s, res, temporary);
+			derrpnil(d->i == 2, "boundp: expecting 1 argument, passed: ", d->i - 1);
+			cell_t id = eval(s, d + 2, true);
+			derrpnil(id->type == cell::typeIdentifier, "boundp: argument 1 is not identifier");
+			return pushCell(s, boolToCell(s, isVariableValid(s, findVariable(s, id->s))), temporary);
 		}
 		else if (fxName == "unbound") {
-			// eval(d + 2) must be ID (we are not using stack frames)
+			derrpnil(d->i == 2, "unbound: expecting 1 argument, passed: ", d->i - 1);
+
+			// eval(d + 2) must be ID
 			pushCallStack(s);
 			cell r = *eval(s, d + 2, true);
+			derrppnil(r.type == cell::typeIdentifier, "unbound: argument 1 is not identifier");
 
 			// find and tag variable address as detached
 			var_t var = findVariable(s, r.s);
@@ -1030,13 +1114,15 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return ret;
 		}
 		else if (fxName == "listp") {
-			// d->i > 1
+			derrpnil(d->i == 2, "listp: expecting 1 argument, passed: ", d->i - 1);
 			pushCallStack(s);
-			auto ret = eval(s, d + 2, true)->type != cell::typeList ? s.c_nil : s.c_t;
+			auto ret = boolToCell(s, eval(s, d + 2, true)->type == cell::typeList);
 			return popCallStackLeaveData(s, ret, temporary);
 		}
 		else if (fxName == "car") {
-			// d->i must be > 1
+			derrpnil(d->i == 2, "car: expecting 1 argument, passed: ", d->i - 1);
+
+			// list
 			auto arg = d + 2;
 
 			// we could return temporary only if arg is not list
@@ -1065,7 +1151,9 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return popCallStackLeaveData(s, s.c_nil, temporary);
 		}
 		else if (fxName == "cdr") {
-			// d->i > 1
+			derrpnil(d->i == 2, "cdr: expecting 1 argument, passed: ", d->i - 1);
+
+			// list
 			auto arg = d + 2;
 
 			// we cant return temporary result
@@ -1084,22 +1172,25 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return popCallStackLeaveData(s, s.c_nil, temporary);
 		}
 		else if (fxName == "nth") {
-			// d->i > N
+			derrpnil(d->i == 3, "nth: expecting 2 argument, passed: ", d->i - 1);
+
 			// calc N
 			pushCallStack(s);
-			int n = eval(s, d + 2, true)->i;
+			cell_t nc = eval(s, d + 2, true);
+			derrppnil(nc->type == cell::typeInt, "nth: argument 1 must be int");
+			int n = nc->i;
 
 			// find address
 			cell_t nth = eval(s, d + 3);
-			if (nth->type != cell::typeList)
-				return popCallStackLeaveData(s, s.c_nil, temporary); // error?
+			derrppnil(nth->type == cell::typeList, "nth: argument 2 must be list");
+			derrppnil(n < nth->i, "nth: index out of list bounds");
 
-			// nth->i must be < N
 			// find nth element in list and return result
 			return popCallStackLeaveData(s, nthCell(nth, n), temporary);
 		}
 		else if (fxName == "defun") {
-			// d->i > 4
+			derrpnil(d->i > 3, "defun: expecting > 2 arguments, passed: ", d->i - 1);
+			derrpnil((d + 2)->type == cell::typeIdentifier, "defun: argument 1 must be ID");
 			cell_t fnName = d + 2;
 
 			// just put list (lambda) on stack
@@ -1111,6 +1202,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return pushCell(s, *fnName);
 		}
 		else if (fxName == "length") {
+			derrpnil(d->i == 2, "length: expecting 1 argument, passed: ", d->i - 1);
 			pushCallStack(s);
 			cell_t addr = eval(s, d + 2, true);
 			int len = addr->type == cell::typeList ? addr->i : 1;
@@ -1118,7 +1210,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return pushCell(s, {cell::typeInt, len});
 		}
 		else if (fxName == "push") {
-			// addr must be list, d + 3 must be id
+			derrpnil(d->i == 3, "push: expecting 2 arguments, passed: ", d->i - 1);
 			pushCallStack(s);
 
 			// eval value and list itself
@@ -1135,6 +1227,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return popCallStackLeaveData(s, lst, temporary);
 		}
 		else if (fxName == "append") {
+			derrpnil(d->i == 3, "append: expecting 2 arguments, passed: ", d->i - 1);
 			pushCallStack(s);
 
 			// eval source and target lists
@@ -1152,6 +1245,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return popCallStackLeaveData(s, lst, temporary);
 		}
 		else if (fxName == "add-to-list") {
+			derrpnil(d->i == 3, "add-to-list: expecting 2 arguments, passed: ", d->i - 1);
 			pushCallStack(s);
 
 			// eval list and element to insert
@@ -1173,6 +1267,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return popCallStackLeaveData(s, lst, temporary);
 		}
 		else if (fxName == "add-to-ordered-list") {
+			derrpnil(d->i == 3, "add-to-ordered-list: expecting 2 arguments, passed: ", d->i - 1);
 			pushCallStack(s);
 
 			// eval list and element to insert
@@ -1198,11 +1293,13 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return popCallStackLeaveData(s, lst, temporary);
 		}
 		else if (fxName == "setq" || fxName == "set") {
+			derrpnil(d->i == 3, fxName, ": expecting 2 arguments, passed: ", d->i - 1);
 			pushCallStack(s);
 
 			// gather data
 			const bool isSetq = fxName == "setq";
 			cell_t var = isSetq ? (d + 2) : eval(s, d + 2, true);
+			derrppnil(var->type == cell::typeIdentifier, fxName, ": argument 1 must be ID");
 			cell_t val = eval(s, nextCell(d + 2), true);
 			size_t targetSize = countElements(val);
 			size_t srcSize;
@@ -1219,6 +1316,8 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return popCallStackLeaveData(s, var, temporary);
 		}
 		else if (fxName == "setcar") {
+			derrpnil(d->i == 3, "setcar: expecting 2 arguments, passed: ", d->i - 1);
+			derrpnil((d + 2)->type == cell::typeIdentifier, "setcar: argument 1 must be ID");
 			pushCallStack(s);
 
 			// gather data
@@ -1239,6 +1338,8 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return popCallStackLeaveData(s, val, temporary);
 		}
 		else if (fxName == "setcdr") {
+			derrpnil(d->i == 3, "setcdr: expecting 2 arguments, passed: ", d->i - 1);
+			derrpnil((d + 2)->type == cell::typeIdentifier, "setcdr: argument 1 must be ID");
 			pushCallStack(s);
 
 			// gather data
@@ -1268,6 +1369,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return popCallStackLeaveData(s, val, temporary);
 		}
 		else if (fxName == "pop") {
+			derrpnil(d->i == 2, "pop: expecting 1 argument, passed: ", d->i - 1);
 			pushCallStack(s);
 
 			// gather data
@@ -1290,6 +1392,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 		else if (fxName == "delete" ||
 				 fxName == "assoc-delete" ||
 				 fxName == "nth-delete") {
+			derrpnil(d->i == 3, fxName, ": expecting 2 arguments, passed: ", d->i - 1);
 			pushCallStack(s);
 
 			// gather data
@@ -1321,6 +1424,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return popCallStackLeaveData(s, var, temporary);
 		}
 		else if (fxName == "while") {
+			derrpnil(d->i > 2, "while: expecting > 1 arguments, passed: ", d->i - 1);
 			cell_t result = s.c_nil;
 			while (true) {
 				pushCallStack(s);
@@ -1339,11 +1443,15 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return s.c_nil;
 		}
 		else if (fxName == "dotimes") {
+			derrpnil(d->i > 3, "dotimes: expecting > 2 arguments, passed: ", d->i - 1);
+			derrpnil((d + 2)->type == cell::typeIdentifier, "dotimes: argument 1 must be identifier");
 			pushCallStack(s);
 
 			// extract name and loop iteration count
 			string &name = (d + 2)->s;
-			int ntimes = eval(s, d + 3, true)->i;
+			cell_t cntimes = eval(s, d + 3, true);
+			derrppnil(cntimes->type == cell::typeInt, "dotimes: argument 2 must be int");
+			int ntimes = cntimes->i;
 
 			// create iterator variable
 			cell_t it = pushVariable(s, name, 1);
@@ -1359,11 +1467,14 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return popCallStackLeaveData(s, result, temporary);
 		}
 		else if (fxName == "dolist") {
+			derrpnil(d->i > 3, "dolist: expecting > 2 arguments, passed: ", d->i - 1);
+			derrpnil((d + 2)->type == cell::typeIdentifier, "dolist: argument 1 must be ID");
 			pushCallStack(s);
 
 			// extract iterator name, and eval list
 			string &name = (d + 2)->s;
 			cell_t lst = eval(s, d + 3); // must copy to stack, we are binding variable to that addr
+			derrppnil(lst->type == cell::typeList, "dolist: argument 2 must be list");
 
 			// setup variable and get [var] reference
 			cell_t it = firstCell(lst);
@@ -1388,8 +1499,12 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return popCallStackLeaveData(s, result, temporary);
 		}
 		else if (fxName == "cond") {
+			derrpnil(d->i > 1, "cond: expecting > 0 arguments, passed: ", d->i - 1);
+
 			// iterate through all clauses
 			for (cell_t c = d + 2; c != endCell(d); c = nextCell(c)) {
+				derrppnil(c->type == cell::typeList && c->i > 1, "cond: invalid condition clause, should be <cond><body...>");
+
 				// check condition - if true return evaluated result
 				if (!isNil(eval(s, c + 1, true))) {
 					pushCallStack(s);
@@ -1402,6 +1517,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return pushCell(s, s.c_nil, temporary);
 		}
 		else if (fxName == "!=") {
+			derrpnil(d->i == 3, "!=: expecting 2 arguments, passed: ", d->i - 1);
 			pushCallStack(s);
 
 			// checks if all evaluated cells are not equal
@@ -1416,6 +1532,8 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 				 fxName == ">" ||
 				 fxName == "<=" ||
 				 fxName == ">=") {
+			derrpnil(d->i > 2, fxName, ": expecting > 1 arguments, passed: ", d->i - 1);
+
 			// determine comparing function
 			std::function<bool(cell_t, cell_t)> fx;
 			if (fxName == "=") fx = [](cell_t n, cell_t n1) { return cellsEqual(n, n1); };
@@ -1430,11 +1548,13 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return popCallStackLeaveData(s, result, temporary);
 		}
 		else if (fxName == "assoc") {
+			derrpnil(d->i == 3, "assoc: expecting 2 arguments, passed: ", d->i - 1);
 			pushCallStack(s);
 
 			// get key and list address
 			cell_t key = eval(s, d + 2, true);
 			cell_t lst = eval(s, nextCell(d + 2), true);
+			derrppnil(lst->type == cell::typeList, "assoc: argument 2 must be list");
 
 			// search for first found key in list
 			cell_t val = findValue(lst, key);
@@ -1445,11 +1565,13 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return popCallStackLeaveData(s, s.c_nil, temporary);
 		}
 		else if (fxName == "mapcar") {
+			derrpnil(d->i == 3, "mapcar: expecting 2 arguments, passed: ", d->i - 1);
 			pushCallStack(s);
 
 			// evaluate map function and list
 			cell_t fx = eval(s, d + 2, true);
 			cell_t lst = eval(s, nextCell(d + 2), true);
+			derrppnil(lst->type == cell::typeList, "mapcar: argument 2 must be list");
 
 			// initialize return list (size is equal to lst size)
 			cell_t res = pushCell(s, cell(cell::typeList, lst->i));
@@ -1479,19 +1601,24 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return popCallStackLeaveData(s, res);
 		}
 		else if (fxName == "eval") {
+			derrpnil(d->i == 2, "eval: expecting 1 argument, passed: ", d->i - 1);
 			return eval(s, eval(s, d + 2, temporary), temporary);
 		}
 		else if (fxName == "member") {
+			derrpnil(d->i == 3, "member: expecting 2 arguments, passed: ", d->i - 1);
 			pushCallStack(s);
 
 			// eval object to find and list itself
 			cell_t obj = eval(s, d + 2, true);
 			cell_t lst = eval(s, nextCell(d + 2), true);
+			derrppnil(lst->type == cell::typeList, "member: argument 2 must be list");
 
 			// iterate through list and return t if object found
 			return popCallStackLeaveData(s, boolToCell(s, cellFound(lst, obj)), temporary);
 		}
 		else if (fxName == "strs") {
+			derrpnil(d->i > 1, "strs: expecting > 0 arguments, passed: ", d->i - 1);
+
 			// result string
 			string res;
 
@@ -1506,6 +1633,8 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return popCallStackLeaveData(s, pushCell(s, cell(cell::typeString, res)));
 		}
 		else if (fxName == "strf") {
+			derrpnil(d->i > 2, "strf: expected > 1 arguments, passed: ", d->i - 1);
+
 			// number of arguments
 			int nArgs = d->i - 2;
 
@@ -1535,6 +1664,8 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 		}
 		else if (fxName == "sort" ||
 				 fxName == "reverse") {
+			derrpnil(d->i == 2, fxName, ": expected 1 argument, passed: ", d->i - 1);
+
 			// all elements must be atoms
 			pushCallStack(s);
 
@@ -1549,6 +1680,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 				return popCallStackLeaveData(s, pushCell(s, s.c_nil, temporary), temporary);
 
 			// perform sort and return sorted / reversed list
+			derrppnil(cellsType(firstCell(lst), endCell(lst), firstCell(lst)->type), fxName, ": all list elements must have the same type");
 			if (fxName == "sort")
 				std::sort(lst + 1, endCell(lst));
 			else std::reverse(lst + 1, endCell(lst));
@@ -1560,27 +1692,28 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 		var_t var = findVariable(s, fxName);
 		if (isVariableValid(s, var)) {
 			cell_t fx = getVariableAddress(s, var);
-			if (fx->type == cell::typeList) {
-				// [list:][list:]<arg><arg>[list:]<body><body>[list:]<body>...
-				// function stack frame
-				pushCallStack(s);
 
-				// evaluate and bind args
-				cell_t args = fx + 1;
-				cell_t args_vals = d + 2; // skip list and fx name
-				cell_t args_vals_i = args_vals;
-				for (int i = 0; i < args->i; ++i) {
-					auto v = eval(s, args_vals_i);
-					args_vals_i = nextCell(args_vals_i);
-					pushVariable(s, (args + i + 1)->s, v);
-				}
+			// error check
+			derrpnil(fx->type == cell::typeList, "evaluating function \"", fxName, "\": not a function: ", toString(fx));
+			derrpnil(fx->i > 0, "evaluating empty function, data corrupted: ", toString(fx));
 
-				// evaluate body
-				cell_t body = nextCell(args);
-				return popCallStackLeaveData(s, evalreturn(s, body, endCell(fx), temporary), temporary);
+			// [list:][list:]<arg><arg>[list:]<body><body>[list:]<body>...
+			// function stack frame
+			pushCallStack(s);
+
+			// evaluate and bind args
+			cell_t args = fx + 1;
+			cell_t args_vals = d + 2; // skip list and fx name
+			cell_t args_vals_i = args_vals;
+			for (int i = 0; i < args->i; ++i) {
+				auto v = eval(s, args_vals_i);
+				args_vals_i = nextCell(args_vals_i);
+				pushVariable(s, (args + i + 1)->s, v);
 			}
-			dout("not function!" << std::endl);
-			return fx;
+
+			// evaluate body
+			cell_t body = nextCell(args);
+			return popCallStackLeaveData(s, evalreturn(s, body, endCell(fx), temporary), temporary);
 		}
 		else {
 			proc_t i = getProcedure(s, fxName);
@@ -1590,19 +1723,20 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 				// arguments list address
 				cell_t r = s.stack.end();
 
-				// evaluate arguments (leave result on stack)
-				pushCell(s, cell(cell::typeList, d->i - 1)); // list elements count (not counting name)
-				evalNoStack(s, d + 2, endCell(d));
+				// evaluate arguments, if any (leave result on stack)
+				pushCell(s, cell(cell::typeList, d->i - 1));// list elements count (not counting name)
+				if (d->i > 1)
+					evalNoStack(s, d + 2, endCell(d));
 
 				// call procedure
 				return popCallStackLeaveData(s, std::get<1>(*i)(r, s.stack), temporary);
 			}
-			dout("procedure not found" << std::endl); // not a function?
+			derr(false, "procedure / function \"", fxName, "\" not found");
 		}
 	}
 
-	// TODO: tmp, should report some error (syntax, logic error?)
-	return s.stack.end();
+	derr(false, "logic error: return nil");
+	return pushCell(s, s.c_nil, temporary);
 }
 
 }
@@ -1629,7 +1763,17 @@ cells_t lisp::parse(const string &s) {
 }
 
 string lisp::eval(cells_t &code) {
+	#ifdef GLISP_DEBUG_ERROR_ARRAY
+	_s->errors.clear();
+	#endif
+
 	auto retAddr = detail::eval(*_s, code.begin(), true);
+
+	#ifdef GLISP_DEBUG_ERROR_ARRAY
+	for (const auto &e : getError())
+		std::cout << e << std::endl;
+	#endif
+
 	string r = toString(retAddr);
 	dout("return addr: " << detail::getAddress(*_s, retAddr)
 		 << " | " << toString(retAddr) << std::endl);
@@ -1643,6 +1787,15 @@ string lisp::eval(cells_t &code) {
 string lisp::eval(const string &s) {
 	cells_t code = parse(s);
 	return eval(code);
+}
+
+const std::vector<string> &lisp::getError() {
+	#ifdef GLISP_DEBUG_ERROR_ARRAY
+	return _s->errors;
+	#else
+	static std::vector<string> t;
+	return t;
+	#endif
 }
 
 void lisp::addProcedure(const string &name, procedure_t fx) {

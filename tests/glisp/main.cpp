@@ -19,8 +19,11 @@ bool test(base::lisp &gl, const string &input, const string &expectedOutput) {
 base::cell_t c_message(base::cell_t c, base::cells_t &ret) {
 	// *c - count
 	// *(c + x) - element x
-	std::cout << "> message: " << (c + 1)->i << std::endl;
-	return c + 1;
+	if (c->i > 0) {
+		std::cout << "> message: " << (c + 1)->i << std::endl;
+		return c + 1;
+	}
+	return c;
 }
 
 base::cell_t c_mul(base::cell_t c, base::cells_t &ret) {
@@ -44,7 +47,7 @@ int main(int argc, char **argv) {
 	while (true) {
 		string inp;
 		std::getline(std::cin, inp);
-		gl.eval(inp);
+		std::cout << gl.eval(inp) << std::endl;
 	}
 	#else
 	test(gl, "(defvar my-test-x 55)", "my-test-x");
