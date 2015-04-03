@@ -21,6 +21,10 @@ template<> inline size_t estimateSize(const vec4f &v) {
 	return estimateSize<float>(v.x) * 4 + 3;
 }
 
+template<> inline size_t estimateSize(const vec &v) {
+	return estimateSize<float>(float()) * 4 + 3;
+}
+
 template<> inline bool strIs<vec4f>(const stringRange &s) {
 	auto tok = initToken(s);
 	int n = 4;
@@ -33,6 +37,8 @@ template<> inline bool strIs<vec4f>(const stringRange &s) {
 	return endToken(s, tok);
 }
 
+template<> inline bool strIs<vec>(const stringRange &s) { return strIs<vec4f>(s); }
+
 template<> inline vec4f fromStr<vec4f>(const stringRange &s) {
 	vec4f r;
 	auto tok = initToken(s);
@@ -43,8 +49,12 @@ template<> inline vec4f fromStr<vec4f>(const stringRange &s) {
 	return r;
 }
 
+template<> inline vec fromStr<vec>(const stringRange &s) { return fromStr<vec4f>(s); }
+
 inline string toStr(const vec4f &v) {
 	return strs(v.x, " ", v.y, " ", v.z, " ", v.w);
 }
+
+inline string toStr(const vec &v) { return toStr<vec4f>(v); }
 
 }}
