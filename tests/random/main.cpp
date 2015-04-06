@@ -3,7 +3,7 @@
 using namespace granite;
 using namespace granite::base;
 
-string stateToStr(bool fail) { return fail ? "[fail]: " : "[ok]: "; }
+string stateToStr(bool fail) { return fail ? "[fail] " : "[ok] "; }
 
 int main(int argc, char **argv) {
 	rng<> r;
