@@ -39,15 +39,15 @@ struct generatorMCS {
 
 //- basic radom generator class -
 template <typename T_GENEREATOR = generatorMCS>
-class random
+class rng
 {
 private:
 	T_GENEREATOR _gen;
 
 public:
-	random();
-	explicit random(uint32 iSeed);
-	~random();
+	rng();
+	explicit rng(uint32 iSeed);
+	~rng();
 
 	inline void seed(uint32 iSeed);
 
@@ -70,7 +70,7 @@ public:
 class perlin
 {
 private:
-	random<> rg;
+	rng<> rg;
 	int *perms; // permutation table
 	int rsize, rsizem; // perms size, perms size - 1
 	float amin, amax; // amplitude
