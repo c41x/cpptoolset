@@ -21,5 +21,6 @@
 #include "tokenizer.h"
 #include "glisp.h"
 #include "gstdlib.h"
+#include "random.h"
 
 //~

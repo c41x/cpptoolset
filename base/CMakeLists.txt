@@ -4,7 +4,8 @@ add_library(base
   string.cpp
   timer.cpp
   tokenizer.cpp
-  glisp.cpp)
+  glisp.cpp
+  random.cpp)
 
 install(TARGETS base DESTINATION bin)
 
@@ -19,4 +20,5 @@ install(FILES
   timer.h
   tokenizer.h
   gstdlib.h
+  random.h
   DESTINATION include_base)
