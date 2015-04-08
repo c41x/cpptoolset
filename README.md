@@ -13,5 +13,5 @@ My C++ common libs:
 - perlin noise generators, FBM generators
 
 Requirements:
-Platform: Windows / Linux
-Compiler: C++14 compilant, GCC 4.9+, Visual Studio 2013+
+- Platform: Windows / Linux
+- Compiler: C++14 compilant, GCC 4.9+, Visual Studio 2013+
