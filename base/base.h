@@ -22,5 +22,6 @@
 #include "glisp.h"
 #include "gstdlib.h"
 #include "random.h"
+#include "hwinfo.h"
 
 //~
