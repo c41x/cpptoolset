@@ -9,7 +9,7 @@
  * changelog:
  * - 16-12-2008: file created
  * - 15-01-2011: seed in constructor
- * - 12-02-2011: seed for perlin generators (for AutomatedLevelDesign dompo)
+ * - 12-02-2011: seed for perlin generators (for AutomatedLevelDesign compo)
  * - 04-04-2015: refactor
  */
 
