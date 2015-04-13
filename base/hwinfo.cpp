@@ -22,7 +22,7 @@ bool _MMXEx;
 bool _CMOV;
 bool _64BIT;
 
-#ifdef GE_PLATFORM_WINDOWS
+#ifdef GE_COMPILER_VISUAL
 uint64 rdtsc() {
 	__asm {
 		; read time stamp counter;
@@ -59,7 +59,8 @@ void cpuid(int o[4], int i) {
 	}
 }
 #endif
-#ifdef GE_PLATFORM_LINUX
+
+#ifdef GE_COMPILER_GCC
 inline uint64 rdtsc() {
     uint64 x;
     __asm__ volatile (".byte 0x0f, 0x31" : "=A" (x));
