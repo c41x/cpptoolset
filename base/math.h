@@ -3,7 +3,7 @@
  * file: math.*
  * created: 22-10-2012
  *
- * description: math module based on SIMD
+ * description: SIMD optimized math module
  *
  * changelog:
  * - 12-09-2006: initial add date in old engine version
@@ -24,8 +24,6 @@
  *   second argument (xmm) eg. sth like that fails: _mm_store_ss(&ret,_mm_sqrt_ps(lengthSq()));
  *   and ret will always be equal 0 - WTF? but this works as expected:
  *   __m128 t=_mm_sqrt_ps(lengthSq()); _mm_store_ss(&ret,t);
- * - lost 2 hours on "multiple declaration of" function linker error :| function in header
- *   must be inline... at 1am my brain is not working properly
  */
 
 #pragma once
@@ -39,7 +37,7 @@
 namespace granite {
 namespace base {
 
-// some consts
+//- consts -
 const float GE_E = 2.71828182845904523536f; // e
 const float GE_LOG2E = 1.44269504088896340736f; // log2(e)
 const float GE_LOG10E = 0.434294481903251827651f; // log(e)
@@ -57,7 +55,7 @@ const float GE_2D_SQRTPI = 1.12837916709551257390f; // 2.f/sqrt(pi)
 const float GE_SQRT2 = 1.41421356237309504880f; // sqrt(2)
 const float GE_1D_SQRT2 = 0.707106781186547524401f; // 1.f/sqrt(2)
 
-// functions
+//- functions -
 inline bool equal(float a, float b) {
 	return std::abs(a - b) <= 1e-5;
 }
@@ -82,7 +80,34 @@ inline float stretch(float ileft, float ix, float iright, float imin, float imax
 	return imin + clamp(ileft, ix, iright) * (imax - imin);
 }
 
-// interpolations:
+template<typename T>inline bool isPow2(T ix) {
+	return !(ix & (ix - 1));
+}
+
+template<typename T>T greaterEqualPow2(T ix) {
+	--ix;
+	T w = 1 << 1; //2
+	while(ix >>= 1)
+		w <<= 1;
+	return w;
+}
+
+template<typename T>T greaterPow2(T ix) {
+	T w = 1 << 1; //2
+	while(ix >>= 1)
+		w <<= 1;
+	return w;
+}
+
+inline float degToRad(float ix) {
+	return GE_PID_180 * ix;
+}
+
+inline float radToDeg(float ix) {
+	return GE_180D_PI * ix;
+}
+
+//- interpolations -
 inline float linearInterp(float imin, float ix, float imax) {
 	return (imax - imin) * ix + imin;
 }
@@ -91,68 +116,41 @@ inline float linearInterp2d(float ileft, float ix, float iright, float itop, flo
 	return linearInterp(linearInterp(ileft, ix, iright), iY, linearInterp(itop, ix, ibottom));
 }
 
-inline float cubicInterp(float imin, float ix, float imax){
+inline float cubicInterp(float imin, float ix, float imax) {
 	return (imax - imin) * ((3.f - 2.f * ix) * ix * ix) + imin;
 }
 
-inline float cubicInterp2d(float ileft, float ix, float iright, float itop, float iY, float ibottom){
+inline float cubicInterp2d(float ileft, float ix, float iright, float itop, float iY, float ibottom) {
 	return cubicInterp(cubicInterp(ileft, ix, iright), iY, cubicInterp(itop, ix, ibottom));
 }
 
-inline float cosineInterp(float imin, float ix, float imax){
+inline float cosineInterp(float imin, float ix, float imax) {
 	float T = (1.f - cosf(ix * GE_PI)) * .5f;
 	return (imax - imin) * T + imin;
 }
 
-inline float cosineInterp2d(float ileft, float ix, float iright, float itop, float iY, float ibottom){
+inline float cosineInterp2d(float ileft, float ix, float iright, float itop, float iY, float ibottom) {
 	return cosineInterp(cosineInterp(ileft, ix, iright), iY, cosineInterp(itop, ix, ibottom));
 }
 
-inline float fadeInterp(float imin, float ix, float imax){
+inline float fadeInterp(float imin, float ix, float imax) {
 	float t = ix * ix * ix * (ix * (ix * 6.f - 15.f) + 10.f);
 	return (imax - imin) * t + imin;
 }
 
-inline float fadeInterp2d(float ileft, float ix, float iright, float itop, float iY, float ibottom){
+inline float fadeInterp2d(float ileft, float ix, float iright, float itop, float iY, float ibottom) {
 	return fadeInterp(fadeInterp(ileft, ix, iright), iY, fadeInterp(itop, ix, ibottom));
 }
 
-inline float hyperbInterp(float imin, float ix, float imax){
+inline float hyperbInterp(float imin, float ix, float imax) {
 	return (imax - imin) * (-1.f / (float(ix) - 1.61f) - .61f) + imin;
 }
 
-inline float hyperbInterp2d(float ileft, float ix, float iright, float itop, float iY, float ibottom){
+inline float hyperbInterp2d(float ileft, float ix, float iright, float itop, float iY, float ibottom) {
 	return hyperbInterp(hyperbInterp(ileft, ix, iright), iY, hyperbInterp(itop, ix, ibottom));
 }
 
-template<typename T>inline bool isPow2(T ix){
-	return !(ix & (ix - 1));
-}
-
-template<typename T>T greaterEqualPow2(T ix){
-	--ix;
-	T w = 1 << 1; //2
-	while(ix >>= 1)
-		w <<= 1;
-	return w;
-}
-
-template<typename T>T greaterPow2(T ix){
-	T w = 1 << 1; //2
-	while(ix >>= 1)
-		w <<= 1;
-	return w;
-}
-
-inline float degToRad(float ix){
-	return GE_PID_180 * ix;
-}
-
-inline float radToDeg(float ix){
-	return GE_180D_PI * ix;
-}
-
-// non optimized float vectors
+//- non optimized float vectors -
 class vec2f {
 public:
 	GE_ALIGN_BEGIN(16) union {
@@ -222,6 +220,7 @@ public:
 	vec3f operator/(const vec3f &r) const { return vec3f(x / r.x, y / r.y, z / r.z); }
 	vec3f operator*(const float v) const { return vec3f(x * v, y * v, z * v); }
 	vec3f operator/(const float v) const { return vec3f(x / v, y / v, z / v); }
+	// TODO: basic op
 };
 
 class vec4f {
@@ -259,13 +258,10 @@ public:
 	vec4f operator/(const vec4f &r) const  { return vec4f(x / r.x, y / r.y, z / r.z, w / r.w); }
 	vec4f operator*(const float v) const  { return vec4f(x * v, y * v, z * v, w * v); }
 	vec4f operator/(const float v) const  { return vec4f(x / v, y / v, z / v, w / v); }
-
-	void print() {
-		std::cout<<"("<<x<<", "<<y<<", "<<z<<", "<<w<<")";
-	}
+	// TODO: basic op
 };
 
-// SSE optimized vector
+//- SSE optimized vector -
 class vec {
 	__m128 xmm;
 public:

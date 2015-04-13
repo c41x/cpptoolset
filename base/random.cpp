@@ -245,8 +245,8 @@ float perlin::fbm2(float X, float Y, float iPersistence, int iOctaves, bool iTil
 
 void perlin::fbm2(float *oResult, int iWidth, int iHeight, float iPersistence, int iOctaves, bool iTiled) {
 	float px, py;
-	amax = 0.f;
-	amin = 0.f;
+	amax = -999.f;
+	amin = 999.f;
 	int ind = 0;
 	for (int y = 0; y < iHeight; ++y)
 		for(int x = 0; x < iWidth; ++x, ++ind)
@@ -254,12 +254,6 @@ void perlin::fbm2(float *oResult, int iWidth, int iHeight, float iPersistence, i
 			px = float(x) / float(iWidth);
 			py = float(y) / float(iHeight);
 			oResult[ind] = fbm2(px, py, iPersistence, iOctaves, iTiled);
-
-			// zapisuje amplitude
-			if (!amax && !amin) {
-				amin = amax = oResult[ind];
-				continue;
-			}
 
 			if (oResult[ind] > this->amax)
 				this->amax = oResult[ind];
@@ -282,17 +276,11 @@ float perlin::fbm1(float X, float iPersistence, int iOctaves, bool iTiled) {
 
 void perlin::fbm1(float *oResult, int iWidth, float iPersistence, int iOctaves, bool iTiled) {
 	float px;
-	amax = 0.f;
-	amin = 0.f;
+	amax = -999.f;
+	amin = 999.f;
 	for (int x = 0; x < iWidth; ++x) {
 		px = float(x) / float(iWidth);
 		oResult[x] = fbm1(px, iPersistence, iOctaves, iTiled);
-
-		// zapisuje amplitude
-		if (!amax && !amin) {
-			amin = amax = oResult[x];
-			continue;
-		}
 
 		if (oResult[x] > this->amax)
 			this->amax = oResult[x];
@@ -317,8 +305,8 @@ float perlin::fbm3(float X, float Y, float Z, float iPersistence, int iOctaves, 
 
 void perlin::fbm3(float *oResult, int iWidth, int iHeight, int iDepth, float iPersistence, int iOctaves, bool iTiled) {
 	float px, py, pz;
-	amax = 0.f;
-	amin = 0.f;
+	amax = -999.f;
+	amin = 999.f;
 	int ind = 0;
 	for (int z = 0; z < iDepth; ++z)
 		for (int y = 0; y < iHeight; ++y)
@@ -328,11 +316,6 @@ void perlin::fbm3(float *oResult, int iWidth, int iHeight, int iDepth, float iPe
 				pz = float(z) / float(iDepth);
 				oResult[ind]= fbm3(px, py, pz, iPersistence, iOctaves, iTiled);
 
-				// zapisuje amplitude
-				if (!amax && !amin) {
-					amin = amax = oResult[ind];
-					continue;
-				}
 				if (oResult[ind] > this->amax)
 					this->amax = oResult[ind];
 				if (oResult[ind] < this->amin)
