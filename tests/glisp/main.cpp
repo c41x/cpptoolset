@@ -178,6 +178,13 @@ int main(int argc, char **argv) {
 	test(gl, "(progn (defvar x '(1 2 3)) (push '6 'x))", "(1 2 3 6)");
 	test(gl, "(progn (defvar x '(1 2 3)) (push '6 'x))", "(1 2 3 6)");
 	test(gl, "(progn (defvar xa '(1 2 3)) (push '6 'xa))", "(1 2 3 6)");
+	test(gl, "(or (= 33 (+ 3 5 5)) nil 444 555 666)", "444");
+	test(gl, "(or 4 5)", "4");
+	test(gl, "(or nil nil nil)", "nil");
+	test(gl, "(and 1 2 3)", "3");
+	test(gl, "(and nil nil)", "nil");
+	test(gl, "(and (= 1 (- 2 1)) t)", "t");
+	test(gl, "(list (list))", "(nil)");
 	std::cout << gl.eval("(print-state)");
 	#endif
 
