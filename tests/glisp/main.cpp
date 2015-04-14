@@ -185,6 +185,7 @@ int main(int argc, char **argv) {
 	test(gl, "(and nil nil)", "nil");
 	test(gl, "(and (= 1 (- 2 1)) t)", "t");
 	test(gl, "(list (list))", "(nil)");
+	test(gl, "((lambda (a b c) (+ a b c)) 2 3 4)", "9");
 	std::cout << gl.eval("(print-state)");
 	#endif
 

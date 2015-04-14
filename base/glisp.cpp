@@ -983,7 +983,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 		}
 		else if (fxName == "lambda") {
 			derrpnil(d->i > 2, "lambda: invalid syntax, expecting > 2 arguments, passed: ", d->i - 1);
-			std::cout << "aaaa" << std::endl;
+
 			// copy cdr of lambda, first element is "lambda" identifier, we dont need it
 			return pushCdr(s, d);
 		}
