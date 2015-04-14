@@ -877,6 +877,15 @@ cell_t boolToCell(lispState &s, bool v) {
 	return v ? s.c_t : s.c_nil;
 }
 
+// binds arguments as variables, names - list with variable id's
+void bindArguments(lispState &s, cell_t names, cell_t values) {
+	for (int i = 0; i < names->i; ++i) {
+		auto v = eval(s, values);
+		values = nextCell(values);
+		pushVariable(s, (names + i + 1)->s, v);
+	}
+}
+
 //- eval -
 cell_t eval(lispState &s, cell_t d, bool temporary) {
 	ddeb("eval: ", toString(d));
@@ -923,7 +932,20 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 		const string &fxName = fxNameCell->s;
 		if ((d + 1)->type == cell::typeList) {
 			// first list element is list -> evaluating lambda
-			return eval(s, d + 1, temporary);
+			// function stack frame
+			pushCallStack(s);
+			cell_t fx = eval(s, d + 1, temporary);
+
+			// error check
+			derrppnil(fx->type == cell::typeList, "evaluating function \"", fxName, "\": not a function: ", toString(fx));
+			derrppnil(fx->i > 0, "evaluating empty function, data corrupted: ", toString(fx));
+
+			// evaluate and bind args
+			bindArguments(s, fx + 1, nextCell(d + 1));
+
+			// evaluate body
+			cell_t body = nextCell(fx + 1);
+			return popCallStackLeaveData(s, evalreturn(s, body, endCell(fx), temporary), temporary);
 		}
 		else if (fxNameCell->type != cell::typeIdentifier) {
 			derr(false, "syntax error: function name must be ID or list - return nil");
@@ -960,8 +982,8 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			return pushList(s, d + 2);
 		}
 		else if (fxName == "lambda") {
-			derrpnil(d->i == 3, "lambda: invalid syntax, expecting 2 arguments, passed: ", d->i - 1);
-
+			derrpnil(d->i > 2, "lambda: invalid syntax, expecting > 2 arguments, passed: ", d->i - 1);
+			std::cout << "aaaa" << std::endl;
 			// copy cdr of lambda, first element is "lambda" identifier, we dont need it
 			return pushCdr(s, d);
 		}
@@ -1649,17 +1671,10 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			pushCallStack(s);
 
 			// evaluate and bind args
-			cell_t args = fx + 1;
-			cell_t args_vals = d + 2; // skip list and fx name
-			cell_t args_vals_i = args_vals;
-			for (int i = 0; i < args->i; ++i) {
-				auto v = eval(s, args_vals_i);
-				args_vals_i = nextCell(args_vals_i);
-				pushVariable(s, (args + i + 1)->s, v);
-			}
+			bindArguments(s, fx + 1, d + 2);
 
 			// evaluate body
-			cell_t body = nextCell(args);
+			cell_t body = nextCell(fx + 1);
 			return popCallStackLeaveData(s, evalreturn(s, body, endCell(fx), temporary), temporary);
 		}
 		else {
