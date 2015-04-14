@@ -38,7 +38,7 @@
 #define derrr(COND, RET, ...) if (!(COND)) { derr_ERR(__VA_ARGS__); derr_ERR_ARR(__VA_ARGS__); derr_ERR_STD(__VA_ARGS__); return RET; } else;
 #define derrnil(COND, RET, ...) if (!(COND)) { derr_ERR(__VA_ARGS__); derr_ERR_ARR(__VA_ARGS__); derr_ERR_STD(__VA_ARGS__); return s.c_nil; } else;
 #define derrpnil(COND, ...) if (!(COND)) { derr_ERR(__VA_ARGS__); derr_ERR_ARR(__VA_ARGS__); derr_ERR_STD(__VA_ARGS__); return pushCell(s, s.c_nil, temporary); } else;
-#define derrppnil(COND, ...) if (!(COND)) { derr_ERR(__VA_ARGS__); derr_ERR_ARR(__VA_ARGS__); derr_ERR_STD(__VA_ARGS__); return popCallStackLeaveData(s, pushCell(s, s.c_nil, temporary), temporary); } else;
+#define derrppnil(COND, ...) if (!(COND)) { derr_ERR(__VA_ARGS__); derr_ERR_ARR(__VA_ARGS__); derr_ERR_STD(__VA_ARGS__); return popCallStackLeaveData(s, s.c_nil, temporary); } else;
 #else
 #define derr(COND, ...)
 #define derrnil(COND, ...)
@@ -1020,7 +1020,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			}
 
 			// return nil if there are no else statements
-			return popCallStackLeaveData(s, pushCell(s, s.c_nil, temporary), temporary);
+			return popCallStackLeaveData(s, s.c_nil, temporary);
 		}
 		else if (fxName == "progn") {
 			derrpnil(d->i > 1, "progn: expecting > 0 arguments, passed: ", d->i - 1);
@@ -1071,7 +1071,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 		else if (fxName == "list") {
 			// empty list evaluates to nil
 			if (d->i < 2)
-				return s.c_nil;
+				return pushCell(s, s.c_nil, temporary);
 
 			// create list and eval its elements
 			auto ret = s.stack.begin() + s.stack.size();
@@ -1097,7 +1097,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 				if (l->type == cell::typeList) {
 					if (l->i > 0)
 						return l + 1;
-					else return s.c_nil;
+					else return pushCell(s, s.c_nil, temporary);
 				}
 				return l;
 			}
@@ -1466,6 +1466,7 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 		}
 		else if (fxName == "cond") {
 			derrpnil(d->i > 1, "cond: expecting > 0 arguments, passed: ", d->i - 1);
+			pushCallStack(s);
 
 			// iterate through all clauses
 			for (cell_t c = d + 2; c != endCell(d); c = nextCell(c)) {
@@ -1473,14 +1474,42 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 
 				// check condition - if true return evaluated result
 				if (!isNil(eval(s, c + 1, true))) {
-					pushCallStack(s);
 					return popCallStackLeaveData(
 						s, evalreturn(s, nextCell(c + 1), endCell(c)));
 				}
 			}
 
 			// no condition yielded true -> return nil
-			return pushCell(s, s.c_nil, temporary);
+			return popCallStackLeaveData(s, s.c_nil, temporary);
+		}
+		else if (fxName == "or") {
+			derrpnil(d->i > 2, "or: expecting > 2 arguments, passed", d->i - 1);
+
+			// eval all until non nil, then return
+			pushCallStack(s);
+			for (cell_t c = d + 2; c != endCell(d); c = nextCell(c)) {
+				cell_t r = eval(s, c, true);
+				if (!isNil(r))
+					return popCallStackLeaveData(s, r, temporary);
+			}
+
+			// all nil - return nil
+			return popCallStackLeaveData(s, s.c_nil, temporary);
+		}
+		else if (fxName == "and") {
+			derrpnil(d->i > 2, "and: expecting > 2 arguments, passed", d->i - 1);
+
+			// eval all until nil, then return
+			pushCallStack(s);
+			cell_t r = s.c_nil;
+			for (cell_t c = d + 2; c != endCell(d); c = nextCell(c)) {
+				r = eval(s, c, true);
+				if (isNil(r))
+					return popCallStackLeaveData(s, r, temporary);
+			}
+
+			// all t - return last
+			return popCallStackLeaveData(s, r, temporary);
 		}
 		else if (fxName == "!=") {
 			derrpnil(d->i == 3, "!=: expecting 2 arguments, passed: ", d->i - 1);
