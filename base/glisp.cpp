@@ -1754,25 +1754,28 @@ cells_t lisp::parse(const string &s) {
 }
 
 string lisp::eval(cells_t &code) {
-	#ifdef GLISP_DEBUG_ERROR_ARRAY
-	_s->errors.clear();
-	#endif
+	if (code.size() > 0) {
+		#ifdef GLISP_DEBUG_ERROR_ARRAY
+		_s->errors.clear();
+		#endif
 
-	auto retAddr = detail::eval(*_s, code.begin(), true);
+		auto retAddr = detail::eval(*_s, code.begin(), true);
 
-	#ifdef GLISP_DEBUG_ERROR_ARRAY
-	for (const auto &e : getError())
-		std::cout << e << std::endl;
-	#endif
+		#ifdef GLISP_DEBUG_ERROR_ARRAY
+		for (const auto &e : getError())
+			std::cout << e << std::endl;
+		#endif
 
-	string r = toString(retAddr);
-	ddebnt("return addr: ", detail::getAddress(*_s, retAddr),
-		 " | ", toString(retAddr));
-	ddebnt(detail::getState(*_s));
-	ddebnt("sweep...");
-	detail::sweepStack(*_s);
-	ddebnt(detail::getState(*_s));
-	return r;
+		string r = toString(retAddr);
+		ddebnt("return addr: ", detail::getAddress(*_s, retAddr),
+			   " | ", toString(retAddr));
+		ddebnt(detail::getState(*_s));
+		ddebnt("sweep...");
+		detail::sweepStack(*_s);
+		ddebnt(detail::getState(*_s));
+		return r;
+	}
+	return "";
 }
 
 string lisp::eval(const string &s) {
