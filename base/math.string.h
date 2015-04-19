@@ -17,12 +17,12 @@
 
 namespace granite { namespace base {
 
-template<> inline size_t estimateSize(const vec4f &v) {
-	return estimateSize<float>(v.x) * 4 + 3;
+template<> inline size_t estimateSize(vec4f) {
+	return estimateSize(float()) * 4 + 3;
 }
 
-template<> inline size_t estimateSize(const vec &v) {
-	return estimateSize<float>(float()) * 4 + 3;
+template<> inline size_t estimateSize(vec) {
+	return estimateSize(float()) * 4 + 3;
 }
 
 template<> inline bool strIs<vec4f>(const stringRange &s) {
@@ -55,6 +55,6 @@ inline string toStr(const vec4f &v) {
 	return strs(v.x, " ", v.y, " ", v.z, " ", v.w);
 }
 
-inline string toStr(const vec &v) { return toStr<vec4f>(v); }
+inline string toStr(const vec &v) { return toStr(vec4f(v)); }
 
 }}
