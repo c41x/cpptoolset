@@ -51,10 +51,18 @@ template<> inline vec4f fromStr<vec4f>(const stringRange &s) {
 
 template<> inline vec fromStr<vec>(const stringRange &s) { return fromStr<vec4f>(s); }
 
-inline string toStr(const vec4f &v) {
-	return strs(v.x, " ", v.y, " ", v.z, " ", v.w);
+template<> inline stringRange toStr<vec4f>(const vec4f &v, string &os) {
+	os.reserve(estimateSize(v));
+	os += toStr(v.x);
+	os += " ";
+	os += toStr(v.y);
+	os += " ";
+	os += toStr(v.z);
+	os += " ";
+	os += toStr(v.w);
+	return stringRange(os);
 }
 
-inline string toStr(const vec &v) { return toStr(vec4f(v)); }
+template<> inline stringRange toStr<vec>(const vec &v, string &os) { return toStr(vec4f(v), os); }
 
 }}
