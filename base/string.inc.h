@@ -236,6 +236,7 @@ template <typename... Args> size_t estimateSize(const Args&... args) {
 template<> inline bool strIs<float>(const stringRange &range) { return detail::isFloat(range); }
 template<> inline bool strIs<double>(const stringRange &range) { return detail::isFloat(range); }
 template<> inline bool strIs<int>(const stringRange &range) { return detail::isInteger(range); }
+template<> inline bool strIs<uint>(const stringRange &range) { return detail::isInteger(range); }
 template<> inline bool strIs<int8>(const stringRange &range) { return detail::isInteger(range); }
 template<> inline bool strIs<uint8>(const stringRange &range) { return detail::isInteger(range); }
 template<> inline bool strIs<int16>(const stringRange &range) { return detail::isInteger(range); }
