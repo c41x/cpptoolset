@@ -50,6 +50,7 @@ int main(int argc, char **argv) {
 		std::cout << gl.eval(inp) << std::endl;
 	}
 	#else
+	test(gl, "", "");
 	test(gl, "(defvar my-test-x 55)", "my-test-x");
 	test(gl, "my-test-x", "55");
 	test(gl, "(defun my-test-l () (setq my-test-x 66))", "my-test-l");
