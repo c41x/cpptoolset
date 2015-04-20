@@ -4,6 +4,7 @@
  * created: 25-03-2015
  *
  * description: conversions between math stuff and string
+ * TODO: asserts
  *
  * changelog:
  * - 25-03-2015: file created
@@ -14,6 +15,7 @@
 #include "includes.h"
 #include "string.h"
 #include "math.h"
+#include "gstdlib.h"
 
 namespace granite { namespace base {
 
@@ -52,15 +54,24 @@ template<> inline vec4f fromStr<vec4f>(const stringRange &s) {
 template<> inline vec fromStr<vec>(const stringRange &s) { return fromStr<vec4f>(s); }
 
 template<> inline stringRange toStr<vec4f>(const vec4f &v, string &os) {
-	os.reserve(estimateSize(v));
-	os += toStr(v.x);
-	os += " ";
-	os += toStr(v.y);
-	os += " ";
-	os += toStr(v.z);
-	os += " ";
-	os += toStr(v.w);
-	return stringRange(os);
+	auto mark = os.begin();
+
+	stringRange t = toStr(v.x, os);
+	mark = copy_safe(t.begin, t.end, mark);
+	*mark++ = ' ';
+
+	t = toStr(v.y, os);
+	mark = copy_safe(t.begin, t.end, mark);
+	*mark++ = ' ';
+
+	t = toStr(v.z, os);
+	mark = copy_safe(t.begin, t.end, mark);
+	*mark++ = ' ';
+
+	t = toStr(v.w, os);
+	mark = copy_safe(t.begin, t.end, mark);
+
+	return stringRange(os.begin(), mark);
 }
 
 template<> inline stringRange toStr<vec>(const vec &v, string &os) { return toStr(vec4f(v), os); }
