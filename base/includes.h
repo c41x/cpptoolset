@@ -41,7 +41,9 @@
 #include <memory>
 
 #ifdef GE_PLATFORM_WINDOWS
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
 #include <windows.h>
 #else
 #include <sys/time.h>
