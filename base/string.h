@@ -89,18 +89,18 @@ string changeExt(const string &s, const string &ext);
 string cutLongPath(const string &s);
 
 // required space for string estimator
-template <typename T> size_t estimateSize(const T &v) { return 0; }
+template <typename T> size_t estimateSize(T v) { return T::SFINAE_template_not_specialized; }
 
 // testing functions - returns if given string can be converted to type T
-template <typename T> bool strIs(const stringRange &) { gassert(false, "string conversion test: unknown type, test template not specialized"); return false; }
+template <typename T> bool strIs(const stringRange &) { return T::SFINAE_template_not_specialized; }
 template <typename T> bool strIs(const string &s) { return strIs<T>(stringRange(s)); }
 
 // conversions: from string to T
-template<typename T> T fromStr(const stringRange &range) { gassert(false, "conversion from string: unknown type, conversion template not specialized"); return T(); }
+template<typename T> T fromStr(const stringRange &range) { return T::SFINAE_template_not_specialized; }
 template<typename T> T fromStr(const string &s) { return fromStr<T>(stringRange(s)); }
 
 // conversions: from T to string
-template <typename T> stringRange toStr(const T &, string &os) { gassert(false, "conversion to stringRange: unknown type, conversion template not specialized"); return stringRange(os); }
+template <typename T> stringRange toStr(const T &, string &os) { return T::SFINAE_template_not_specialized; }
 template <typename T> string toStr(const T &t) { string s; s.resize(estimateSize<T>(t)); return toStr<T>(t, s).str(); }
 
 // string building
