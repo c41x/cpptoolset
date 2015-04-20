@@ -156,4 +156,13 @@ void erase_if(T_CONTAINER &container, const T_OP &pred) {
 	}
 }
 
+// overlapping - safe copy, returns iterator to last element
+template <typename T_INPUT, typename T_OUTPUT>
+T_OUTPUT copy_safe(T_INPUT begin, T_INPUT end, T_OUTPUT where) {
+	if (where < begin)
+		return std::copy(begin, end, where);
+	std::copy_backward(begin, end, where);
+	return where + std::distance(begin, end);
+}
+
 }}
