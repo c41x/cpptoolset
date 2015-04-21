@@ -8,12 +8,13 @@ string stateToStr(bool fail) { return fail ? "[fail] " : "[ok] "; }
 int main(int argc, char **argv) {
 	rng<> r;
 	bool fail = false;
+	const int numTests = 10000;
 
 	// uint max test
-	for (int i = 0; i < 200; ++i) {
+	for (int i = 0; i < numTests; ++i) {
 		uint maxRand = rand();
 		uint rn = r.uint(maxRand);
-		if (rn >= maxRand) {
+		if (rn > maxRand) {
 			//std::cout << rn << ", " << maxRand << std::endl;
 			fail = true;
 		}
@@ -22,11 +23,11 @@ int main(int argc, char **argv) {
 
 	// uint range test
 	fail = false;
-	for (int i = 0; i < 200; ++i) {
+	for (int i = 0; i < numTests; ++i) {
 		uint minRand = rand() / 2;
 		uint maxRand = minRand + rand() / 3;
 		uint rn = r.uint(minRand, maxRand);
-		if (rn >= maxRand || rn < minRand) {
+		if (rn > maxRand || rn < minRand) {
 			//std::cout << minRand << ", " << rn << ", " << maxRand << std::endl;
 			fail = true;
 		}
@@ -35,11 +36,11 @@ int main(int argc, char **argv) {
 
 	// int max
 	fail = false;
-	for (int i = 0; i < 200; ++i) {
+	for (int i = 0; i < numTests; ++i) {
 		int maxRand = rand();
 		int rn = r.integer(maxRand);
-		if (rn >= maxRand) {
-			//std::cout << rn << ", " << maxRand << std::endl;
+		if (rn > maxRand) {
+			std::cout << rn << ", " << maxRand << std::endl;
 			fail = true;
 		}
 	}
@@ -47,12 +48,17 @@ int main(int argc, char **argv) {
 
 	// int range
 	fail = false;
-	for (int i = 0; i < 200; ++i) {
+	for (int i = 0; i < numTests; ++i) {
 		int minRand = rand() / 2;
 		int maxRand = minRand + rand() / 3;
+		if ((rand() % 100) > 50) {
+			minRand = -minRand;
+			maxRand = -maxRand;
+			std::swap(minRand, maxRand);
+		}
 		int rn = r.integer(minRand, maxRand);
-		if (rn >= maxRand || rn < minRand) {
-			//std::cout << minRand << ", " << rn << ", " << maxRand << std::endl;
+		if (rn > maxRand || rn < minRand) {
+			std::cout << minRand << ", " << rn << ", " << maxRand << std::endl;
 			fail = true;
 		}
 	}
@@ -60,7 +66,7 @@ int main(int argc, char **argv) {
 
 	// float clamp
 	fail = false;
-	for (int i = 0; i < 200; ++i) {
+	for (int i = 0; i < numTests; ++i) {
 		float rn = r.clamp();
 		if (rn < 0.f || rn > 1.f) {
 			//std::cout << minRand << ", " << rn << ", " << maxRand << std::endl;
@@ -71,7 +77,7 @@ int main(int argc, char **argv) {
 
 	// float max
 	fail = false;
-	for (int i = 0; i < 200; ++i) {
+	for (int i = 0; i < numTests; ++i) {
 		float maxRand = float(rand() % 999) / float(rand() % 100 + 1);
 		float rn = r.real(maxRand);
 		if (rn > maxRand) {
@@ -83,12 +89,12 @@ int main(int argc, char **argv) {
 
 	// int range
 	fail = false;
-	for (int i = 0; i < 200; ++i) {
+	for (int i = 0; i < numTests; ++i) {
 		float minRand = float(rand() % 999) / float(rand() % 100 + 1);
 		float maxRand = minRand + float(rand() % 99) / float(rand() % 100 + 1);
 		float rn = r.real(minRand, maxRand);
 		if (rn > maxRand || rn < minRand) {
-			std::cout << minRand << ", " << rn << ", " << maxRand << std::endl;
+			//std::cout << minRand << ", " << rn << ", " << maxRand << std::endl;
 			fail = true;
 		}
 	}

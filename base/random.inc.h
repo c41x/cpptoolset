@@ -34,9 +34,9 @@ template <typename T_GENERATOR> uint32 rng<T_GENERATOR>::uniform() { return _gen
 template <typename T_GENERATOR> uint32 rng<T_GENERATOR>::uint(uint32 iMax) { return uniform() % (iMax+1); }
 template <typename T_GENERATOR> uint32 rng<T_GENERATOR>::uint(uint32 iMin, uint32 iMax) { return iMin + uniform() % (iMax - iMin + 1); }
 template <typename T_GENERATOR> int32 rng<T_GENERATOR>::integer(int32 iMax) {
-	return static_cast<int32>(uint(static_cast<uint32>(iMax < 0 ? - iMax : iMax) + 1)) * ((iMax < 0) ? (-1) : (1));
+	return static_cast<int32>(uint(static_cast<uint32>(iMax < 0 ? - iMax : iMax))) * ((iMax < 0) ? (-1) : (1));
 }
-template <typename T_GENERATOR> int32 rng<T_GENERATOR>::integer(int32 iMin, int32 iMax) { return static_cast<int32>(uint(iMax - iMin + 1)) + iMin; }
+template <typename T_GENERATOR> int32 rng<T_GENERATOR>::integer(int32 iMin, int32 iMax) { return static_cast<int32>(uint(iMax - iMin)) + iMin; }
 template <typename T_GENERATOR> bool rng<T_GENERATOR>::boolean() { return uniform() > 0x7ffffffful; }
 template <typename T_GENERATOR> float rng<T_GENERATOR>::clamp() { return (float(uniform()) / float(0xfffffffful)); }
 template <typename T_GENERATOR> float rng<T_GENERATOR>::real(float iMin, float iMax) { return (iMax - iMin) * clamp() + iMin; }
