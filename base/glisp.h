@@ -51,12 +51,12 @@ public:
 		};
 		float f;
 		int64 ii;
-		GE_ALIGN_BEGIN(16) union {
+		union alignas(16) {
 			struct{
 				float x, y, z, w;
 			};
 			float xmm[4];
-		} GE_ALIGN_END(16);
+		};
 	};
 
 	cell() {}

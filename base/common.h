@@ -114,22 +114,6 @@
 	#define GE_BUILD_INFO GE_NAME " " GE_SVERSION " " GE_SCOMPILER " Release build " GE_PLATFORM " " GE_ARCHITECTURE
 #endif
 
-// align to 1 byte
-#if defined(GE_COMPILER_VISUAL)
-	#define GE_PACKED __declspec(align(1))
-#else
-	#define GE_PACKED __attribute__((packed))
-#endif
-
-// align data to given value in bytes
-#if defined(GE_COMPILER_VISUAL)
-	#define GE_ALIGN_BEGIN(BYTES) __declspec(align(BYTES))
-	#define GE_ALIGN_END(BYTES)
-#else
-	#define GE_ALIGN_BEGIN(BYTES)
-	#define GE_ALIGN_END(BYTES) __attribute__((aligned(BYTES)))
-#endif
-
 // line information (separated by commas)
 #define GE_LINE_INFO __FILE__,__LINE__,__FUNC__
 

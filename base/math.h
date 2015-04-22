@@ -153,12 +153,12 @@ inline float hyperbInterp2d(float ileft, float ix, float iright, float itop, flo
 //- non optimized float vectors -
 class vec2f {
 public:
-	GE_ALIGN_BEGIN(16) union {
+	union alignas(16) {
 		struct{
 			float x, y;
 		};
 		float data[2];
-	}GE_ALIGN_END(16);
+	};
 
 	vec2f(const float _x, const float _y) : x(_x), y(_y) {}
 	vec2f(const float _v) : x(_v), y(_v) {}
@@ -191,12 +191,12 @@ public:
 
 class vec3f {
 public:
-	GE_ALIGN_BEGIN(16) union {
+	union alignas(16) {
 		struct{
 			float x, y, z;
 		};
 		float data[3];
-	}GE_ALIGN_END(16);
+	};
 
 	vec3f(const float _x, const float _y, const float _z):x(_x), y(_y), z(_z) {}
 	vec3f(const float _v) { x = y = z = _v; }
@@ -225,12 +225,12 @@ public:
 
 class vec4f {
 public:
-	GE_ALIGN_BEGIN(16) union{
+	union alignas(16) {
 		struct{
 			float x, y, z, w;
 		};
 		float data[4];
-	}GE_ALIGN_END(16);
+	};
 
 	vec4f(const float _x, const float _y, const float _z, const float _w) : x(_x), y(_y), z(_z), w(_w) {}
 	vec4f(const float _v) { x = y = z = w = _v; }
