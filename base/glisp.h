@@ -106,3 +106,4 @@ public:
 
 }}
 //~
+// TODO: load/store from/to binary stream (parsed)
