@@ -18,7 +18,6 @@ namespace granite { namespace base {
 // TODO: alignas
 class stream
 {
-public:
 	std::vector<uint8> _mem;
 	size_t _pos;
 public:
