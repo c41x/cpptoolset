@@ -25,6 +25,7 @@ public:
 	~stream();
 
 	// TODO: vectors stuff
+	std::vector<uint8> &get() { return _mem; }
 
 	// rw pointer stuff
 	size_t read(void *data, size_t size);
