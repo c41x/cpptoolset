@@ -12,6 +12,7 @@
 
 #pragma once
 #include "includes.h"
+#include "log.h"
 
 namespace granite { namespace base {
 
@@ -21,23 +22,31 @@ class stream
 	std::vector<uint8> _mem;
 	size_t _pos;
 public:
-	stream(size_t size = 0);
-	~stream();
+	inline stream(size_t size = 0);
+	inline ~stream();
 
-	// TODO: vectors stuff
-	std::vector<uint8> &get() { return _mem; }
+	// TODO: move, copy operarors
+	// TODO: other vector fx
+
+	// vectors stuff
+	inline size_t size() const;
+	inline void resize(size_t cap);
+	inline void resize(size_t cap, const uint8 &val);
+	inline void reserve(size_t cap);
+
+	inline uint8 *data();
 
 	// rw pointer stuff
-	size_t read(void *data, size_t size);
-	void write(const void *data, size_t size);
-	void setPosFromBegin(size_t bytes);
-	void setPosFromEnd(size_t bytes);
-	void setPosOffset(size_t bytes);
-	size_t getPos() const;
-	std::vector<uint8> &&take();
+	inline size_t read(void *data, size_t size);
+	inline void write(const void *data, size_t size);
+	inline void setPosFromBegin(size_t bytes);
+	inline void setPosFromEnd(size_t bytes);
+	inline void setPosOffset(size_t bytes);
+	inline size_t getPos() const;
+	inline std::vector<uint8> &&take();
 
-	template <typename T> size_t read(T &out);
-	template <typename T> void write(const T &in);
+	template <typename T> inline size_t read(T &out);
+	template <typename T> inline void write(const T &in);
 };
 
 #include "stream.inc.h"

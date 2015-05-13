@@ -1,3 +1,11 @@
+//- vector
+size_t stream::size() const { return _mem.size(); }
+void stream::resize(size_t cap) { _mem.resize(cap); }
+void stream::resize(size_t cap, const uint8 &val) { _mem.resize(cap, val); }
+void stream::reserve(size_t cap) { _mem.reserve(cap); }
+uint8 *stream::data() { return _mem.data(); }
+
+//- stream
 stream::stream(size_t size) {
 	if (size > 0)
 		_mem.resize(size);
@@ -51,14 +59,14 @@ template <typename T> void stream::write(const T &in) {
 }
 
 // specializations for writing strings (writing size, then string itself)
-template <> size_t stream::read(string &s) {
+template <> inline size_t stream::read(string &s) {
 	size_t len;
 	size_t r = read<size_t>(len);
 	s.resize(len);
 	return read(&s[0], len) + r;
 }
 
-template <> void stream::write(const string &s) {
+template <> inline void stream::write(const string &s) {
 	write<size_t>(s.size());
 	write(&s[0], s.size());
 }
