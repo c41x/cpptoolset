@@ -16,11 +16,15 @@ install(FILES
   includes.h
   log.h
   math.h
+  math.inc.h
   sigslot.h
   string.h
+  string.inc.h
   timer.h
   tokenizer.h
   gstdlib.h
   random.h
   hwinfo.h
+  stream.h
+  stream.inc.h
   DESTINATION include_base)
