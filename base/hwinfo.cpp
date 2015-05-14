@@ -88,9 +88,7 @@ void fetch(bool force = false) {
 		cpuid(out, 0);
 		maxinfo = out[0]; // maksymalna ilosc poziomow informacji dla __cpuid
 		memset(_IDString, '\0', sizeof(_IDString));
-		*((int*)_IDString) = out[1];
-		*(((int*)_IDString) + 1) = out[3];
-		*(((int*)_IDString) + 2) = out[2];
+		memcpy(_IDString, out, sizeof(out));
 
 		// poziom 1 (niekoniecznie musi byc dostepny(jak wszystkie ponizej))
 		if (maxinfo >= 1) {
