@@ -6,7 +6,8 @@ add_library(base
   tokenizer.cpp
   glisp.cpp
   random.cpp
-  hwinfo.cpp)
+  hwinfo.cpp
+  ../ext/lz4/lz4.c)
 
 install(TARGETS base DESTINATION bin)
 
@@ -27,4 +28,5 @@ install(FILES
   hwinfo.h
   stream.h
   stream.inc.h
+  ../ext/lz4/lz4.h
   DESTINATION include_base)

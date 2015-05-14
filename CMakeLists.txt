@@ -9,6 +9,7 @@ endif()
 
 include_directories("${PROJECT_SOURCE_DIR}")
 include_directories("${PROJECT_SOURCE_DIR}/ext/glfw/include")
+include_directories("${PROJECT_SOURCE_DIR}/ext/lz4")
 link_directories("${PROJECT_SOURCE_DIR}/ext/glfw/build/src")
 
 add_subdirectory(base)
