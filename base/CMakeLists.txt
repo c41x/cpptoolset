@@ -7,7 +7,8 @@ add_library(base
   glisp.cpp
   random.cpp
   hwinfo.cpp
-  ../ext/lz4/lz4.c)
+  ../ext/lz4/lz4.c
+  fs.cpp)
 
 install(TARGETS base DESTINATION bin)
 
@@ -29,4 +30,5 @@ install(FILES
   stream.h
   stream.inc.h
   ../ext/lz4/lz4.h
+  fs.h
   DESTINATION include_base)
