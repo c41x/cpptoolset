@@ -24,5 +24,6 @@
 #include "random.h"
 #include "hwinfo.h"
 #include "stream.h"
+#include "fs.h"
 
 //~
