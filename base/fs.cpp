@@ -5,7 +5,6 @@ namespace granite { namespace base { namespace fs {
 
 namespace {
 std::vector<string> _files;
-std::FILE *_f;
 }
 
 bool open(const string &vfs) {
@@ -22,36 +21,36 @@ const std::vector<string> &getFileList() {
 }
 
 stream load(const string &path) {
-	_f = std::fopen(path.c_str(), "r");
-	if (_f == NULL) {
+	std::FILE *f = std::fopen(path.c_str(), "r");
+	if (f == NULL) {
 		gassert(false, strs("could not open file: ", path));
 		return stream();
 	}
 
-	std::fseek(_f, 0, SEEK_END);
-	size_t size = std::ftell(_f);
-	std::rewind(_f);
+	std::fseek(f, 0, SEEK_END);
+	size_t size = std::ftell(f);
+	std::rewind(f);
 
 	stream s;
 	s.resize(size);
-	size_t readCount = std::fread(s.data(), size, 1, _f);
+	size_t readCount = std::fread(s.data(), size, 1, f);
 	gassert(readCount == 1, strs("read file failed: ", path));
 
-	std::fclose(_f);
+	std::fclose(f);
 	return s;
 }
 
 bool store(const string &path, stream &s, bool compress) {
-	_f = std::fopen(path.c_str(), "w");
-	if (_f == NULL) {
+	std::FILE *f = std::fopen(path.c_str(), "w");
+	if (f == NULL) {
 		gassert(false, strs("could not open file: ", path));
 		return false;
 	}
 
-	size_t bytesWrite = std::fwrite(path.data(), path.size(), 1, _f);
+	size_t bytesWrite = std::fwrite(path.data(), path.size(), 1, f);
 	gassert(bytesWrite == 1, strs("write file failed: ", path));
 
-	std::fclose(_f);
+	std::fclose(f);
 	return bytesWrite == 1;
 }
 
