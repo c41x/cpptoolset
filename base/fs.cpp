@@ -7,8 +7,7 @@ namespace {
 std::vector<string> _files;
 }
 
-bool open(const string &vfs) {
-	// TODO: open vfs
+bool open(const string &vfs, directoryType type) {
 	return true;
 }
 

@@ -18,7 +18,13 @@ namespace granite { namespace base {
 
 namespace fs {
 
-bool open(const string &vfs);
+enum directoryType {
+	directoryTypeProgramData,
+	directoryTypeUserData,
+	directoryTypeWorkingDirecotry
+};
+
+bool open(const string &vfs, directoryType type);
 void close();
 const std::vector<string> &getFileList();
 stream load(const string &path);
