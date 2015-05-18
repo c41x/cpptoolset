@@ -128,7 +128,7 @@ string extractFileName(const string &s) {
 string extractFilePath(const string &s) {
 	size_t pos = s.find_last_of(GE_DIR_SEPARATOR);
 	if (pos != s.npos)
-		return s.substr(0, pos + 1);
+		return s.substr(0, pos);
 	return string("");
 }
 
