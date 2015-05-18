@@ -165,4 +165,11 @@ T_OUTPUT copy_safe(T_INPUT begin, T_INPUT end, T_OUTPUT where) {
 	return where + std::distance(begin, end);
 }
 
+// append two vectors
+template <typename T_INPUT, typename T_OUTPUT>
+T_OUTPUT &append(T_OUTPUT &out, const T_INPUT &in) {
+	out.insert(out.end(), in.begin(), in.end());
+	return out;
+}
+
 }}
