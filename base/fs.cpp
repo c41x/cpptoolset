@@ -1,8 +1,15 @@
 #include "fs.h"
 #include "string.h"
+#include "gstdlib.h"
+
+#include <regex>
 #include <sys/stat.h>
 #ifdef GE_PLATFORM_WINDOWS
 #include <shlobj.h>
+#elif defined(GE_PLATFORM_LINUX)
+#include <unistd.h>
+#include <pwd.h>
+#include <dirent.h>
 #endif
 
 namespace granite { namespace base { namespace fs {
@@ -10,7 +17,7 @@ namespace granite { namespace base { namespace fs {
 namespace {
 string _dirProgramData, _dirUser, _dirWorkingDir;
 
-string fullPath(directoryType type, const string &p) {
+string fullPath(directoryType type, const string &p = "") {
 	if (type == directoryTypeUserData) return _dirUser + GE_DIR_SEPARATOR + p;
 	else if (type == directoryTypeProgramData) return _dirProgramData + GE_DIR_SEPARATOR + p;
 	return _dirWorkingDir + GE_DIR_SEPARATOR + p;
@@ -21,15 +28,75 @@ bool _exists(const string &path) {
 	return stat(path.c_str(), &buffer) == 0;
 }
 
+fileList _filterFileList(const string &basePath,
+						 const string &path,
+						 std::function<bool(fileInfo &)> pred = std::function<bool(fileInfo &)>()) {
+	fileList r;
+
+	#ifdef GE_PLATFORM_WINDOWS
+	WIN32_FIND_DATA fd;
+	HANDLE hf;
+	if ((hf = FindFirstFile((basePath + path + (path == "" ? "*" : "\\*")).c_str(), &fd)) == INVALID_HANDLE_VALUE)
+		return r;
+	do {
+		if (fd.cFileName[0] == '.')
+			continue;
+		fileInfo fi = { path,
+						fd.cFileName,
+						(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0 };
+		if (!pred || pred(fi))
+			r.push_back(fi);
+	}
+	while(FindNextFile(hf, &fd));
+	#elif defined(GE_PLATFORM_LINUX)
+    DIR *dir;
+    class dirent *ent;
+    class stat st;
+    dir = opendir((basePath + path).c_str());
+    while ((ent = readdir(dir)) != NULL) {
+		if (ent->d_name[0] == '.')
+			continue;
+		if (stat((basePath + path + "/" + ent->d_name).c_str(), &st) == -1)
+            continue;
+		fileInfo fi = { path,
+						ent->d_name,
+						(st.st_mode & S_IFDIR) != 0 };
+		if (!pred || pred(fi))
+			r.push_back(fi);
+	}
+    closedir(dir);
+	#else
+	#error "not implemented"
+	#endif
+
+	return r;
+}
+
+fileList _filterFileListR(const string &basePath,
+						  const string &path,
+						  std::function<bool(fileInfo &)> pred = std::function<bool(fileInfo &)>()) {
+	fileList r;
+	std::deque<string> dirToCheck = { path };
+
+	do {
+		string path = dirToCheck.front();
+		for (const auto &f : _filterFileList(basePath, path, [](fileInfo &fi) { return fi.dir; }))
+			dirToCheck.push_back(path == "" ? f.name : (path + GE_DIR_SEPARATOR + f.name));
+		append(r, _filterFileList(basePath, path, pred));
+		dirToCheck.pop_front();
+	}
+	while (!dirToCheck.empty());
+	return r;
+}
 }
 
 string getExecutableDirectory() {
 	#ifdef GE_PLATFORM_WINDOWS
 	char res[MAX_PATH];
 	return extractFilePath(string(res, GetModuleFileName(NULL, res, MAX_PATH)));
-	#elif GE_PLATFORM_LINUX
-	char res[PATH_MAX];
-	ssize_t count = readlink("/proc/self/exe", res, PATH_MAX);
+	#elif defined(GE_PLATFORM_LINUX)
+	char res[FILENAME_MAX];
+	ssize_t count = readlink("/proc/self/exe", res, FILENAME_MAX);
 	return extractFilePath(string(res, count > 0 ? count : 0));
 	#else
 	#error "Not implemented"
@@ -42,7 +109,9 @@ string getUserDirectory() {
 	char path[MAX_PATH];
 	if (SUCCEEDED(SHGetSpecialFolderPath(NULL, path, CSIDL_PROFILE, false)))
 		return string(path);
-	#elif GE_PLATFORM_LINUX
+	#elif defined(GE_PLATFORM_LINUX)
+	struct passwd *pw = getpwuid(getuid());
+	return pw->pw_dir;
 	#else
 	#endif
 	gassert(false, "could not find user directory");
@@ -67,39 +136,18 @@ void close() {
 	// TODO: delete cache
 }
 
-fileList getFileList(const string &path, directoryType type) {
-	string p = fullPath(type, path);
-	fileList r;
+fileList listFiles(const string &path, directoryType type) {
+	return _filterFileList(fullPath(type), path);
+}
 
-	#ifdef GE_PLATFORM_WINDOWS
-	WIN32_FIND_DATA fd;
-	HANDLE hf;
-	if ((hf = FindFirstFile((p + "*").c_str(), &fd)) == INVALID_HANDLE_VALUE)
-		return r;
-	do {
-		if (fd.cFileName[0] == '.')
-			continue;
-		r.push_back(std::make_tuple(fd.cFileName,
-									(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0));
-	}
-	while(FindNextFile(hf, &fd));
-	#elif GE_PLATFORM_LINUX
-    DIR *dir;
-    class dirent *ent;
-    class stat st;
-    dir = opendir(directory);
-    while ((ent = readdir(dir)) != NULL) {
-		if (ent->d_name[0] == '.')
-			continue;
-		r.push_back(std::make_tuple(end->d_name,
-									(st.st_mode & S_IFDIR) != 0));
-	}
-    closedir(dir);
-	#else
-	#error "not implemented"
-	#endif
+fileList findFiles(const string &name, const string &path, directoryType type) {
+	return _filterFileListR(fullPath(type), path,
+							[&name](fileInfo &fi) { return name == fi.name; });
+}
 
-	return r;
+fileList matchFiles(const string &regex, const string &path, directoryType type) {
+	return _filterFileListR(fullPath(type), path,
+							[&regex](fileInfo &fi) { return std::regex_match(fi.name, std::regex(regex)); });
 }
 
 stream load(const string &path, directoryType type) {

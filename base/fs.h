@@ -24,14 +24,22 @@ enum directoryType {
 	directoryTypeWorkingDirecotry
 };
 
-typedef std::vector<std::tuple<string, bool>> fileList;
+struct fileInfo {
+	string path;
+	string name;
+	bool dir;
+};
+
+typedef std::vector<fileInfo> fileList;
 
 string getExecutableDirectory();
 string getUserDirectory();
 
 bool open(const string &path, directoryType type);
 void close();
-fileList getFileList(const string &path, directoryType type = directoryTypeWorkingDirecotry);
+fileList listFiles(const string &path = "", directoryType type = directoryTypeWorkingDirecotry);
+fileList findFiles(const string &name, const string &path = "", directoryType type = directoryTypeWorkingDirecotry);
+fileList matchFiles(const string &regex, const string &path = "", directoryType type = directoryTypeWorkingDirecotry);
 stream load(const string &path, directoryType type = directoryTypeWorkingDirecotry);
 bool store(const string &path, stream &s, directoryType type = directoryTypeWorkingDirecotry, bool compress = false);
 bool remove(const string &path, directoryType type = directoryTypeWorkingDirecotry);
