@@ -18,8 +18,8 @@ namespace {
 string _dirProgramData, _dirUser, _dirWorkingDir;
 
 string fullPath(directoryType type, const string &p = "") {
-	if (type == directoryTypeUserData) return _dirUser + GE_DIR_SEPARATOR + p;
-	else if (type == directoryTypeProgramData) return _dirProgramData + GE_DIR_SEPARATOR + p;
+	if (type == userData) return _dirUser + GE_DIR_SEPARATOR + p;
+	else if (type == programData) return _dirProgramData + GE_DIR_SEPARATOR + p;
 	return _dirWorkingDir + GE_DIR_SEPARATOR + p;
 }
 
@@ -102,6 +102,7 @@ string getExecutableDirectory() {
 	#error "Not implemented"
 	#endif
 	gassert(false, "could not find executable directory");
+	return "";
 }
 
 string getUserDirectory() {
@@ -115,15 +116,16 @@ string getUserDirectory() {
 	#else
 	#endif
 	gassert(false, "could not find user directory");
+	return "";
 }
 
 bool open(const string &path, directoryType type) {
 	if (_exists(path)) {
-		if (type == directoryTypeUserData)
+		if (type == userData)
 			_dirUser = path;
-		else if (type == directoryTypeProgramData)
+		else if (type == programData)
 			_dirProgramData = path;
-		else if (type == directoryTypeWorkingDirecotry)
+		else if (type == workingDirectory)
 			_dirWorkingDir = path;
 		// TODO: search for vfs files and cache them
 		return true;
@@ -150,6 +152,8 @@ fileList matchFiles(const string &regex, const string &path, directoryType type)
 							[&regex](fileInfo &fi) { return std::regex_match(fi.name, std::regex(regex)); });
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
 stream load(const string &path, directoryType type) {
 	std::FILE *f = std::fopen(fullPath(type, path).c_str(), "r");
 	if (f == NULL) {
@@ -169,6 +173,7 @@ stream load(const string &path, directoryType type) {
 	std::fclose(f);
 	return s;
 }
+#pragma GCC diagnostic pop
 
 bool store(const string &path, stream &s, directoryType type, bool compress) {
 	std::FILE *f = std::fopen(fullPath(type, path).c_str(), "w");

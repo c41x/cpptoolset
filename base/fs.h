@@ -19,9 +19,9 @@ namespace granite { namespace base {
 namespace fs {
 
 enum directoryType {
-	directoryTypeProgramData,
-	directoryTypeUserData,
-	directoryTypeWorkingDirecotry
+	programData,
+	userData,
+	workingDirectory
 };
 
 struct fileInfo {
@@ -37,13 +37,13 @@ string getUserDirectory();
 
 bool open(const string &path, directoryType type);
 void close();
-fileList listFiles(const string &path = "", directoryType type = directoryTypeWorkingDirecotry);
-fileList findFiles(const string &name, const string &path = "", directoryType type = directoryTypeWorkingDirecotry);
-fileList matchFiles(const string &regex, const string &path = "", directoryType type = directoryTypeWorkingDirecotry);
-stream load(const string &path, directoryType type = directoryTypeWorkingDirecotry);
-bool store(const string &path, stream &s, directoryType type = directoryTypeWorkingDirecotry, bool compress = false);
-bool remove(const string &path, directoryType type = directoryTypeWorkingDirecotry);
-bool exists(const string &name, directoryType type = directoryTypeWorkingDirecotry);
+fileList listFiles(const string &path = "", directoryType type = workingDirectory);
+fileList findFiles(const string &name, const string &path = "", directoryType type = workingDirectory);
+fileList matchFiles(const string &regex, const string &path = "", directoryType type = workingDirectory);
+stream load(const string &path, directoryType type = workingDirectory);
+bool store(const string &path, stream &s, directoryType type = workingDirectory, bool compress = false);
+bool remove(const string &path, directoryType type = workingDirectory);
+bool exists(const string &name, directoryType type = workingDirectory);
 
 }
 
