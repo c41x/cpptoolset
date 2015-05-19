@@ -1,9 +1,10 @@
 //- vector
 size_t stream::size() const { return _mem.size(); }
-void stream::resize(size_t cap) { _mem.resize(cap); }
-void stream::resize(size_t cap, const uint8 &val) { _mem.resize(cap, val); }
+void stream::resize(size_t cap) { _mem.resize(cap); _pos = std::min(_pos, cap); }
+void stream::resize(size_t cap, const uint8 &val) { _mem.resize(cap, val); _pos = std::min(_pos, cap); }
 void stream::reserve(size_t cap) { _mem.reserve(cap); }
 uint8 *stream::data() { return _mem.data(); }
+void stream::clear() { return _mem.clear(); _pos = 0; }
 
 //- stream
 stream::stream(size_t size) {
@@ -60,13 +61,13 @@ template <typename T> void stream::write(const T &in) {
 
 // specializations for writing strings (writing size, then string itself)
 template <> inline size_t stream::read(string &s) {
-	size_t len;
-	size_t r = read<size_t>(len);
+	uint32 len;
+	size_t r = read<uint32>(len);
 	s.resize(len);
 	return read(&s[0], len) + r;
 }
 
 template <> inline void stream::write(const string &s) {
-	write<size_t>(s.size());
+	write<uint32>(s.size());
 	write(&s[0], s.size());
 }

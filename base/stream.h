@@ -33,6 +33,7 @@ public:
 	inline void resize(size_t cap);
 	inline void resize(size_t cap, const uint8 &val);
 	inline void reserve(size_t cap);
+	inline void clear();
 
 	inline uint8 *data();
 
