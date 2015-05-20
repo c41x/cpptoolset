@@ -4,7 +4,8 @@ void stream::resize(size_t cap) { _mem.resize(cap); _pos = std::min(_pos, cap); 
 void stream::resize(size_t cap, const uint8 &val) { _mem.resize(cap, val); _pos = std::min(_pos, cap); }
 void stream::reserve(size_t cap) { _mem.reserve(cap); }
 uint8 *stream::data() { return _mem.data(); }
-void stream::clear() { return _mem.clear(); _pos = 0; }
+const uint8 *stream::data() const { return _mem.data(); }
+void stream::clear() { _pos = 0; return _mem.clear(); }
 
 //- stream
 stream::stream(size_t size) {

@@ -36,6 +36,7 @@ public:
 	inline void clear();
 
 	inline uint8 *data();
+	inline const uint8 *data() const;
 
 	// rw pointer stuff
 	inline size_t read(void *data, size_t size);
