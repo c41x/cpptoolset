@@ -64,8 +64,10 @@ template <typename T> void stream::write(const T &in) {
 template <> inline size_t stream::read(string &s) {
 	uint32 len;
 	size_t r = read<uint32>(len);
-	s.resize(len);
-	return read(&s[0], len) + r;
+	if (r > 0) {
+		s.resize(len);
+		return read(&s[0], len) + r;
+	}
 }
 
 template <> inline void stream::write(const string &s) {
