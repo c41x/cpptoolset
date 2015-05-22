@@ -52,9 +52,14 @@ bool _exists_file(const string &file) {
 }
 
 void _resize(std::FILE *f, size_t newSize) {
+	#ifdef GE_PLATFORM_WINDOWS
 	_chsize(_fileno(f), newSize);
+	#else
+	ftruncate(fileno(f), newSize);
+	#endif
 }
 
+/*
 bool _mkdirtree(const string &path) {
 	std::cout <<"mdt: " << path << std::endl;
 	string p;
@@ -66,6 +71,7 @@ bool _mkdirtree(const string &path) {
 	}
 	return true;
 }
+*/
 
 fileList _filterFileList(const string &basePath,
 						 const string &path,
@@ -600,15 +606,14 @@ bool store(const string &path, stream &s, directoryType type, bool compress) {
 		return false;
 	}
 
-  openFile:
 	std::FILE *f = std::fopen(fullPath(type, path).c_str(), "wb+");
 	if (f == NULL) {
-		_mkdirtree(extractFilePath(fullPath(type, path)));
-		std::FILE *f = std::fopen(fullPath(type, path).c_str(), "wb+");
-		if (f == NULL) {
+		//_mkdirtree(extractFilePath(fullPath(type, path)));
+		//std::FILE *f = std::fopen(fullPath(type, path).c_str(), "wb+");
+		//if (f == NULL) {
 			gassert(false, strs("could not open file: ", path));
 			return false;
-		}
+			//}
 	}
 
 	size_t bytesWrite = std::fwrite(s.data(), s.size(), 1, f);
