@@ -35,6 +35,14 @@ void findAndReplace(string &s, const string &what, const string &replacement) {
 	}
 }
 
+void findAndReplace(string &s, char what, char replacement) {
+	size_t pos = 0;
+	while ((pos = s.find(what, pos)) != s.npos) {
+		s.replace(pos, 1, 1, replacement);
+		++pos;
+	}
+}
+
 void findAndCutAfter(string &s, const string &what) {
 	size_t pos = s.find(what);
 	if (pos != s.npos)
@@ -55,23 +63,15 @@ bool containsSubstr(const string &s, const string &search) {
 	return string::npos != s.find(search);
 }
 
-void divideString(const string &s, char divChar, std::vector<string> &result) {
-	result.reserve(std::count(s.begin(), s.end(), divChar) + 1);
-	size_t pos = 0, bpos = 0;
-	while ((pos = s.find(divChar, bpos)) != s.npos) {
-		result.push_back(s.substr(bpos, pos - bpos));
-		bpos = pos + 1;
-	}
-	result.push_back(s.substr(bpos));
-}
-
-void divideString(const string &s, char divChar, std::vector<stringRange> &result) {
+std::vector<stringRange> divideString(const string &s, char divChar) {
+	std::vector<stringRange> result;
 	size_t pos = 0, bpos = 0;
 	while ((pos = s.find(divChar, bpos)) != s.npos) {
 		result.push_back(stringRange(s.begin() + bpos, s.begin() + pos));
 		bpos = pos + 1;
 	}
 	result.push_back(stringRange(s.begin() + bpos, s.begin() + s.length()));
+	return result;
 }
 
 float matchString(const string &a, const string &b){ // check string similarity in 0-1 scale (GP Gems?)

@@ -42,14 +42,16 @@ struct stringRange {
 	size_t count() const { return std::distance(begin, end); }
 	string str() const { return string(begin, end); }
 	operator string() const { return string(begin, end); }
+	inline bool operator==(const stringRange &s) const;
+	inline bool operator==(const string &s) const;
+	bool operator!=(const stringRange &s) const { return !(*this == s); }
+	bool operator!=(const string &s) const { return !(*this == s); }
 };
 
 // inlines char fxs:
 inline bool isDigit(char c) { return c >= '0' && c <= '9'; }
 inline bool isAlpha(char c) { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'); }
 inline bool isAlphaNumeric(char c) { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'); }
-inline bool isAlphaPL(char c) { if((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) return true; return (c == '¡' || c == '±' || c == 'Ê' || c == 'ê' || c == 'Ó' || c == 'ó' || c == '£' || c == '³' || c == 'æ' || c == 'Æ' || c == '¦' || c == '¶' || c == '¯' || c == '¿' || c == '¬' || c == '¼' || c == 'Ñ' || c == 'ñ'); }
-inline bool isAlphaNumericPL(char c) { if((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) return true; return (c == '¡' || c == '±' || c == 'Ê' || c == 'ê' || c == 'Ó' || c == 'ó' || c == '£' || c == '³' || c == 'æ' || c == 'Æ' || c == '¦' || c == '¶' || c == '¯' || c == '¿' || c == '¬' || c == '¼' || c == 'Ñ' || c == 'ñ'); }
 inline bool isUpper(char c) { return c >= 'A' && c <= 'Z'; }
 inline bool isLower(char c) { return c >= 'a' && c <= 'z'; }
 inline bool setUpper(char &ioC) { if(!isAlpha(ioC) || isUpper(ioC)) return false; ioC-='z'-'Z'; return true; }
@@ -70,12 +72,12 @@ void upperCase(string &s);
 void trimWhitespaces(string &s);
 void findAndDelete(string &s, const string &what);
 void findAndReplace(string &s, const string &what, const string &replacement);
+void findAndReplace(string &s, char what, char replacement);
 void findAndCutAfter(string &s, const string &what);
 void findAndCutBefore(string &s, const string &what);
 void deleteWhitespaces(string &s);
 bool containsSubstr(const string &s, const string &search);
-void divideString(const string &s, char divChar, std::vector<string> &result);
-void divideString(const string &s, char divChar, std::vector<stringRange> &result);
+std::vector<stringRange> divideString(const string &s, char divChar);
 float matchString(const string &a, const string &b);
 stringRange initToken(stringRange s);
 stringRange nextToken(stringRange s, stringRange &tok);
@@ -89,18 +91,18 @@ string changeExt(const string &s, const string &ext);
 string cutLongPath(const string &s);
 
 // required space for string estimator
-template <typename T> size_t estimateSize(T v) { return T::SFINAE_template_not_specialized; }
+template <typename T> size_t estimateSize(T v) { return T::SFINAE_template_not_specialized_estimateSize; }
 
 // testing functions - returns if given string can be converted to type T
-template <typename T> bool strIs(const stringRange &) { return T::SFINAE_template_not_specialized; }
+template <typename T> bool strIs(const stringRange &) { return T::SFINAE_template_not_specialized_strIs; }
 template <typename T> bool strIs(const string &s) { return strIs<T>(stringRange(s)); }
 
 // conversions: from string to T
-template<typename T> T fromStr(const stringRange &range) { return T::SFINAE_template_not_specialized; }
+template<typename T> T fromStr(const stringRange &range) { return T::SFINAE_template_not_specialized_fromStr; }
 template<typename T> T fromStr(const string &s) { return fromStr<T>(stringRange(s)); }
 
 // conversions: from T to string
-template <typename T> stringRange toStr(const T &, string &os) { return T::SFINAE_template_not_specialized; }
+template <typename T> stringRange toStr(const T &, string &os) { return T::SFINAE_template_not_specialized_toStr; }
 template <typename T> string toStr(const T &t) { string s; s.resize(estimateSize<T>(t)); return toStr<T>(t, s).str(); }
 
 // string building

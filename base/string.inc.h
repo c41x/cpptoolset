@@ -205,11 +205,31 @@ inline bool isFloat(const stringRange &range) {
 
 } // namespace detail
 
+//- stringRange
+bool stringRange::operator==(const stringRange &s) const {
+	size_t c1 = s.count();
+	if (c1 != count())
+		return false;
+	for (size_t i = 0; i < c1; ++i)
+		if (*(s.begin + i) != *(begin + i))
+			return false;
+	return true;
+}
+
+bool stringRange::operator==(const string &s) const {
+	size_t c1 = s.size();
+	if (c1 != count())
+		return false;
+	for (size_t i = 0; i < c1; ++i)
+		if (s[i] != *(begin + i))
+			return false;
+	return true;
+}
 
 //- size estimator -
 // required space for string estimator for basic types + variadic version for multiple args
 inline size_t estimateSize() { return 0; } // just to terminate variadic
-template<> inline size_t estimateSize(int8) { return 4; }
+template<> inline size_t estimateSize(char) { return 1; }
 template<> inline size_t estimateSize(uint8) { return 3; }
 template<> inline size_t estimateSize(int16) { return 6; }
 template<> inline size_t estimateSize(uint16) { return 5; }
@@ -225,6 +245,7 @@ template<> inline size_t estimateSize(string v) { return v.size(); }
 template<> inline size_t estimateSize(const char * const v) { return strlen(v); }
 template<> inline size_t estimateSize(long unsigned int) { return 20; }
 template<> inline size_t estimateSize(long int) { return 21; }
+template<> inline size_t estimateSize(stringRange s) { return s.count(); }
 
 template <typename T, typename... Args> size_t estimateSize(const T &v, const Args&... args) {
 	return estimateSize(args...) + estimateSize(v);
@@ -236,7 +257,7 @@ template<> inline bool strIs<float>(const stringRange &range) { return detail::i
 template<> inline bool strIs<double>(const stringRange &range) { return detail::isFloat(range); }
 template<> inline bool strIs<int>(const stringRange &range) { return detail::isInteger(range); }
 template<> inline bool strIs<uint>(const stringRange &range) { return detail::isInteger(range); }
-template<> inline bool strIs<int8>(const stringRange &range) { return detail::isInteger(range); }
+template<> inline bool strIs<char>(const stringRange &range) { return range.count() == 1; }
 template<> inline bool strIs<uint8>(const stringRange &range) { return detail::isInteger(range); }
 template<> inline bool strIs<int16>(const stringRange &range) { return detail::isInteger(range); }
 template<> inline bool strIs<uint16>(const stringRange &range) { return detail::isInteger(range); }
@@ -247,7 +268,7 @@ template<> inline bool strIs<long int>(const stringRange &range) { return detail
 template<> inline bool strIs<bool>(const stringRange &range) { return range.str() == "true" || range.str() == "false"; }
 
 //- from string -
-template<> inline int8 fromStr<int8>(const stringRange &range) { return detail::strToSigned<int8>(range); }
+template<> inline char fromStr<char>(const stringRange &range) { return *range.begin; }
 template<> inline uint8 fromStr<uint8>(const stringRange &range) { return detail::strToUnsigned<uint8>(range); }
 template<> inline int16 fromStr<int16>(const stringRange &range) { return detail::strToSigned<int16>(range); }
 template<> inline uint16 fromStr<uint16>(const stringRange &range) { return detail::strToUnsigned<uint16>(range); }
@@ -262,7 +283,7 @@ template<> inline double fromStr<double>(const stringRange &range) { return deta
 template<> inline bool fromStr<bool>(const stringRange &range) { return detail::strToBool(range); }
 
 //- to string -
-template<> inline stringRange toStr(const int8 &i, string &os) { return detail::signedToStr<int8>(i, os); }
+template<> inline stringRange toStr(const char &i, string &os) { os[0] = i; return stringRange(os.begin(), os.begin() + 1); }
 template<> inline stringRange toStr(const uint8 &i, string &os) { return detail::unsignedToStr<uint8>(i, os); }
 template<> inline stringRange toStr(const int16 &i, string &os) { return detail::signedToStr<int16>(i, os); }
 template<> inline stringRange toStr(const uint16 &i, string &os) { return detail::unsignedToStr<uint16>(i, os); }
@@ -275,6 +296,7 @@ template<> inline stringRange toStr(const long unsigned int &i, string &os) { re
 template<> inline stringRange toStr(const float &i, string &os) { return detail::realToStr<float>(i, os, floatPrecision); }
 template<> inline stringRange toStr(const double &i, string &os) { return detail::realToStr<double>(i, os, floatPrecision); }
 template<> inline stringRange toStr(const bool &i, string &os) { return detail::boolToStr(i, os); }
+template<> inline stringRange toStr(const stringRange &s, string &os) { return s; }
 inline stringRange toStr(const string &ss, string &os) { return stringRange(ss); }
 inline stringRange toStr(const char *cs, string &os) { return stringRange(cs); }
 
