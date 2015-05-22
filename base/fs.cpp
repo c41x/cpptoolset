@@ -17,11 +17,28 @@ namespace granite { namespace base { namespace fs {
 
 namespace {
 string _dirProgramData, _dirUser, _dirWorkingDir;
+bool _preferVFS = false;
+
+string getPath(directoryType type) {
+	if (type == userData) return _dirUser;
+	else if (type == programData) return _dirProgramData;
+	return _dirWorkingDir;
+}
+
+#ifdef GE_PLATFORM_WINDOWS
+string _normalizePath(const string &s) {
+	string ret = s;
+	findAndReplace(ret, '/', '\\');
+	return ret;
+}
+#endif
 
 string fullPath(directoryType type, const string &p = "") {
-	if (type == userData) return _dirUser + GE_DIR_SEPARATOR + p;
-	else if (type == programData) return _dirProgramData + GE_DIR_SEPARATOR + p;
-	return _dirWorkingDir + GE_DIR_SEPARATOR + p;
+	#ifdef GE_PLATFORM_WINDOWS
+	return getPath(type) + GE_DIR_SEPARATOR + _normalizePath(p);
+	#else
+	return getPath(type) + GE_DIR_SEPARATOR + p;
+	#endif
 }
 
 bool _exists(const string &path) {
@@ -29,8 +46,25 @@ bool _exists(const string &path) {
 	return stat(path.c_str(), &buffer) == 0;
 }
 
+bool _exists_file(const string &file) {
+	struct stat buffer;
+	return stat(file.c_str(), &buffer) == 0 && S_ISREG(buffer.st_mode) != 0;
+}
+
 void _resize(std::FILE *f, size_t newSize) {
 	_chsize(_fileno(f), newSize);
+}
+
+bool _mkdirtree(const string &path) {
+	std::cout <<"mdt: " << path << std::endl;
+	string p;
+	for (auto &e : divideString(path, GE_DIR_SEPARATOR)) {
+		p += e.str() + "\\";
+		if (!_exists(p))
+			if (0 != mkdir(p.c_str()))
+				return false;
+	}
+	return true;
 }
 
 fileList _filterFileList(const string &basePath,
@@ -93,121 +127,7 @@ fileList _filterFileListR(const string &basePath,
 	while (!dirToCheck.empty());
 	return r;
 }
-}
 
-string getExecutableDirectory() {
-	#ifdef GE_PLATFORM_WINDOWS
-	char res[MAX_PATH];
-	return extractFilePath(string(res, GetModuleFileName(NULL, res, MAX_PATH)));
-	#elif defined(GE_PLATFORM_LINUX)
-	char res[FILENAME_MAX];
-	ssize_t count = readlink("/proc/self/exe", res, FILENAME_MAX);
-	return extractFilePath(string(res, count > 0 ? count : 0));
-	#else
-	#error "Not implemented"
-	#endif
-	gassert(false, "could not find executable directory");
-	return "";
-}
-
-string getUserDirectory() {
-	#ifdef GE_PLATFORM_WINDOWS
-	char path[MAX_PATH];
-	if (SUCCEEDED(SHGetSpecialFolderPath(NULL, path, CSIDL_PROFILE, false)))
-		return string(path);
-	#elif defined(GE_PLATFORM_LINUX)
-	struct passwd *pw = getpwuid(getuid());
-	return pw->pw_dir;
-	#else
-	#endif
-	gassert(false, "could not find user directory");
-	return "";
-}
-
-bool open(const string &path, directoryType type) {
-	if (_exists(path)) {
-		if (type == userData)
-			_dirUser = path;
-		else if (type == programData)
-			_dirProgramData = path;
-		else if (type == workingDirectory)
-			_dirWorkingDir = path;
-
-		// scan for vfs files
-		fileList fl = matchFiles(".*\\.gfs", "", type);
-		for (const auto &f : fl) {
-
-		}
-		return true;
-	}
-	gassert(false, strs("specified path does not exists: ", path));
-	return false;
-}
-
-void close() {
-	// TODO: delete cache, invalidate paths?
-}
-
-fileList listFiles(const string &path, directoryType type) {
-	return _filterFileList(fullPath(type), path);
-}
-
-fileList findFiles(const string &name, const string &path, directoryType type) {
-	return _filterFileListR(fullPath(type), path,
-							[&name](fileInfo &fi) { return name == fi.name; });
-}
-
-fileList matchFiles(const string &regex, const string &path, directoryType type) {
-	return _filterFileListR(fullPath(type), path,
-							[&regex](fileInfo &fi) { return std::regex_match(fi.name, std::regex(regex)); });
-}
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-variable"
-stream load(const string &path, directoryType type) {
-	std::FILE *f = std::fopen(fullPath(type, path).c_str(), "r");
-	if (f == NULL) {
-		gassert(false, strs("could not open file: ", path));
-		return stream();
-	}
-
-	std::fseek(f, 0, SEEK_END);
-	size_t size = std::ftell(f);
-	std::rewind(f);
-
-	stream s;
-	s.resize(size);
-	size_t readCount = std::fread(s.data(), size, 1, f);
-	gassert(readCount == 1, strs("read file failed: ", path));
-
-	std::fclose(f);
-	return s;
-}
-#pragma GCC diagnostic pop
-
-bool store(const string &path, stream &s, directoryType type, bool compress) {
-	std::FILE *f = std::fopen(fullPath(type, path).c_str(), "w");
-	if (f == NULL) {
-		gassert(false, strs("could not open file: ", path));
-		return false;
-	}
-
-	size_t bytesWrite = std::fwrite(path.data(), path.size(), 1, f);
-	gassert(bytesWrite == 1, strs("write file failed: ", path));
-
-	std::fclose(f);
-	return bytesWrite == 1;
-}
-
-bool remove(const string &path, directoryType type) {
-	int err = std::remove(fullPath(type, path).c_str());
-	gassert(err == 0, strs("error deleting file: ", path));
-	return err == 0;
-}
-
-bool exists(const string &name, directoryType type) {
-	return _exists(fullPath(type, name));
-}
 
 //- buffer pool
 /*
@@ -292,7 +212,8 @@ void _vfs_write_index(vfs &v) {
 
 // (re) opens/creates vfs, initializes index
 void _vfs_open(const string path) {
-	if (!_exists(path)) {
+	std::cout << "opening archive: " << path << std::endl;
+	if (!_exists_file(path)) {
 		// create and initialize new vfs
 		uint32 filesCount = 0;
 		auto &v = _vfs[path];
@@ -361,6 +282,7 @@ void _vfs_close(vfs &v) {
 		std::fwrite(&v.indexOffset, sizeof(uint32), 1, v.f);
 		v.dirty = false;
 	}
+
 	fclose(v.f);
 	v.f = nullptr;
 }
@@ -374,13 +296,6 @@ std::vector<vfs_file>::iterator _vfs_find_file(vfs &v, const string &id) {
 
 bool _vfs_exists(vfs &v, const string &id) {
 	return v.files.end() != _vfs_find_file(v, id);
-}
-
-void display(const char *d, int s) {
-	std::cout << s << ": ";
-	for (int i = 0; i < s; ++i)
-		std::cout << d[i];//int(d[i]);
-	std::cout << std::endl;
 }
 
 void _vfs_read(vfs &v, const string &id, stream &s) {
@@ -408,7 +323,7 @@ void _vfs_read(vfs &v, const string &id, stream &s) {
 	}
 }
 
-void _vfs_remove(vfs &v, const string &id) {
+bool _vfs_remove(vfs &v, const string &id) {
 	auto f = _vfs_find_file(v, id);
 	if (f != v.files.end()) {
 		// erase data from file
@@ -444,14 +359,16 @@ void _vfs_remove(vfs &v, const string &id) {
 
 		// mark index as dirty
 		v.dirty = true;
+		return true;
 	}
 	else {
 		// report error
 		log::log(log::logLevelError, strs("could not delete: ", id, " from vfs - file not present in index"));
+		return false;
 	}
 }
 
-void _vfs_add(vfs &v, const string &id, const stream &s, bool compress = true) {
+bool _vfs_add(vfs &v, const string &id, const stream &s, bool compress = true) {
 	auto f = _vfs_find_file(v, id);
 
 	// replace file (remove old file first)
@@ -477,43 +394,280 @@ void _vfs_add(vfs &v, const string &id, const stream &s, bool compress = true) {
 	}
 	v.indexOffset = std::ftell(v.f);
 	v.dirty = true;
+	return true;
 }
 
-void vopen(string path) {
-	_vfs_open(path);
+// returns full path to file, vfs id, is vfs, is valid
+std::tuple<string, string, bool, bool> _resolveLocation(const string &ipath, directoryType type, bool mustExist) {
+	std::tuple<string, string, bool, bool> r;
+
+	auto resolveNormalFile = [&r, &type, &ipath, &mustExist]() {
+		std::cout << "> resolving file for: " << ipath << std::endl;
+		if (!mustExist || _exists_file(fullPath(type, ipath))) {
+			std::cout << "  resolved [file]: " << fullPath(type, ipath) << std::endl;
+			r = std::make_tuple(fullPath(type, ipath), "", false, true);
+			return true;
+		}
+		return false;
+	};
+
+	auto resolveVFS = [&r, &type, &ipath]() {
+		std::cout << "> resolving vfs for: " << ipath << std::endl;
+		string base = getPath(type);
+		string path = base;
+		std::vector<stringRange> explodePath = divideString(ipath, '/');
+		for (auto &s : explodePath) {
+			base += strs(GE_DIR_SEPARATOR, s);
+			path = base + ".gfs";
+			std::cout << "  resolving path: " << path << " chunk: " << s.str() << std::endl;
+			if (_vfs.find(path) != _vfs.end()) {
+				std::cout << "  resolved [vfs]: " << path << std::endl;
+				r = std::make_tuple(path, stringRange(s.end + 1, ipath.end()), true, true);
+				return true;
+			}
+		}
+		return false;
+	};
+
+	if (_preferVFS) {
+		if (resolveVFS() || resolveNormalFile())
+			return r;
+	}
+	else {
+		if (resolveNormalFile() || resolveVFS())
+			return r;
+	}
+
+	return std::make_tuple("", "", false, false);
+}
 }
 
-void vadd(string path, string id, const stream &s) {
-	auto v = _vfs.find(path);
-	if (v != _vfs.end())
-		_vfs_add(v->second, id, s);
-	else std::cout << "vfs not found" << std::endl;
+//- impl
+string fileInfo::fullPath() const {
+	return path == "" ? name : (path + GE_DIR_SEPARATOR + name);
 }
 
-void vget(string path, string id, stream &s) {
-	auto v = _vfs.find(path);
-	if (v != _vfs.end())
-		_vfs_read(v->second, id, s);
-	else std::cout << "vfs not found" << std::endl;
+string getExecutableDirectory() {
+	#ifdef GE_PLATFORM_WINDOWS
+	char res[MAX_PATH];
+	return extractFilePath(string(res, GetModuleFileName(NULL, res, MAX_PATH)));
+	#elif defined(GE_PLATFORM_LINUX)
+	char res[FILENAME_MAX];
+	ssize_t count = readlink("/proc/self/exe", res, FILENAME_MAX);
+	return extractFilePath(string(res, count > 0 ? count : 0));
+	#else
+	#error "Not implemented"
+	#endif
+	gassert(false, "could not find executable directory");
+	return "";
 }
 
-void vremove(string path, string id) {
-	auto v = _vfs.find(path);
-	if (v != _vfs.end())
-		_vfs_remove(v->second, id);
-	else std::cout << "vfs not found" << std::endl;
+string getUserDirectory() {
+	#ifdef GE_PLATFORM_WINDOWS
+	char path[MAX_PATH];
+	if (SUCCEEDED(SHGetSpecialFolderPath(NULL, path, CSIDL_PROFILE, false)))
+		return string(path);
+	#elif defined(GE_PLATFORM_LINUX)
+	struct passwd *pw = getpwuid(getuid());
+	return pw->pw_dir;
+	#else
+	#endif
+	gassert(false, "could not find user directory");
+	return "";
 }
 
-void vclose() {
+bool open(const string &path, directoryType type) {
+	if (_exists(path)) {
+		if (type == userData)
+			_dirUser = path;
+		else if (type == programData)
+			_dirProgramData = path;
+		else if (type == workingDirectory)
+			_dirWorkingDir = path;
+		return true;
+	}
+	gassert(false, strs("specified path does not exists: ", path));
+	return false;
+}
+
+void preferArchives(bool preferVFS) {
+	_preferVFS = preferVFS;
+}
+
+void flush() {
+	for (auto &v : _vfs) {
+		_vfs_close(v.second);
+		_vfs_open(v.first);
+	}
+}
+
+bool createArchive(const string &path, directoryType type) {
+	string fpath = fullPath(type, path);
+	if (_exists_file(fpath))
+		return false;
+	_vfs_open(fpath);
+	return true;
+}
+
+void initArchive(const string &path, directoryType type) {
+	_vfs_open(fullPath(type, path));
+}
+
+// scan for vfs files and initialize all
+void initAllArchives(directoryType type) {
+	fileList fl = matchFiles(".*\\.gfs", "", type);
+	for (const auto &f : fl) {
+		std::cout << fullPath(type, f.fullPath()) << std::endl;
+		_vfs_open(fullPath(type, f.fullPath()));
+	}
+}
+
+void close() {
 	for (auto &v : _vfs)
 		_vfs_close(v.second);
+}
+
+fileList listFiles(const string &path, directoryType type) {
+	return _filterFileList(fullPath(type), path);
+}
+
+fileList findFiles(const string &name, const string &path, directoryType type) {
+	return _filterFileListR(fullPath(type), path,
+							[&name](fileInfo &fi) { return name == fi.name; });
+}
+
+fileList matchFiles(const string &regex, const string &path, directoryType type) {
+	return _filterFileListR(fullPath(type), path,
+							[&regex](fileInfo &fi) { return std::regex_match(fi.name, std::regex(regex)); });
+}
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+stream load(const string &path, directoryType type) {
+	bool vfs, valid;
+	string filepath, id;
+	std::tie(filepath, id, vfs, valid) = _resolveLocation(path, type, true);
+
+	// check if path is correctly resolved
+	if (!valid) {
+		gassert(false, strs("could not resolve file location: ", path));
+		return stream();
+	}
+
+	// load / decompress vfs
+	if (vfs) {
+		auto v = _vfs.find(filepath);
+		gassert(v != _vfs.end(), strs("vfs index not found: ", path));
+		if (v != _vfs.end()) {
+			stream s;
+			_vfs_read(v->second, id, s);
+			return s;
+		}
+		return stream();
+	}
+
+	// it's regular file - just load
+	std::FILE *f = std::fopen(filepath.c_str(), "rb");
+	if (f == NULL) {
+		gassert(false, strs("could not open file: ", path));
+		return stream();
+	}
+
+	std::fseek(f, 0, SEEK_END);
+	size_t size = std::ftell(f);
+	std::rewind(f);
+
+	stream s;
+	s.resize(size);
+	size_t readCount = std::fread(s.data(), size, 1, f);
+	gassert(readCount == 1, strs("read file failed: ", path));
+
+	std::fclose(f);
+	return s;
+}
+#pragma GCC diagnostic pop
+
+bool store(const string &path, stream &s, directoryType type, bool compress) {
+	bool vfs, valid;
+	string filepath, id;
+	std::tie(filepath, id, vfs, valid) = _resolveLocation(path, type, false);
+
+	if (vfs) {
+		auto v = _vfs.find(filepath);
+		gassert(v != _vfs.end(), strs("vfs index not found: ", path));
+		if (v != _vfs.end())
+			return _vfs_add(v->second, id, s, compress);
+		return false;
+	}
+
+  openFile:
+	std::FILE *f = std::fopen(fullPath(type, path).c_str(), "wb+");
+	if (f == NULL) {
+		_mkdirtree(extractFilePath(fullPath(type, path)));
+		std::FILE *f = std::fopen(fullPath(type, path).c_str(), "wb+");
+		if (f == NULL) {
+			gassert(false, strs("could not open file: ", path));
+			return false;
+		}
+	}
+
+	size_t bytesWrite = std::fwrite(s.data(), s.size(), 1, f);
+	gassert(bytesWrite == 1, strs("write file failed: ", path));
+
+	std::fclose(f);
+	return bytesWrite == 1;
+}
+
+bool remove(const string &path, directoryType type) {
+	bool vfs, valid;
+	string filepath, id;
+	std::tie(filepath, id, vfs, valid) = _resolveLocation(path, type, true);
+
+	if (!valid) {
+		gassert(false, strs("could not resolve file location: ", path));
+		return false;
+	}
+
+	if (vfs) {
+		auto v = _vfs.find(filepath);
+		gassert(v != _vfs.end(), strs("vfs index not found: ", path));
+		if (v != _vfs.end())
+			return _vfs_remove(v->second, id);
+		return false;
+	}
+
+	int err = std::remove(filepath.c_str());
+	gassert(err == 0, strs("error deleting file: ", path));
+	return err == 0;
+}
+
+bool exists(const string &name, directoryType type) {
+	bool vfs, valid;
+	string filepath, id;
+	std::tie(filepath, id, vfs, valid) = _resolveLocation(name, type, true);
+
+	if (!valid) {
+		gassert(false, strs("could not resolve file location: ", name));
+		return false;
+	}
+
+	if (vfs) {
+		auto v = _vfs.find(filepath);
+		gassert(v != _vfs.end(), strs("vfs index not found: ", name));
+		if (v != _vfs.end())
+			return _vfs_exists(v->second, id);
+		return false;
+	}
+
+	return false;
 }
 
 }}}
 
 // TODO: rewrite vfs file by replace, not erase & add
 // TODO: pools (buffer pool for decompression)
-// TODO: integrate vfs into API
 // TODO: asserts and logs
-// TODO: flushing vfs
 // TODO: extensions to compress (currently static)
+// TODO: move semantics for streams
+// TODO: make dir on save
+// TODO: integrate find, match with vfs...
