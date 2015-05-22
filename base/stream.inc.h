@@ -68,6 +68,7 @@ template <> inline size_t stream::read(string &s) {
 		s.resize(len);
 		return read(&s[0], len) + r;
 	}
+	return 0;
 }
 
 template <> inline void stream::write(const string &s) {
