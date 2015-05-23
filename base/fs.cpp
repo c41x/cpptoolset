@@ -59,19 +59,23 @@ void _resize(std::FILE *f, size_t newSize) {
 	#endif
 }
 
-/*
-bool _mkdirtree(const string &path) {
-	std::cout <<"mdt: " << path << std::endl;
-	string p;
+bool _mkdirtree(const string &pathBase, const string &path) {
+	string p = pathBase + GE_DIR_SEPARATOR;
 	for (auto &e : divideString(path, GE_DIR_SEPARATOR)) {
-		p += e.str() + "\\";
-		if (!_exists(p))
-			if (0 != mkdir(p.c_str()))
+		p += e.str();
+		if (!_exists(p)) {
+			#ifdef GE_PLATFORM_WINDOWS
+			if (0 != _mkdir(p.c_str()))
 				return false;
+			#else
+			if (0 != mkdir(p.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH))
+				return false;
+			#endif
+		}
+		p += GE_DIR_SEPARATOR;
 	}
 	return true;
 }
-*/
 
 fileList _filterFileList(const string &basePath,
 						 const string &path,
@@ -608,12 +612,12 @@ bool store(const string &path, stream &s, directoryType type, bool compress) {
 
 	std::FILE *f = std::fopen(fullPath(type, path).c_str(), "wb+");
 	if (f == NULL) {
-		//_mkdirtree(extractFilePath(fullPath(type, path)));
-		//std::FILE *f = std::fopen(fullPath(type, path).c_str(), "wb+");
-		//if (f == NULL) {
+		_mkdirtree(getPath(type), extractFilePath(path));
+		f = std::fopen(fullPath(type, path).c_str(), "wb+");
+		if (f == NULL) {
 			gassert(false, strs("could not open file: ", path));
 			return false;
-			//}
+		}
 	}
 
 	size_t bytesWrite = std::fwrite(s.data(), s.size(), 1, f);
@@ -674,5 +678,4 @@ bool exists(const string &name, directoryType type) {
 // TODO: asserts and logs
 // TODO: extensions to compress (currently static)
 // TODO: move semantics for streams
-// TODO: make dir on save
 // TODO: integrate find, match with vfs...
