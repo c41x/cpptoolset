@@ -224,6 +224,9 @@ void _vfs_write_index(vfs &v) {
 void _vfs_open(const string path) {
 	std::cout << "opening archive: " << path << std::endl;
 	if (!_exists_file(path)) {
+		// create directory tree first (if needed)
+		_mkdirtree("", extractFilePath(path));
+
 		// create and initialize new vfs
 		uint32 filesCount = 0;
 		auto &v = _vfs[path];
