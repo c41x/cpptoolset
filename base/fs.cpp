@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #ifdef GE_PLATFORM_WINDOWS
 #include <shlobj.h>
+#include <direct.h>
 #elif defined(GE_PLATFORM_LINUX)
 #include <unistd.h>
 #include <pwd.h>
@@ -19,6 +20,7 @@ namespace {
 string _dirProgramData, _dirUser, _dirWorkingDir;
 bool _preferVFS = false;
 
+// expand full path to directory
 string getPath(directoryType type) {
 	if (type == userData) return _dirUser;
 	else if (type == programData) return _dirProgramData;
@@ -33,6 +35,7 @@ string _normalizePath(const string &s) {
 }
 #endif
 
+// expand path
 string fullPath(directoryType type, const string &p = "") {
 	#ifdef GE_PLATFORM_WINDOWS
 	return getPath(type) + GE_DIR_SEPARATOR + _normalizePath(p);
@@ -41,16 +44,19 @@ string fullPath(directoryType type, const string &p = "") {
 	#endif
 }
 
+// checks if file/directory exists
 bool _exists(const string &path) {
 	struct stat buffer;
 	return stat(path.c_str(), &buffer) == 0;
 }
 
+// checks if file exists
 bool _exists_file(const string &file) {
 	struct stat buffer;
 	return stat(file.c_str(), &buffer) == 0 && S_ISREG(buffer.st_mode) != 0;
 }
 
+// resize given file
 void _resize(std::FILE *f, size_t newSize) {
 	#ifdef GE_PLATFORM_WINDOWS
 	_chsize(_fileno(f), newSize);
@@ -59,6 +65,7 @@ void _resize(std::FILE *f, size_t newSize) {
 	#endif
 }
 
+// create directory tree, path and pathBase must be normalized
 bool _mkdirtree(const string &pathBase, const string &path) {
 	string p = pathBase + GE_DIR_SEPARATOR;
 	for (auto &e : divideString(path, GE_DIR_SEPARATOR)) {
@@ -77,6 +84,7 @@ bool _mkdirtree(const string &pathBase, const string &path) {
 	return true;
 }
 
+// gives list of files that fullfill predicate condition (only current folder)
 fileList _filterFileList(const string &basePath,
 						 const string &path,
 						 std::function<bool(fileInfo &)> pred = std::function<bool(fileInfo &)>()) {
@@ -93,6 +101,7 @@ fileList _filterFileList(const string &basePath,
 		fileInfo fi = { path,
 						fd.cFileName,
 						(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0 };
+		findAndReplace(fi.path, "\\", "/");
 		if (!pred || pred(fi))
 			r.push_back(fi);
 	}
@@ -121,6 +130,7 @@ fileList _filterFileList(const string &basePath,
 	return r;
 }
 
+// same as above but recursively down in fs
 fileList _filterFileListR(const string &basePath,
 						  const string &path,
 						  std::function<bool(fileInfo &)> pred = std::function<bool(fileInfo &)>()) {
@@ -198,6 +208,22 @@ struct vfs {
 // index map
 std::map<string, vfs> _vfs;
 
+// get path from archive id
+string _vfs_extract_path(const string &id) {
+	size_t pos = id.find_last_of('/');
+	if (pos != id.npos)
+		return id.substr(0, pos);
+	return "";
+}
+
+// get name from archive id
+string _vfs_extract_name(const string &id) {
+	size_t pos = id.find_last_of('/');
+	if (pos != id.npos)
+		return id.substr(pos + 1);
+	return id;
+}
+
 // writes index to file (write pointer must be set before call)
 void _vfs_write_index(vfs &v) {
 	uint32 filesCount = v.files.size();
@@ -222,10 +248,14 @@ void _vfs_write_index(vfs &v) {
 
 // (re) opens/creates vfs, initializes index
 void _vfs_open(const string path) {
-	std::cout << "opening archive: " << path << std::endl;
 	if (!_exists_file(path)) {
 		// create directory tree first (if needed)
+		#ifdef GE_PLATFORM_WINDOWS
+		string filePath = extractFilePath(_normalizePath(path));
+		_mkdirtree(filePath.substr(0, 2), filePath.substr(3));
+		#else
 		_mkdirtree("", extractFilePath(path));
+		#endif
 
 		// create and initialize new vfs
 		uint32 filesCount = 0;
@@ -233,6 +263,7 @@ void _vfs_open(const string path) {
 		v.f = std::fopen(path.c_str(), "wb+");
 		v.indexOffset = 4 + sizeof(uint64);
 		v.dirty = false;
+		v.files.clear();
 		std::fwrite("GFS2", 4, 1, v.f);
 		std::fwrite(&v.indexOffset, sizeof(uint64), 1, v.f);
 		std::fwrite(&filesCount, sizeof(uint32), 1, v.f);
@@ -245,6 +276,7 @@ void _vfs_open(const string path) {
 			uint32 filesCount = 0;
 			v.f = fopen(path.c_str(), "rb+");
 			v.dirty = false;
+			v.files.clear();
 
 			// read and validate header
 			char id[4];
@@ -272,8 +304,6 @@ void _vfs_open(const string path) {
 				s.read(fi.flags);
 				s.read(fi.createTime);
 				s.read(fi.modTime);
-				std::cout << fi.id << ", " << fi.position << ", " << fi.size << ", " <<
-					fi.flags << ", " << fi.createTime << ", " << fi.modTime << std::endl;
 				v.files.push_back(fi);
 			}
 		}
@@ -285,6 +315,7 @@ void _vfs_open(const string path) {
 	}
 }
 
+// close file handle (leaves file index intact)
 void _vfs_close(vfs &v) {
 	if (v.dirty) {
 		std::fseek(v.f, v.indexOffset, SEEK_SET);
@@ -300,6 +331,7 @@ void _vfs_close(vfs &v) {
 	v.f = nullptr;
 }
 
+// search for file id in index
 std::vector<vfs_file>::iterator _vfs_find_file(vfs &v, const string &id) {
 	return std::find_if(v.files.begin(), v.files.end(),
 						[&id](vfs_file &f) {
@@ -307,10 +339,12 @@ std::vector<vfs_file>::iterator _vfs_find_file(vfs &v, const string &id) {
 						});
 }
 
+// checks if file exists in archive index
 bool _vfs_exists(vfs &v, const string &id) {
 	return v.files.end() != _vfs_find_file(v, id);
 }
 
+// read file from archive to stream, returns empty stream if failed
 void _vfs_read(vfs &v, const string &id, stream &s) {
 	auto f = _vfs_find_file(v, id);
 	gassert(f != v.files.end(), strs("vfs file: ", id, " not found"));
@@ -336,6 +370,7 @@ void _vfs_read(vfs &v, const string &id, stream &s) {
 	}
 }
 
+// remove file from archive and index
 bool _vfs_remove(vfs &v, const string &id) {
 	auto f = _vfs_find_file(v, id);
 	if (f != v.files.end()) {
@@ -381,6 +416,7 @@ bool _vfs_remove(vfs &v, const string &id) {
 	}
 }
 
+// add/rename file to archive and index
 bool _vfs_add(vfs &v, const string &id, const stream &s, bool compress = true) {
 	auto f = _vfs_find_file(v, id);
 
@@ -415,9 +451,7 @@ std::tuple<string, string, bool, bool> _resolveLocation(const string &ipath, dir
 	std::tuple<string, string, bool, bool> r;
 
 	auto resolveNormalFile = [&r, &type, &ipath, &mustExist]() {
-		std::cout << "> resolving file for: " << ipath << std::endl;
 		if (!mustExist || _exists_file(fullPath(type, ipath))) {
-			std::cout << "  resolved [file]: " << fullPath(type, ipath) << std::endl;
 			r = std::make_tuple(fullPath(type, ipath), "", false, true);
 			return true;
 		}
@@ -425,17 +459,14 @@ std::tuple<string, string, bool, bool> _resolveLocation(const string &ipath, dir
 	};
 
 	auto resolveVFS = [&r, &type, &ipath]() {
-		std::cout << "> resolving vfs for: " << ipath << std::endl;
 		string base = getPath(type);
 		string path = base;
 		std::vector<stringRange> explodePath = divideString(ipath, '/');
 		for (auto &s : explodePath) {
 			base += strs(GE_DIR_SEPARATOR, s);
 			path = base + ".gfs";
-			std::cout << "  resolving path: " << path << " chunk: " << s.str() << std::endl;
 			if (_vfs.find(path) != _vfs.end()) {
-				std::cout << "  resolved [vfs]: " << path << std::endl;
-				r = std::make_tuple(path, stringRange(s.end + 1, ipath.end()), true, true);
+				r = std::make_tuple(path, stringRange(std::min(ipath.end(), s.end + 1), ipath.end()), true, true);
 				return true;
 			}
 		}
@@ -453,11 +484,25 @@ std::tuple<string, string, bool, bool> _resolveLocation(const string &ipath, dir
 
 	return std::make_tuple("", "", false, false);
 }
+
+// file op
+template <typename T_OP>
+void _vfs_files_op(const string &filepath, const string &id, T_OP op) {
+	fileList r;
+	auto v = _vfs.find(filepath);
+	gassert(v != _vfs.end(), strs("vfs index not found: ", filepath));
+	if (v != _vfs.end()) {
+		for (const auto &f : v->second.files) {
+			op(f);
+		}
+	}
+}
 }
 
 //- impl
+// expands path
 string fileInfo::fullPath() const {
-	return path == "" ? name : (path + GE_DIR_SEPARATOR + name);
+	return path == "" ? name : (path + '/' + name);
 }
 
 string getExecutableDirectory() {
@@ -489,6 +534,7 @@ string getUserDirectory() {
 	return "";
 }
 
+// initialize fs
 bool open(const string &path, directoryType type) {
 	if (_exists(path)) {
 		if (type == userData)
@@ -503,10 +549,12 @@ bool open(const string &path, directoryType type) {
 	return false;
 }
 
+// resolving file rule searches for archives vs. regular files first
 void preferArchives(bool preferVFS) {
 	_preferVFS = preferVFS;
 }
 
+// flush all archives (writes file index for all archives)
 void flush() {
 	for (auto &v : _vfs) {
 		_vfs_close(v.second);
@@ -514,6 +562,7 @@ void flush() {
 	}
 }
 
+// create archive file
 bool createArchive(const string &path, directoryType type) {
 	string fpath = fullPath(type, path);
 	if (_exists_file(fpath))
@@ -522,6 +571,7 @@ bool createArchive(const string &path, directoryType type) {
 	return true;
 }
 
+// initialize archive (archive must be initialized first, before use)
 void initArchive(const string &path, directoryType type) {
 	_vfs_open(fullPath(type, path));
 }
@@ -529,31 +579,96 @@ void initArchive(const string &path, directoryType type) {
 // scan for vfs files and initialize all
 void initAllArchives(directoryType type) {
 	fileList fl = matchFiles(".*\\.gfs", "", type);
-	for (const auto &f : fl) {
-		std::cout << fullPath(type, f.fullPath()) << std::endl;
+	for (const auto &f : fl)
 		_vfs_open(fullPath(type, f.fullPath()));
-	}
 }
 
+// close file system
 void close() {
 	for (auto &v : _vfs)
 		_vfs_close(v.second);
 }
 
+// list files in given directory
 fileList listFiles(const string &path, directoryType type) {
+	bool vfs, valid;
+	string filepath, id;
+	std::tie(filepath, id, vfs, valid) = _resolveLocation(path, type, true);
+
+	if (vfs) {
+		fileList r;
+		_vfs_files_op(filepath, id,
+					  [&r, &id](auto &f) {
+						  string filePath = _vfs_extract_path(f.id);
+						  if (id == filePath)
+							  r.push_back({filePath, _vfs_extract_name(f.id), false});
+					  });
+		return r;
+	}
+
 	return _filterFileList(fullPath(type), path);
 }
 
+fileList listFilesFlat(const string &path, directoryType type) {
+	bool vfs, valid;
+	string filepath, id;
+	std::tie(filepath, id, vfs, valid) = _resolveLocation(path, type, true);
+
+	if (vfs) {
+		fileList r;
+		_vfs_files_op(filepath, id,
+					  [&r](auto &f) {
+						  r.push_back({_vfs_extract_path(f.id), _vfs_extract_name(f.id), false});
+					  });
+		return r;
+	}
+
+	return _filterFileListR(fullPath(type), path);
+}
+
+// find files resursively
 fileList findFiles(const string &name, const string &path, directoryType type) {
+	bool vfs, valid;
+	string filepath, id;
+	std::tie(filepath, id, vfs, valid) = _resolveLocation(path, type, true);
+
+	if (vfs) {
+		fileList r;
+		_vfs_files_op(filepath, id,
+					  [&r, &name](auto &f) {
+						  string fName = _vfs_extract_name(f.id);
+						  if (name == fName)
+							  r.push_back({_vfs_extract_path(f.id), fName, false});
+					  });
+		return r;
+	}
+
 	return _filterFileListR(fullPath(type), path,
 							[&name](fileInfo &fi) { return name == fi.name; });
 }
 
+// match files by regex recursively
 fileList matchFiles(const string &regex, const string &path, directoryType type) {
+	bool vfs, valid;
+	string filepath, id;
+	std::tie(filepath, id, vfs, valid) = _resolveLocation(path, type, true);
+
+	if (vfs) {
+		fileList r;
+		_vfs_files_op(filepath, id,
+					  [&r, &regex](auto &f) {
+						  string fName = _vfs_extract_name(f.id);
+						  if (std::regex_match(fName, std::regex(regex)))
+							  r.push_back({_vfs_extract_path(f.id), fName, false});
+					  });
+		return r;
+	}
+
 	return _filterFileListR(fullPath(type), path,
 							[&regex](fileInfo &fi) { return std::regex_match(fi.name, std::regex(regex)); });
 }
 
+// load file/archive file to stream
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
 stream load(const string &path, directoryType type) {
@@ -593,13 +708,14 @@ stream load(const string &path, directoryType type) {
 	stream s;
 	s.resize(size);
 	size_t readCount = std::fread(s.data(), size, 1, f);
-	gassert(readCount == 1, strs("read file failed: ", path));
+	gassert(size == 0 || readCount == 1, strs("read file failed: ", path));
 
 	std::fclose(f);
 	return s;
 }
 #pragma GCC diagnostic pop
 
+// save stream to file/archive file
 bool store(const string &path, stream &s, directoryType type, bool compress) {
 	bool vfs, valid;
 	string filepath, id;
@@ -615,7 +731,11 @@ bool store(const string &path, stream &s, directoryType type, bool compress) {
 
 	std::FILE *f = std::fopen(fullPath(type, path).c_str(), "wb+");
 	if (f == NULL) {
+		#ifdef GE_PLATFORM_WINDOWS
+		_mkdirtree(getPath(type), extractFilePath(_normalizePath(path)));
+		#else
 		_mkdirtree(getPath(type), extractFilePath(path));
+		#endif
 		f = std::fopen(fullPath(type, path).c_str(), "wb+");
 		if (f == NULL) {
 			gassert(false, strs("could not open file: ", path));
@@ -624,12 +744,13 @@ bool store(const string &path, stream &s, directoryType type, bool compress) {
 	}
 
 	size_t bytesWrite = std::fwrite(s.data(), s.size(), 1, f);
-	gassert(bytesWrite == 1, strs("write file failed: ", path));
+	gassert(s.size() == 0 || bytesWrite == 1, strs("write file failed: ", path));
 
 	std::fclose(f);
 	return bytesWrite == 1;
 }
 
+// remove file / archive file
 bool remove(const string &path, directoryType type) {
 	bool vfs, valid;
 	string filepath, id;
@@ -649,10 +770,11 @@ bool remove(const string &path, directoryType type) {
 	}
 
 	int err = std::remove(filepath.c_str());
-	gassert(err == 0, strs("error deleting file: ", path));
+	gassert(err == 0, strs("error deleting file: ", path, " errno: ", errno));
 	return err == 0;
 }
 
+// checks if archive file/file exists
 bool exists(const string &name, directoryType type) {
 	bool vfs, valid;
 	string filepath, id;
@@ -680,5 +802,4 @@ bool exists(const string &name, directoryType type) {
 // TODO: pools (buffer pool for decompression)
 // TODO: asserts and logs
 // TODO: extensions to compress (currently static)
-// TODO: move semantics for streams
-// TODO: integrate find, match with vfs...
+// TODO: directory support for vfs?
