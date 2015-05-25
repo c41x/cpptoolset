@@ -24,8 +24,11 @@ class stream
 public:
 	inline stream(size_t size = 0);
 	inline ~stream();
+	inline stream(stream &&s);
+	inline stream(const stream &s);
+	inline stream &operator=(stream &&s);
+	inline stream &operator=(const stream &s);
 
-	// TODO: move, copy operarors
 	// TODO: other vector fx
 
 	// vectors stuff

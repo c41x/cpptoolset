@@ -14,7 +14,31 @@ stream::stream(size_t size) {
 	_pos = 0;
 }
 
-stream::~stream() {}
+stream::~stream() { }
+
+stream::stream(stream &&s) {
+	_mem = std::move(s._mem);
+	_pos = std::move(s._pos);
+	s._pos = 0;
+}
+
+stream::stream(const stream &s) {
+	_mem = s._mem;
+	_pos = s._pos;
+}
+
+stream &stream::operator=(stream &&s) {
+	_mem = std::move(s._mem);
+	_pos = std::move(s._pos);
+	s._pos = 0;
+	return *this;
+}
+
+stream &stream::operator=(const stream &s) {
+	_mem = s._mem;
+	_pos = s._pos;
+	return *this;
+}
 
 size_t stream::read(void *data, size_t size) {
 	size_t n = std::min(_mem.size() - _pos, size);
