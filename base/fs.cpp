@@ -780,10 +780,8 @@ bool exists(const string &name, directoryType type) {
 	string filepath, id;
 	std::tie(filepath, id, vfs, valid) = _resolveLocation(name, type, true);
 
-	if (!valid) {
-		gassert(false, strs("could not resolve file location: ", name));
+	if (!valid)
 		return false;
-	}
 
 	if (vfs) {
 		auto v = _vfs.find(filepath);
@@ -793,7 +791,7 @@ bool exists(const string &name, directoryType type) {
 		return false;
 	}
 
-	return false;
+	return true;
 }
 
 }}}
@@ -803,3 +801,4 @@ bool exists(const string &name, directoryType type) {
 // TODO: asserts and logs
 // TODO: extensions to compress (currently static)
 // TODO: directory support for vfs?
+// TODO: removing vfs archive - removes index also
