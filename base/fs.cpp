@@ -860,3 +860,4 @@ bool exists(const string &name, directoryType type) {
 // TODO: extensions to compress (currently static)
 // TODO: directory support for vfs?
 // TODO: date support
+// TODO: global files support
