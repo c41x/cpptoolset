@@ -188,8 +188,10 @@ namespace granite{
 // assert
 #ifdef GE_DEBUG
 #define gassert(condition, message) if(!(condition)) { const string e = string("assertion failed(" #condition ") ") + GE_LOG_PREFIX_STRING + message; std::cerr << e << std::endl; logError(e); toggleBreakpoint; } else
+#define gassertl(condition, message) gassert(condition, message); logError(message);
 #else
 #define gassert(condition, message)
+#define gassertl(condition, message) logError(message);
 #endif
 
 //~
