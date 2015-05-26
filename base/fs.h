@@ -29,6 +29,7 @@ struct fileInfo {
 	string name;
 	bool dir;
 	string fullPath() const;
+	bool operator==(const fileInfo &f) const;
 };
 
 typedef std::vector<fileInfo> fileList;

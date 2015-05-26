@@ -20,6 +20,14 @@ namespace {
 string _dirProgramData, _dirUser, _dirWorkingDir;
 bool _preferVFS = false;
 
+const char *directoryTypeToStr(directoryType type) {
+	if (type == userData)
+		return "user data directory";
+	else if (type == programData)
+		return "program data directory";
+	else return "working directory";
+}
+
 // expand full path to directory
 string getPath(directoryType type) {
 	if (type == userData) return _dirUser;
@@ -205,7 +213,7 @@ struct vfs {
 	bool dirty;
 };
 
-// index map
+// index map (full path as key)
 std::map<string, vfs> _vfs;
 
 // get path from archive id
@@ -227,7 +235,6 @@ string _vfs_extract_name(const string &id) {
 // writes index to file (write pointer must be set before call)
 void _vfs_write_index(vfs &v) {
 	uint32 filesCount = v.files.size();
-	std::fwrite(&filesCount, sizeof(uint32), 1, v.f);
 
 	// write index to stream and write
 	stream s;
@@ -240,7 +247,9 @@ void _vfs_write_index(vfs &v) {
 		s.write(f.createTime);
 		s.write(f.modTime);
 	}
-	std::fwrite(s.data(), s.size(), 1, v.f);
+	size_t writeCount = std::fwrite(&filesCount, sizeof(uint32), 1, v.f);
+	writeCount += std::fwrite(s.data(), s.size(), 1, v.f);
+	gassertl(writeCount == 2, strs("could not write file index, errno: ", errno));
 
 	// trim file here
 	_resize(v.f, std::ftell(v.f));
@@ -259,43 +268,55 @@ void _vfs_open(const string path) {
 
 		// create and initialize new vfs
 		uint32 filesCount = 0;
-		auto &v = _vfs[path];
+		vfs v;
 		v.f = std::fopen(path.c_str(), "wb+");
+		if (v.f == NULL) {
+			gassertl(false, strs("vfs create: could not open file: ", path, "for write, errno: ", errno));
+			return;
+		}
 		v.indexOffset = 4 + sizeof(uint64);
 		v.dirty = false;
-		v.files.clear();
-		std::fwrite("GFS2", 4, 1, v.f);
-		std::fwrite(&v.indexOffset, sizeof(uint64), 1, v.f);
-		std::fwrite(&filesCount, sizeof(uint32), 1, v.f);
+		size_t chunksWritten = 0;
+		chunksWritten += std::fwrite("GFS2", 4, 1, v.f);
+		chunksWritten += std::fwrite(&v.indexOffset, sizeof(uint64), 1, v.f);
+		chunksWritten += std::fwrite(&filesCount, sizeof(uint32), 1, v.f);
+		gassertl(chunksWritten == 3, strs("vfs create: could not write to file: ", path, " errno: ", errno));
+		_vfs[path] = v;
 	}
 	else {
 		auto vt = _vfs.find(path);
 		if (vt == _vfs.end()) {
 			// create index
-			auto &v = _vfs[path];
 			uint32 filesCount = 0;
-			v.f = fopen(path.c_str(), "rb+");
+			vfs v;
+			stream s;
+			size_t size;
+			v.f = std::fopen(path.c_str(), "rb+");
+			if (v.f == NULL) {
+				gassert(false, strs("vfs open: could not open file: ", path, " errno: ", errno));
+				return;
+			}
 			v.dirty = false;
-			v.files.clear();
 
 			// read and validate header
 			char id[4];
-			std::fread(id, 4, 1, v.f);
-			if (id[0] != 'G' || id[1] != 'F' || id[2] != 'S' || id[3] != '2')
-				std::cout << "NOT AN VFS ARCHIVE!" << std::endl;
-			std::fread(&v.indexOffset, sizeof(uint64), 1, v.f);
+			if (1 != std::fread(id, 4, 1, v.f)) goto signalError;
+			if (id[0] != 'G' || id[1] != 'F' || id[2] != 'S' || id[3] != '2') {
+				std::fclose(v.f);
+				gassert(false, strs("vfs open: not an vfs archive: ", path));
+				return;
+			}
+			if (1 != std::fread(&v.indexOffset, sizeof(uint64), 1, v.f)) goto signalError;
 
 			// read file index in one chunk
-			std::fseek(v.f, 0, SEEK_END);
-			size_t size = std::ftell(v.f) - v.indexOffset;
-			std::fseek(v.f, v.indexOffset, SEEK_SET);
-			stream s;
+			if (0 != std::fseek(v.f, 0, SEEK_END)) goto signalError;
+			size = std::ftell(v.f) - v.indexOffset;
+			if (0 != std::fseek(v.f, v.indexOffset, SEEK_SET)) goto signalError;
 			s.resize(size);
-			std::fread(s.data(), size, 1, v.f);
+			if (1 != std::fread(s.data(), size, 1, v.f)) goto signalError;
 
 			// read index
 			s.read(filesCount);
-			std::cout << filesCount << std::endl;
 			while (filesCount-- > 0) {
 				vfs_file fi;
 				s.read(fi.id);
@@ -306,10 +327,20 @@ void _vfs_open(const string path) {
 				s.read(fi.modTime);
 				v.files.push_back(fi);
 			}
+
+			// store index in map
+			_vfs[path] = v;
+			return;
+
+			// print error to log
+			signalError:
+			std::fclose(v.f);
+			gassertl(false, strs("vfs open: error reading file: ", path, " errno: ", errno));
+			return;
 		}
 		else {
 			// already in index - reopen if not opened
-			if (vt->second.f == nullptr)
+			if (vt->second.f == NULL)
 				vt->second.f = fopen(path.c_str(), "rb+");
 		}
 	}
@@ -323,12 +354,14 @@ void _vfs_close(vfs &v) {
 
 		// update header
 		std::fseek(v.f, 4, SEEK_SET);
-		std::fwrite(&v.indexOffset, sizeof(uint32), 1, v.f);
+		if (1 != std::fwrite(&v.indexOffset, sizeof(uint32), 1, v.f)) {
+			gassert(false, strs("could not close vfs: write failed, errno: ", errno));
+		}
 		v.dirty = false;
 	}
 
-	fclose(v.f);
-	v.f = nullptr;
+	std::fclose(v.f);
+	v.f = NULL;
 }
 
 // search for file id in index
@@ -368,6 +401,7 @@ void _vfs_read(vfs &v, const string &id, stream &s) {
 			std::fread(s.data() + offset, f->size, 1, v.f);
 		}
 	}
+	else logError(strs("vfs read: file: ", id, " not found"));
 }
 
 // remove file from archive and index
@@ -411,7 +445,7 @@ bool _vfs_remove(vfs &v, const string &id) {
 	}
 	else {
 		// report error
-		log::log(log::logLevelError, strs("could not delete: ", id, " from vfs - file not present in index"));
+		logError(strs("could not delete: ", id, " from vfs - file not present in index"));
 		return false;
 	}
 }
@@ -433,17 +467,23 @@ bool _vfs_add(vfs &v, const string &id, const stream &s, bool compress = true) {
 		stream sc(LZ4_compressBound(s.size()));
 		uint64 compressedSize = LZ4_compress_default((const char*)s.data(), (char*)sc.data(), s.size(), sc.size());
 		int64 realSize = s.size();
-		std::fwrite(&realSize, sizeof(int64), 1, v.f);
-		std::fwrite(sc.data(), compressedSize, 1, v.f);
+		size_t chunksWritten = 0;
+		chunksWritten = std::fwrite(&realSize, sizeof(int64), 1, v.f);
+		chunksWritten += std::fwrite(sc.data(), compressedSize, 1, v.f);
+		if (chunksWritten != 2) goto writeError;
 		v.files.push_back({id, v.indexOffset, compressedSize + sizeof(int64), 1, createTime, (uint64)std::time(0)});
 	}
 	else {
-		std::fwrite(s.data(), s.size(), 1, v.f);
+		if (1 != std::fwrite(s.data(), s.size(), 1, v.f)) goto writeError;
 		v.files.push_back({id, v.indexOffset, s.size(), 0, createTime, (uint64)std::time(0)});
 	}
 	v.indexOffset = std::ftell(v.f);
 	v.dirty = true;
 	return true;
+
+	writeError:
+	gassertl(false, strs("error: could not write file to vfs: ", id, " errno: ", errno));
+	return false;
 }
 
 // returns full path to file, vfs id, is vfs, is valid
@@ -505,6 +545,10 @@ string fileInfo::fullPath() const {
 	return path == "" ? name : (path + '/' + name);
 }
 
+bool fileInfo::operator==(const fileInfo &f) const {
+	return f.path == path && f.name == name && f.dir == dir;
+}
+
 string getExecutableDirectory() {
 	#ifdef GE_PLATFORM_WINDOWS
 	char res[MAX_PATH];
@@ -516,7 +560,7 @@ string getExecutableDirectory() {
 	#else
 	#error "Not implemented"
 	#endif
-	gassert(false, "could not find executable directory");
+	gassertl(false, "could not find executable directory");
 	return "";
 }
 
@@ -530,7 +574,7 @@ string getUserDirectory() {
 	return pw->pw_dir;
 	#else
 	#endif
-	gassert(false, "could not find user directory");
+	gassertl(false, "could not find user directory");
 	return "";
 }
 
@@ -543,9 +587,10 @@ bool open(const string &path, directoryType type) {
 			_dirProgramData = path;
 		else if (type == workingDirectory)
 			_dirWorkingDir = path;
+		logInfo(strs("initialized ", directoryTypeToStr(type), ": ", path));
 		return true;
 	}
-	gassert(false, strs("specified path does not exists: ", path));
+	gassertl(false, strs("specified path does not exists: ", path));
 	return false;
 }
 
@@ -587,6 +632,7 @@ void initAllArchives(directoryType type) {
 void close() {
 	for (auto &v : _vfs)
 		_vfs_close(v.second);
+	_vfs.clear();
 }
 
 // list files in given directory
@@ -602,6 +648,11 @@ fileList listFiles(const string &path, directoryType type) {
 						  string filePath = _vfs_extract_path(f.id);
 						  if (id == filePath)
 							  r.push_back({filePath, _vfs_extract_name(f.id), false});
+						  else {
+							  fileInfo fi = {_vfs_extract_path(filePath), _vfs_extract_name(filePath), true};
+							  if (id == fi.path && std::count(r.begin(), r.end(), fi) == 0)
+								  r.push_back(fi);
+						  }
 					  });
 		return r;
 	}
@@ -617,8 +668,10 @@ fileList listFilesFlat(const string &path, directoryType type) {
 	if (vfs) {
 		fileList r;
 		_vfs_files_op(filepath, id,
-					  [&r](auto &f) {
-						  r.push_back({_vfs_extract_path(f.id), _vfs_extract_name(f.id), false});
+					  [&r, &id](auto &f) {
+						  fileInfo fi = {_vfs_extract_path(f.id), _vfs_extract_name(f.id), false};
+						  if (!f.id.compare(0, id.size(), id) && std::count(r.begin(), r.end(), fi) == 0)
+							  r.push_back(fi);
 					  });
 		return r;
 	}
@@ -669,8 +722,6 @@ fileList matchFiles(const string &regex, const string &path, directoryType type)
 }
 
 // load file/archive file to stream
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-variable"
 stream load(const string &path, directoryType type) {
 	bool vfs, valid;
 	string filepath, id;
@@ -697,7 +748,7 @@ stream load(const string &path, directoryType type) {
 	// it's regular file - just load
 	std::FILE *f = std::fopen(filepath.c_str(), "rb");
 	if (f == NULL) {
-		gassert(false, strs("could not open file: ", path));
+		gassertl(false, strs("could not open file: ", path, " errno:", errno));
 		return stream();
 	}
 
@@ -708,12 +759,11 @@ stream load(const string &path, directoryType type) {
 	stream s;
 	s.resize(size);
 	size_t readCount = std::fread(s.data(), size, 1, f);
-	gassert(size == 0 || readCount == 1, strs("read file failed: ", path));
+	gassertl(readCount == 1 || size == 0, strs("read file failed: ", path, " errno: ", errno));
 
 	std::fclose(f);
 	return s;
 }
-#pragma GCC diagnostic pop
 
 // save stream to file/archive file
 bool store(const string &path, stream &s, directoryType type, bool compress) {
@@ -723,9 +773,9 @@ bool store(const string &path, stream &s, directoryType type, bool compress) {
 
 	if (vfs) {
 		auto v = _vfs.find(filepath);
-		gassert(v != _vfs.end(), strs("vfs index not found: ", path));
 		if (v != _vfs.end())
 			return _vfs_add(v->second, id, s, compress);
+		gassertl(false, strs("could not write: ", path, " to vfs, probably archive not initialized"));
 		return false;
 	}
 
@@ -738,13 +788,15 @@ bool store(const string &path, stream &s, directoryType type, bool compress) {
 		#endif
 		f = std::fopen(fullPath(type, path).c_str(), "wb+");
 		if (f == NULL) {
-			gassert(false, strs("could not open file: ", path));
+			gassertl(false, strs("could not open file: ", path, " errno:", errno));
 			return false;
 		}
 	}
 
 	size_t bytesWrite = std::fwrite(s.data(), s.size(), 1, f);
-	gassert(s.size() == 0 || bytesWrite == 1, strs("write file failed: ", path));
+	if (s.size() != 0 && bytesWrite != 1) {
+		gassertl(false, strs("write file failed: ", path, " errno: ", errno));
+	}
 
 	std::fclose(f);
 	return bytesWrite == 1;
@@ -757,7 +809,7 @@ bool remove(const string &path, directoryType type) {
 	std::tie(filepath, id, vfs, valid) = _resolveLocation(path, type, true);
 
 	if (!valid) {
-		gassert(false, strs("could not resolve file location: ", path));
+		gassertl(false, strs("could not resolve file location: ", path));
 		return false;
 	}
 
@@ -770,7 +822,14 @@ bool remove(const string &path, directoryType type) {
 	}
 
 	int err = std::remove(filepath.c_str());
-	gassert(err == 0, strs("error deleting file: ", path, " errno: ", errno));
+	if (err != 0) {
+		gassertl(false, strs("error deleting file: ", filepath, " errno: ", errno));
+	}
+
+	// remove archive index also
+	auto v = _vfs.find(filepath);
+	if (v != _vfs.end())
+		_vfs.erase(v);
 	return err == 0;
 }
 
@@ -798,7 +857,6 @@ bool exists(const string &name, directoryType type) {
 
 // TODO: rewrite vfs file by replace, not erase & add
 // TODO: pools (buffer pool for decompression)
-// TODO: asserts and logs
 // TODO: extensions to compress (currently static)
 // TODO: directory support for vfs?
-// TODO: removing vfs archive - removes index also
+// TODO: date support
