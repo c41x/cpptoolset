@@ -13,6 +13,7 @@
 #pragma once
 #include "includes.h"
 #include "log.h"
+#include "string.h"
 
 namespace granite { namespace base {
 
@@ -43,6 +44,7 @@ public:
 
 	// rw pointer stuff
 	inline size_t read(void *data, size_t size);
+	inline size_t read_const(void *data, size_t size) const;
 	inline void write(const void *data, size_t size);
 	inline void setPosFromBegin(size_t bytes);
 	inline void setPosFromEnd(size_t bytes);
