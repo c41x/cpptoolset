@@ -146,8 +146,8 @@ fileList _filterFileList(const string &basePath,
 		fileInfo fi = { path,
 						ent->d_name,
 						(st.st_mode & S_IFDIR) != 0,
-						st.st_mtime,
-						st.st_ctime };
+						(uint64)st.st_mtime,
+						(uint64)st.st_ctime };
 		if (!pred || pred(fi))
 			r.push_back(fi);
 	}
@@ -519,8 +519,13 @@ std::tuple<string, string, bool, bool> _resolveLocation(const string &ipath, dir
 
 	// resolve global file
 	if (_allowGlobal && isGlobal(ipath)) {
+		#ifdef GE_PLATFORM_WINDOWS
 		if ((mustExist && _exists_file(_normalizePath(ipath))) || !mustExist)
 			return std::make_tuple(_normalizePath(ipath), "", false, true);
+		#else
+		if ((mustExist && _exists_file(ipath)) || !mustExist)
+			return std::make_tuple(ipath, "", false, true);
+		#endif
 	}
 
 	auto resolveNormalFile = [&r, &type, &ipath, &mustExist]() {
