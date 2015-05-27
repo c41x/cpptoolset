@@ -107,7 +107,7 @@ template <> inline void stream::write(const string &s) {
 }
 
 //- string conversions
-template<> inline size_t estimateSize(stream s) {
+template<> inline size_t estimateSize(const stream &s) {
 	return s.size();
 }
 

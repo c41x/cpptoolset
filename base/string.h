@@ -91,7 +91,7 @@ string changeExt(const string &s, const string &ext);
 string cutLongPath(const string &s);
 
 // required space for string estimator
-template <typename T> size_t estimateSize(T v) { return T::SFINAE_template_not_specialized_estimateSize; }
+template <typename T> size_t estimateSize(const T &v) { return T::SFINAE_template_not_specialized_estimateSize; }
 
 // testing functions - returns if given string can be converted to type T
 template <typename T> bool strIs(const stringRange &) { return T::SFINAE_template_not_specialized_strIs; }
@@ -103,7 +103,7 @@ template<typename T> T fromStr(const string &s) { return fromStr<T>(stringRange(
 
 // conversions: from T to string
 template <typename T> stringRange toStr(const T &, string &os) { return T::SFINAE_template_not_specialized_toStr; }
-template <typename T> string toStr(const T &t) { string s; s.resize(estimateSize<T>(t)); return toStr<T>(t, s).str(); }
+template <typename T> string toStr(const T &t) { string s; s.resize(estimateSize(t)); return toStr(t, s).str(); }
 
 // string building
 template<typename... Args> string strs(const Args&... args);

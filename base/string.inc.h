@@ -229,23 +229,22 @@ bool stringRange::operator==(const string &s) const {
 //- size estimator -
 // required space for string estimator for basic types + variadic version for multiple args
 inline size_t estimateSize() { return 0; } // just to terminate variadic
-template<> inline size_t estimateSize(char) { return 1; }
-template<> inline size_t estimateSize(uint8) { return 3; }
-template<> inline size_t estimateSize(int16) { return 6; }
-template<> inline size_t estimateSize(uint16) { return 5; }
-template<> inline size_t estimateSize(int32) { return 11; }
-template<> inline size_t estimateSize(uint32) { return 10; }
-template<> inline size_t estimateSize(int64) { return 21; }
-template<> inline size_t estimateSize(uint64) { return 20; }
-template<> inline size_t estimateSize(float) { return 2 + floatPrecision + 10; }
-template<> inline size_t estimateSize(double) { return 2 + floatPrecision + 10; }
-template<> inline size_t estimateSize(bool v) { return v ? 4 : 5; }
+template<> inline size_t estimateSize(const char &) { return 1; }
+template<> inline size_t estimateSize(const uint8 &) { return 3; }
+template<> inline size_t estimateSize(const int16 &) { return 6; }
+template<> inline size_t estimateSize(const uint16 &) { return 5; }
+template<> inline size_t estimateSize(const int32 &) { return 11; }
+template<> inline size_t estimateSize(const uint32 &) { return 10; }
+template<> inline size_t estimateSize(const int64 &) { return 21; }
+template<> inline size_t estimateSize(const uint64 &) { return 20; }
+template<> inline size_t estimateSize(const float &) { return 2 + floatPrecision + 10; }
+template<> inline size_t estimateSize(const double &) { return 2 + floatPrecision + 10; }
+template<> inline size_t estimateSize(const bool & v) { return v ? 4 : 5; }
 template<> inline size_t estimateSize(const string &v) { return v.size(); }
-template<> inline size_t estimateSize(string v) { return v.size(); }
-template<> inline size_t estimateSize(const char * const v) { return strlen(v); }
-template<> inline size_t estimateSize(long unsigned int) { return 20; }
-template<> inline size_t estimateSize(long int) { return 21; }
-template<> inline size_t estimateSize(stringRange s) { return s.count(); }
+template<> inline size_t estimateSize(const long unsigned int &) { return 20; }
+template<> inline size_t estimateSize(const long int &) { return 21; }
+template<> inline size_t estimateSize(const stringRange &s) { return s.count(); }
+inline size_t estimateSize(const char * const v) { return strlen(v); }
 
 template <typename T, typename... Args> size_t estimateSize(const T &v, const Args&... args) {
 	return estimateSize(args...) + estimateSize(v);

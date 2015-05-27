@@ -19,11 +19,11 @@
 
 namespace granite { namespace base {
 
-template<> inline size_t estimateSize(vec4f) {
+template<> inline size_t estimateSize(const vec4f &) {
 	return estimateSize(float()) * 4 + 3;
 }
 
-template<> inline size_t estimateSize(vec) {
+template<> inline size_t estimateSize(const vec &) {
 	return estimateSize(float()) * 4 + 3;
 }
 
