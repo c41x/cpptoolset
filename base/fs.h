@@ -28,6 +28,7 @@ struct fileInfo {
 	string path;
 	string name;
 	bool dir;
+	uint64 createTime, modTime;
 	string fullPath() const;
 	bool operator==(const fileInfo &f) const;
 };

@@ -110,6 +110,12 @@ fileList _filterFileList(const string &basePath,
 	fileList r;
 
 	#ifdef GE_PLATFORM_WINDOWS
+	auto toUnixTime = [](FILETIME ft) -> uint64 {
+		ULARGE_INTEGER li;
+		li.LowPart = ft.dwLowDateTime;
+		li.HighPart = ft.dwHighDateTime;
+		return li.QuadPart / 10000000 - 11644473600LL;
+	};
 	WIN32_FIND_DATA fd;
 	HANDLE hf;
 	if ((hf = FindFirstFile((basePath + path + (path == "" ? "*" : "\\*")).c_str(), &fd)) == INVALID_HANDLE_VALUE)
@@ -119,7 +125,9 @@ fileList _filterFileList(const string &basePath,
 			continue;
 		fileInfo fi = { path,
 						fd.cFileName,
-						(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0 };
+						(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0,
+						toUnixTime(fd.ftCreationTime),
+						toUnixTime(fd.ftLastWriteTime) };
 		findAndReplace(fi.path, "\\", "/");
 		if (!pred || pred(fi))
 			r.push_back(fi);
@@ -137,7 +145,9 @@ fileList _filterFileList(const string &basePath,
             continue;
 		fileInfo fi = { path,
 						ent->d_name,
-						(st.st_mode & S_IFDIR) != 0 };
+						(st.st_mode & S_IFDIR) != 0,
+						st.st_mtime,
+						st.st_ctime };
 		if (!pred || pred(fi))
 			r.push_back(fi);
 	}
@@ -679,9 +689,9 @@ fileList listFiles(const string &path, directoryType type) {
 					  [&r, &id](auto &f) {
 						  string filePath = _vfs_extract_path(f.id);
 						  if (id == filePath)
-							  r.push_back({filePath, _vfs_extract_name(f.id), false});
+							  r.push_back({filePath, _vfs_extract_name(f.id), false, f.createTime, f.modTime});
 						  else {
-							  fileInfo fi = {_vfs_extract_path(filePath), _vfs_extract_name(filePath), true};
+							  fileInfo fi = {_vfs_extract_path(filePath), _vfs_extract_name(filePath), true, f.createTime, f.modTime};
 							  if (id == fi.path && std::count(r.begin(), r.end(), fi) == 0)
 								  r.push_back(fi);
 						  }
@@ -701,7 +711,7 @@ fileList listFilesFlat(const string &path, directoryType type) {
 		fileList r;
 		_vfs_files_op(filepath, id,
 					  [&r, &id](auto &f) {
-						  fileInfo fi = {_vfs_extract_path(f.id), _vfs_extract_name(f.id), false};
+						  fileInfo fi = {_vfs_extract_path(f.id), _vfs_extract_name(f.id), false, f.createTime, f.modTime};
 						  if (!f.id.compare(0, id.size(), id) && std::count(r.begin(), r.end(), fi) == 0)
 							  r.push_back(fi);
 					  });
@@ -723,7 +733,7 @@ fileList findFiles(const string &name, const string &path, directoryType type) {
 					  [&r, &name](auto &f) {
 						  string fName = _vfs_extract_name(f.id);
 						  if (name == fName)
-							  r.push_back({_vfs_extract_path(f.id), fName, false});
+							  r.push_back({_vfs_extract_path(f.id), fName, false, f.createTime, f.modTime});
 					  });
 		return r;
 	}
@@ -744,7 +754,7 @@ fileList matchFiles(const string &regex, const string &path, directoryType type)
 					  [&r, &regex](auto &f) {
 						  string fName = _vfs_extract_name(f.id);
 						  if (std::regex_match(fName, std::regex(regex)))
-							  r.push_back({_vfs_extract_path(f.id), fName, false});
+							  r.push_back({_vfs_extract_path(f.id), fName, false, f.createTime, f.modTime});
 					  });
 		return r;
 	}
@@ -889,5 +899,3 @@ bool exists(const string &name, directoryType type) {
 
 // TODO: rewrite vfs file by replace, not erase & add
 // TODO: pools (buffer pool for decompression)
-// TODO: directory support for vfs?
-// TODO: date support
