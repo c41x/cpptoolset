@@ -844,6 +844,11 @@ bool store(const string &path, stream &s, directoryType type, bool compress) {
 	return bytesWrite == 1;
 }
 
+// move version
+bool store(const string &path, stream &&s, directoryType type, bool compress) {
+	return store(path, std::forward<stream&>(s), type, compress);
+}
+
 // remove file / archive file
 bool remove(const string &path, directoryType type) {
 	bool vfs, valid;
