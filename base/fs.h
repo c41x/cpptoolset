@@ -39,6 +39,8 @@ string getUserDirectory();
 
 bool open(const string &path, directoryType type = workingDirectory);
 void preferArchives(bool doPrefer);
+void doNotCompress(std::vector<string> extensions);
+void allowGlobalPaths(bool doAllow);
 void initArchive(const string &path, directoryType type = workingDirectory);
 void initAllArchives(directoryType type = workingDirectory);
 void flush();

@@ -19,6 +19,8 @@ namespace granite { namespace base { namespace fs {
 namespace {
 string _dirProgramData, _dirUser, _dirWorkingDir;
 bool _preferVFS = false;
+bool _allowGlobal = true;
+std::vector<string> _doNotCompress = {"png", "jpg", "ogg", "mp3", "zip", "7z", "rar", "gfs", "flac"};
 
 const char *directoryTypeToStr(directoryType type) {
 	if (type == userData)
@@ -26,6 +28,15 @@ const char *directoryTypeToStr(directoryType type) {
 	else if (type == programData)
 		return "program data directory";
 	else return "working directory";
+}
+
+// checks if given path is global
+bool isGlobal(const string &s) {
+	#ifdef GE_PLATFORM_WINDOWS
+	return s.size() > 1 && s[1] == ':';
+	#else
+	return s.size() > 0 && s[0] == '/';
+	#endif
 }
 
 // expand full path to directory
@@ -461,6 +472,12 @@ bool _vfs_add(vfs &v, const string &id, const stream &s, bool compress = true) {
 		createTime = f->createTime; // preserve create time
 	}
 
+	// disable compression for some file types
+	if (compress) {
+		if (std::count(_doNotCompress.begin(), _doNotCompress.end(), extractExt(id)) > 0)
+			compress = false;
+	}
+
 	// create file
 	std::fseek(v.f, v.indexOffset, SEEK_SET);
 	if (compress) {
@@ -489,6 +506,12 @@ bool _vfs_add(vfs &v, const string &id, const stream &s, bool compress = true) {
 // returns full path to file, vfs id, is vfs, is valid
 std::tuple<string, string, bool, bool> _resolveLocation(const string &ipath, directoryType type, bool mustExist) {
 	std::tuple<string, string, bool, bool> r;
+
+	// resolve global file
+	if (_allowGlobal && isGlobal(ipath)) {
+		if ((mustExist && _exists_file(_normalizePath(ipath))) || !mustExist)
+			return std::make_tuple(_normalizePath(ipath), "", false, true);
+	}
 
 	auto resolveNormalFile = [&r, &type, &ipath, &mustExist]() {
 		if (!mustExist || _exists_file(fullPath(type, ipath))) {
@@ -597,6 +620,15 @@ bool open(const string &path, directoryType type) {
 // resolving file rule searches for archives vs. regular files first
 void preferArchives(bool preferVFS) {
 	_preferVFS = preferVFS;
+}
+
+// setup extensions
+void doNotCompress(std::vector<string> extensions) {
+	_doNotCompress = extensions;
+}
+
+void allowGlobalPaths(bool doAllow) {
+	_allowGlobal = doAllow;
 }
 
 // flush all archives (writes file index for all archives)
@@ -857,7 +889,5 @@ bool exists(const string &name, directoryType type) {
 
 // TODO: rewrite vfs file by replace, not erase & add
 // TODO: pools (buffer pool for decompression)
-// TODO: extensions to compress (currently static)
 // TODO: directory support for vfs?
 // TODO: date support
-// TODO: global files support
