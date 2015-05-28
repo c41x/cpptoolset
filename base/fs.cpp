@@ -654,17 +654,22 @@ string getUserDirectory() {
 
 // initialize fs
 bool open(const string &path, directoryType type) {
-	if (_exists(path)) {
+	#ifdef GE_PLATFORM_WINDOWS
+	string normalizedPath = _normalizePath(path);
+	#else
+	string normalizedPath = path;
+	#endif
+	if (_exists(normalizedPath)) {
 		if (type == userData)
-			_dirUser = path;
+			_dirUser = normalizedPath;
 		else if (type == programData)
-			_dirProgramData = path;
+			_dirProgramData = normalizedPath;
 		else if (type == workingDirectory)
-			_dirWorkingDir = path;
-		logInfo(strs("initialized ", directoryTypeToStr(type), ": ", path));
+			_dirWorkingDir = normalizedPath;
+		logInfo(strs("initialized ", directoryTypeToStr(type), ": ", normalizedPath));
 		return true;
 	}
-	gassertl(false, strs("specified path does not exists: ", path));
+	gassertl(false, strs("specified path does not exists: ", normalizedPath));
 	return false;
 }
 
