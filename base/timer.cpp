@@ -21,6 +21,7 @@ bool timer::init(){
 		// TODO: windows errors codes
 		// TODO: add frequency to log
 		// TODO: strings utilities
+		// TODO: initialize once
 		return false;
 	}
 #elif defined(GE_PLATFORM_LINUX)

@@ -232,6 +232,7 @@ struct vfs {
 	uint64 indexOffset;
 	std::FILE *f;
 	bool dirty;
+	std::vector<std::tuple<uint64, uint64>> removeQueue; // <position, size>
 };
 
 // index map (full path as key)
@@ -367,8 +368,72 @@ void _vfs_open(const string path) {
 	}
 }
 
-// close file handle (leaves file index intact)
+// calculates fragmented data size
+uint64 _vfs_fragmented_size(vfs &v) {
+	return std::accumulate(v.removeQueue.begin(), v.removeQueue.end(), uint64(0),
+						   [](const auto &acc, const auto &e) {
+							   return acc + std::get<1>(e);
+						   });
+}
+
+// defragment file (collapse holes left by files removal)
+void _vfs_defragment(vfs &v) {
+	if (v.removeQueue.size() > 1) {
+		// sort
+		std::sort(v.removeQueue.begin(), v.removeQueue.end(),
+				  [](const auto &a, const auto &b) {
+					  return std::get<0>(a) < std::get<0>(b);
+				  });
+
+		// remove gaps
+		for (size_t i = 0; i < v.removeQueue.size() - 1; ) {
+			if (std::get<0>(v.removeQueue[i]) + std::get<1>(v.removeQueue[i]) == std::get<0>(v.removeQueue[i + 1])) {
+				std::get<1>(v.removeQueue[i]) += std::get<1>(v.removeQueue[i + 1]);
+				v.removeQueue.erase(v.removeQueue.begin() + i + 1);
+			}
+			else ++i;
+		}
+	}
+
+	// move file parts
+	stream buff(1024 * 1024);
+	size_t size = v.removeQueue.size();
+	for (size_t i = 0; i < size; ++i) {
+		uint64 to = std::get<0>(v.removeQueue[i]);
+		uint64 from = to + std::get<1>(v.removeQueue[i]);
+		uint64 count = i + 1 == size ? -1 : (std::get<0>(v.removeQueue[i + 1]) - from);
+		uint64 readed = 1;
+
+		while (readed != 0) {
+			std::fseek(v.f, from, SEEK_SET);
+			readed = std::fread(buff.data(), 1, std::min(buff.size(), count), v.f);
+			std::fseek(v.f, to, SEEK_SET);
+			std::fwrite(buff.data(), readed, 1, v.f);
+			to += readed;
+			from += readed;
+			count -= readed;
+		}
+
+		uint64 fPos = std::get<0>(v.removeQueue[i]);
+		uint64 fSize = std::get<1>(v.removeQueue[i]);
+
+		// update file index
+		for (auto &fi : v.files) {
+			if (fi.position > fPos)
+				fi.position -= fSize;
+		}
+
+		// update index offset
+		v.indexOffset -= fSize;
+	}
+
+	// clear queue
+	v.removeQueue.clear();
+}
+
+// close file handle
 void _vfs_close(vfs &v) {
+	_vfs_defragment(v);
 	if (v.dirty) {
 		std::fseek(v.f, v.indexOffset, SEEK_SET);
 		_vfs_write_index(v);
@@ -429,36 +494,15 @@ void _vfs_read(vfs &v, const string &id, stream &s) {
 bool _vfs_remove(vfs &v, const string &id) {
 	auto f = _vfs_find_file(v, id);
 	if (f != v.files.end()) {
-		// erase data from file
-		stream buf(1024); // 1024 bytes buffer
-		size_t readed = 1;
-		size_t to = f->position, from = f->position + f->size;
-		uint64 fPos = f->position;
-		uint64 fSize = f->size;
-		gassert(from > to, "error removing file: file index corrupted");
-		while (readed != 0) {
-			std::fseek(v.f, from, SEEK_SET);
-			readed = std::fread(buf.data(), 1, buf.size(), v.f);
-			std::fseek(v.f, to, SEEK_SET);
-			std::fwrite(buf.data(), readed, 1, v.f);
-			to += readed;
-			from += readed;
-		}
-
-		// truncate file
-		_resize(v.f, to);
+		// add file to remove queue
+		v.removeQueue.push_back(std::make_tuple(f->position, f->size));
 
 		// remove from index
 		v.files.erase(f);
 
-		// update file index
-		for (auto &fi : v.files) {
-			if (fi.position > fPos)
-				fi.position -= fSize;
-		}
-
-		// update index offset
-		v.indexOffset -= fSize;
+		// if fragmented size exceeds given limit -> do deframentation
+		if (_vfs_fragmented_size(v) > 1024 * 1024 * 100) // 100MB
+			_vfs_defragment(v);
 
 		// mark index as dirty
 		v.dirty = true;
@@ -907,5 +951,4 @@ bool exists(const string &name, directoryType type) {
 
 }}}
 
-// TODO: rewrite vfs file by replace, not erase & add
 // TODO: pools (buffer pool for decompression)
