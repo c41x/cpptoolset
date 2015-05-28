@@ -397,6 +397,7 @@ void _vfs_defragment(vfs &v) {
 
 	// move file parts
 	stream buff(1024 * 1024);
+	uint64 totalRemoved = 0;
 	size_t size = v.removeQueue.size();
 	for (size_t i = 0; i < size; ++i) {
 		uint64 to = std::get<0>(v.removeQueue[i]);
@@ -416,19 +417,25 @@ void _vfs_defragment(vfs &v) {
 
 		uint64 fPos = std::get<0>(v.removeQueue[i]);
 		uint64 fSize = std::get<1>(v.removeQueue[i]);
+		totalRemoved += fSize;
 
 		// update file index
 		for (auto &fi : v.files) {
 			if (fi.position > fPos)
 				fi.position -= fSize;
 		}
-
-		// update index offset
-		v.indexOffset -= fSize;
 	}
 
 	// clear queue
 	v.removeQueue.clear();
+
+	// update index offset
+	v.indexOffset -= totalRemoved;
+
+	// truncate file
+	std::fseek(v.f, 0, SEEK_END);
+	size_t currentSize = std::ftell(v.f);
+	_resize(v.f, currentSize - totalRemoved);
 }
 
 // close file handle
