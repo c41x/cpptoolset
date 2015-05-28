@@ -177,21 +177,6 @@ fileList _filterFileListR(const string &basePath,
 	return r;
 }
 
-
-//- buffer pool
-/*
-const _minPool = 2;
-const _poolSize = 1024 * 1024 * 16; // 16MB
-std::vector<stream> _spool_s;
-std::vector<size_t> _spool_free;
-
-stream &_spool_get() {
-}
-
-void _spool_free(stream &s) {
-	_spool.free
-}
-*/
 //- vfs
 /* gfs file structure
 // header
@@ -957,5 +942,3 @@ bool exists(const string &name, directoryType type) {
 }
 
 }}}
-
-// TODO: pools (buffer pool for decompression)
