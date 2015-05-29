@@ -11,6 +11,9 @@ My C++ common libs:
 - LISP interpreter
 - random number generators
 - perlin noise generators, FBM generators
+- file system utilities
+- streams
+- VFS / LZ4 compression
 
 Requirements:
 - Platform: Windows / Linux
