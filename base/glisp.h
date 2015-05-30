@@ -51,12 +51,7 @@ public:
 		};
 		float f;
 		int64 ii;
-		union alignas(16) {
-			struct{
-				float x, y, z, w;
-			};
-			float xmm[4];
-		};
+		float v4[4];
 	};
 
 	cell() {}
@@ -66,8 +61,8 @@ public:
 	cell(float _f) : type(typeFloat), f(_f) {}
 	cell(int _i) : type(typeInt), i(_i) {}
 	cell(int64 _i64) : type(typeInt64), ii(_i64) {}
-	cell(vec _vec) : type(typeVector) { memcpy(xmm, &_vec, sizeof(xmm)); }
-	cell(vec4f _vec) : type(typeVector) { memcpy(xmm, &_vec, sizeof(xmm)); }
+	cell(vec _vec) : type(typeVector) { vec4f _v = _vec; v4[0] = _v.data[0]; v4[1] = _v.data[1]; v4[2] = _v.data[2]; v4[3] = _v.data[3]; }
+	cell(vec4f _v) : type(typeVector) { v4[0] = _v.data[0]; v4[1] = _v.data[1]; v4[2] = _v.data[2]; v4[3] = _v.data[3]; }
 	cell(const string &_s) : type(typeString), s(_s) {}
 
 	const string getStr() const;

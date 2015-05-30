@@ -127,7 +127,7 @@ const string cell::getStr() const {
 	else if (type == typeIdentifier || type == typeString) return s;
 	else if (type == typeInt64) return strs(ii);
 	else if (type == typeFloat) return strs(f);
-	else if (type == typeVector) return toStr(vec4f(xmm));
+	else if (type == typeVector) return toStr(vec4f(v4));
 	return "";
 }
 
@@ -613,7 +613,7 @@ string getState(lispState &s) {
 			out += strs(e.i, " ");
 		}
 		else if (e.type == cell::typeVector) {
-			out += strs("/", vec4f(e.xmm), "/ ");
+			out += strs("/", vec4f(e.v4), "/ ");
 		}
 		else if (e.type == cell::typeDetach) {
 			out += strs("[detach:", e.i, ":", e.j, ":",
