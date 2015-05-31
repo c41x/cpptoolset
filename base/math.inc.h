@@ -543,19 +543,19 @@ inline quaternion::quaternion(float w, float x, float y, float z) {
 inline quaternion::quaternion(const vec &_wxyz) : wxyz(_wxyz) {}
 
 inline quaternion::quaternion(const matrix &rotationMatrix) {
-
+	//TODO: -
 }
 
 inline quaternion::quaternion(const vec &ax, const vec &ay, const vec &az) {
-
+	//TODO: -
 }
 
 inline quaternion::~quaternion() {}
 
-inline quaternion &quaternion::operator*(float s) { return *this; }
-inline quaternion &quaternion::operator*(const quaternion &q) { return *this; }
-inline quaternion quaternion::operator+(const quaternion &q) const { return quaternion(); }
-inline quaternion quaternion::operator-(const quaternion &q) const { return quaternion(); }
+inline quaternion &quaternion::operator*(float s) { //TODO: -return *this; }
+inline quaternion &quaternion::operator*(const quaternion &q) { return *this; }//TODO: -
+inline quaternion quaternion::operator+(const quaternion &q) const { return quaternion(); }//TODO: -
+inline quaternion quaternion::operator-(const quaternion &q) const { return quaternion(); }//TODO: -
 
 inline quaternion quaternion::operator-() const {
 	quaternion q(*this);
@@ -563,6 +563,7 @@ inline quaternion quaternion::operator-() const {
 }
 
 inline quaternion::operator matrix() const {
+	//TODO: -
 	return matrix();
 }
 
@@ -572,6 +573,7 @@ inline quaternion &quaternion::operator()(float w, float x, float y, float z) {
 }
 
 inline quaternion &quaternion::operator()(const matrix &m) {
+	//TODO: -
 	return *this;
 }
 
@@ -581,10 +583,12 @@ inline quaternion &quaternion::operator()(const vec &_wxyz) {
 }
 
 inline quaternion &quaternion::operator()(const vec &ax, const vec &ay, const vec &az) {
+	//TODO: -
 	return *this;
 }
 
 inline matrix quaternion::getMatrix() const {
+	//TODO: -
 	return matrix();
 }
 
@@ -592,12 +596,12 @@ inline float quaternion::length() const {
 	return _mm_cvtss_f32(xmmLength());
 }
 
-inline float quaternion::getRoll() const { return 0.f; }
-inline float quaternion::getPitch() const { return 0.f; }
-inline float quaternion::getYaw() const { return 0.f; }
-inline vec quaternion::getXAxis() const { return vec(); }
-inline vec quaternion::getYAxis() const { return vec(); }
-inline vec quaternion::getZAxis() const { return vec(); }
+inline float quaternion::getRoll() const { return 0.f; }//TODO: -
+inline float quaternion::getPitch() const { return 0.f; }//TODO: -
+inline float quaternion::getYaw() const { return 0.f; }//TODO: -
+inline vec quaternion::getXAxis() const { return vec(); }//TODO: -
+inline vec quaternion::getYAxis() const { return vec(); }//TODO: -
+inline vec quaternion::getZAxis() const { return vec(); }//TODO: -
 
 inline vec quaternion::xmmLength() const {
 	vec t = wxyz * wxyz;
