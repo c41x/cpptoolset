@@ -552,10 +552,10 @@ inline quaternion::quaternion(const vec &ax, const vec &ay, const vec &az) {
 
 inline quaternion::~quaternion() {}
 
-inline quaternion &quaternion::operator*(float s) { //TODO: -return *this; }
-inline quaternion &quaternion::operator*(const quaternion &q) { return *this; }//TODO: -
-inline quaternion quaternion::operator+(const quaternion &q) const { return quaternion(); }//TODO: -
-inline quaternion quaternion::operator-(const quaternion &q) const { return quaternion(); }//TODO: -
+inline quaternion &quaternion::operator*(float s) { return *this; }  //TODO: -
+inline quaternion &quaternion::operator*(const quaternion &q) { return *this; } //TODO: -
+inline quaternion quaternion::operator+(const quaternion &q) const { return quaternion(); } //TODO: -
+inline quaternion quaternion::operator-(const quaternion &q) const { return quaternion(); } //TODO: -
 
 inline quaternion quaternion::operator-() const {
 	quaternion q(*this);
