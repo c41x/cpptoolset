@@ -17,7 +17,6 @@
 
 namespace granite { namespace base {
 
-// TODO: alignas
 class stream
 {
 	std::vector<uint8> _mem;
@@ -57,5 +56,10 @@ public:
 };
 
 #include "stream.inc.h"
+
+template <typename T> stream &toStream(const T &, stream &) { return T::not_implemented; }
+template <typename T> stream toStream(const T &obj) { stream s; return toStream(obj, s); }
+template <typename T> T &fromStream(stream &, T &) { return T::not_implemented; }
+template <typename T> T fromStream(stream &s) { T obj; return fromStream(s, obj); }
 
 }}
