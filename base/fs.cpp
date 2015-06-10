@@ -392,7 +392,7 @@ void _vfs_defragment(vfs &v) {
 
 		while (readed != 0) {
 			std::fseek(v.f, from, SEEK_SET);
-			readed = std::fread(buff.data(), 1, std::min(buff.size(), count), v.f);
+			readed = std::fread(buff.data(), 1, std::min(buff.size(), (size_t)count), v.f);
 			std::fseek(v.f, to, SEEK_SET);
 			std::fwrite(buff.data(), readed, 1, v.f);
 			to += readed;
