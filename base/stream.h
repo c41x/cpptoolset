@@ -50,6 +50,7 @@ public:
 	inline void setPosOffset(size_t bytes);
 	inline size_t getPos() const;
 	inline std::vector<uint8> &&take();
+	inline void expand(size_t additional_cap);
 
 	template <typename T> inline size_t read(T &out);
 	template <typename T> inline void write(const T &in);
@@ -58,8 +59,9 @@ public:
 #include "stream.inc.h"
 
 template <typename T> stream &toStream(const T &, stream &) { return T::not_implemented; }
-template <typename T> stream toStream(const T &obj) { stream s; return toStream(obj, s); }
 template <typename T> T &fromStream(stream &, T &) { return T::not_implemented; }
+
+template <typename T> stream toStream(const T &obj) { stream s; return toStream(obj, s); }
 template <typename T> T fromStream(stream &s) { T obj; return fromStream(s, obj); }
 
 }}

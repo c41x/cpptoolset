@@ -82,6 +82,10 @@ std::vector<uint8> &&stream::take() {
 	return std::move(_mem);
 }
 
+void stream::expand(size_t additional_cap) {
+	_mem.reserve(_mem.capacity() + additional_cap);
+}
+
 template <typename T> size_t stream::read(T &out) {
 	return read(&out, sizeof(out));
 }
