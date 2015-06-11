@@ -94,11 +94,15 @@ token tokenizer::next() {
 
 	// return last valid token or invalid token (end of parsing)
 	if(_i != tokenBegin) {
-		if(_rule != _rules.cend() && !_rule->skip)
-			return {_rule->id, stringRange(tokenBegin, _i)};
+		if(_rule != _rules.cend()) {
+			if (!_rule->skip)
+				return {_rule->id, stringRange(tokenBegin, _i)};
+		}
 		else return {-1, stringRange(tokenBegin, _i)};
 	}
-	else return {-2, stringRange(_begin, _end)};
+
+	// return end of parsing token
+	return {-2, stringRange(_begin, _end)};
 }
 
 void tokenizer::clear() {
