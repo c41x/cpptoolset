@@ -1756,8 +1756,7 @@ cells_t lisp::parse(const string &s) {
 string lisp::eval(cells_t &code) {
 	if (code.size() > 0) {
 		string r = "";
-		cell_t codeBegin = code.begin();
-		for (cell_t statement = codeBegin; statement < code.end(); statement = nextCell(statement)) {
+		for (cell_t statement = code.begin(); statement < code.end(); statement = nextCell(statement)) {
 			#ifdef GLISP_DEBUG_ERROR_ARRAY
 			_s->errors.clear();
 			#endif
@@ -1784,6 +1783,10 @@ string lisp::eval(cells_t &code) {
 
 string lisp::eval(const string &s) {
 	cells_t code = parse(s);
+	return eval(code);
+}
+
+string lisp::eval(cells_t &&code) {
 	return eval(code);
 }
 

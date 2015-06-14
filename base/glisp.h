@@ -12,6 +12,8 @@
 #pragma once
 #include "includes.h"
 #include "math.h"
+#include "stream.h"
+#include "fs.h"
 
 // when defined - enables error checking via assert
 //#define GLISP_DEBUG_ERROR
@@ -46,8 +48,8 @@ public:
 	string s;
 	union {
 		struct {
-			int i;
-			int j;
+			int32 i;
+			int32 j;
 		};
 		float f;
 		int64 ii;
@@ -91,14 +93,16 @@ public:
 	void init(size_t memSize = 100000);
 	void close();
 
-	cells_t parse(const string &s);
+	static cells_t parse(const string &s);
 	string eval(cells_t &code);
+	string eval(cells_t &&code);
 	string eval(const string &s);
 	const std::vector<string> &getError();
 	void addProcedure(const string &name, procedure_t fx);
 	void addVariable(const string &name, cell value);
 };
 
+#include "glisp.inc.h"
+
 }}
 //~
-// TODO: load/store from/to binary stream (parsed)
