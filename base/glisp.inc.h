@@ -30,6 +30,7 @@ template <> inline void stream::write(const cell &e) {
 	}
 }
 
+/*
 // from/to stream conversions
 template <> inline stream &toStream(const cells_t &c, stream &s) {
 	s.expand(c.size() * sizeof(cell)); // just estimation
@@ -50,3 +51,4 @@ template <> inline cells_t &fromStream(stream &s, cells_t &c) {
 	}
 	return c;
 }
+*/

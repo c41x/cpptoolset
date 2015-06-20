@@ -58,14 +58,4 @@ public:
 
 #include "stream.inc.h"
 
-// for specializations:
-template <typename T> stream &toStream(const T &, stream &) { return T::not_implemented; } // must set stream pointer to bebinning of saved data
-template <typename T> T &fromStream(stream &, T &) { return T::not_implemented; }
-
-// alternative versions, move semantic stuff, etc.:
-template <typename T> stream toStream(const T &obj) { stream s; return toStream(obj, s); }
-template <typename T> T &fromStream(stream &&s, T &o) { return fromStream(s, o); }
-template <typename T> T fromStream(stream &s) { T obj; return fromStream(s, obj); }
-template <typename T> T fromStream(stream &&s) { T obj; return fromStream(std::forward<stream>(s), obj); }
-
 }}
