@@ -59,3 +59,5 @@ public:
 #include "stream.inc.h"
 
 }}
+
+// TODO: carry mode: stream do not own memory (for optimizations)
