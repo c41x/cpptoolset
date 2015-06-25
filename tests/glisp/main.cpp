@@ -20,7 +20,7 @@ base::cell_t c_message(base::cell_t c, base::cells_t &ret) {
 	// *c - count
 	// *(c + x) - element x
 	if (c->i > 0) {
-		std::cout << "> message: " << (c + 1)->i << std::endl;
+		std::cout << "> message: " << (c + 1)->getStr() << std::endl;
 		return c + 1;
 	}
 	return c;
@@ -42,6 +42,20 @@ int main(int argc, char **argv) {
 	// add custom procedures
 	gl.addProcedure("**", &c_mul);
 	gl.addProcedure("message", &c_message);
+
+
+	// using namespace granite::base;
+	// fs::open("d:/dir");
+	// //cells_t program = lisp::parse(fromStream<string>(fs::load("code.gls")));
+	// //fs::store("code.glsc", toStream(program));
+	// //gl.eval(program);
+
+	// gl.eval(fromStream<cells_t>(fs::load("code.glsc")));
+
+	// fs::close();
+
+	// gl.close();
+	// return 0;
 
 	#ifdef REPL
 	while (true) {
