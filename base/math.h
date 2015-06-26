@@ -220,7 +220,23 @@ public:
 	vec3f operator/(const vec3f &r) const { return vec3f(x / r.x, y / r.y, z / r.z); }
 	vec3f operator*(const float v) const { return vec3f(x * v, y * v, z * v); }
 	vec3f operator/(const float v) const { return vec3f(x / v, y / v, z / v); }
-	// TODO: basic op
+	vec3f operator^(const vec3f &v) const { return cross(v); }
+
+	// fxs
+	vec3f &shuffle(int ix, int iy, int iz) { x = data[ix]; y = data[iy]; z = data[iz]; return *this; }
+	vec3f &negate() { return *this = -*this; }
+	vec3f &zero() { x = y = z = 0.f; return *this; }
+	vec3f &setLength(float len) { *this /= length(); *this *= len; return *this; }
+	vec3f &setDirectionFrom(const vec3f &v) { *this = v.normalized() * length(); return *this; }
+	vec3f &normalize() { return *this /= length(); }
+	vec3f normalized() const { return vec3f(*this).normalize(); }
+	vec3f reflection(const vec3f &normal) const { float x = 2.f * this->dot(normal); return (*this) - normal * x; }
+	float angle(const vec3f &v) const { return acosf(this->dot(v)); } // angle between vectors in radians (vectors must be normalized)
+	float length() const { return sqrtf(x * x + y * y + z * z); }
+	vec3f lengthSq() const { return x * x + y * y + z * z; }
+	float distance(const vec3f &v) const { return (*this - v).length(); }
+	float dot(const vec3f &v) const { return x * v.x + y * v.y + z * v.z; }
+	vec3f cross(const vec3f &v) const { vec3f r; r.x = v.y * z - v.z * y; r.y = v.x * z - v.z * x; r.z = v.x * y - v.y * x; return r; }
 };
 
 class vec4f {
@@ -259,6 +275,8 @@ public:
 	vec4f operator*(const float v) const  { return vec4f(x * v, y * v, z * v, w * v); }
 	vec4f operator/(const float v) const  { return vec4f(x / v, y / v, z / v, w / v); }
 	// TODO: basic op
+	// TODO: color stuff
+	// TODO: interpolations
 };
 
 //- SSE optimized vector -
