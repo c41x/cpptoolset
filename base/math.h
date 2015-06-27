@@ -274,7 +274,22 @@ public:
 	vec4f operator/(const vec4f &r) const  { return vec4f(x / r.x, y / r.y, z / r.z, w / r.w); }
 	vec4f operator*(const float v) const  { return vec4f(x * v, y * v, z * v, w * v); }
 	vec4f operator/(const float v) const  { return vec4f(x / v, y / v, z / v, w / v); }
-	// TODO: basic op
+
+	vec4f &shuffle(int ix, int iy, int iz, int iw) { x = data[ix]; y = data[iy]; z = data[iz]; w = data[iw]; return *this; }
+	vec4f &negate() { return *this = -*this; }
+	vec4f &zero() { x = y = z = w = 0.f; return *this; }
+	vec4f &setLength(float len) { *this /= length(); *this *= len; return *this; }
+	vec4f &setDirectionFrom(const vec4f &v) { *this = v.normalized() * length(); return *this; }
+	vec4f &normalize() { return *this /= length(); }
+	vec4f normalized() const { return vec4f(*this).normalize(); }
+	vec4f reflection(const vec4f &normal) const { float x = 2.f * this->dot(normal); return (*this) - normal * x; }
+	float angle(const vec4f &v) const { return acosf(this->dot(v)); } // angle between vectors in radians (vectors must be normalized)
+	float length() const { return sqrtf(x * x + y * y + z * z); }
+	vec4f lengthSq() const { return x * x + y * y + z * z; }
+	float distance(const vec4f &v) const { return (*this - v).length(); }
+	float dot(const vec4f &v) const { return x * v.x + y * v.y + z * v.z; }
+	vec4f cross(const vec4f &v) const { vec4f r; r.x = v.y * z - v.z * y; r.y = v.x * z - v.z * x; r.z = v.x * y - v.y * x; return r; }
+
 	// TODO: color stuff
 	// TODO: interpolations
 };
