@@ -108,7 +108,7 @@ inline float radToDeg(float ix) {
 }
 
 //- interpolations -
-inline float linearInterp(float imin, float ix, float imax) {
+template <typename T> T linearInterp(T imin, float ix, T imax) {
 	return (imax - imin) * ix + imin;
 }
 
