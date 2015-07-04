@@ -26,8 +26,6 @@
 
 namespace granite { namespace base {
 
-typedef uint32 slotId;
-
 namespace detail {
 template<typename S, typename I, typename FN> struct bind {
         template<int N> static typename std::enable_if<N == 0>::type get(S ptr, I *ref, FN &fp) { fp = std::bind(ptr, ref); }
@@ -45,47 +43,41 @@ template<typename S, typename I, typename FN> struct bind {
 }
 
 template<typename... P> class sig {
-		static const int argsCount = sizeof...(P);
-		typedef std::function<void(P...)> tdSlot;
-		typedef std::pair<slotId, tdSlot> tdSlotPair;
-		typedef std::vector<tdSlotPair> tdSlots;
-		tdSlots m_slots;
-		slotId m_counter;
+	static const int argsCount = sizeof...(P);
+	typedef std::function<void(P...)> tdSlot;
+	typedef std::list<tdSlot> tdSlots;
+	tdSlots m_slots;
 
-	public:
-		sig() : m_counter(0) {}
-		~sig(){}
-		slotId connect(const tdSlot &f) {
-			gassert(f, "passed std::function object is not valid");
-			m_slots.push_back(tdSlotPair(m_counter, f));
-			return m_counter++;
+public:
+	typedef typename tdSlots::iterator slotId;
+	sig(){}
+	~sig(){}
+	slotId connect(const tdSlot &f) {
+		gassert(f, "passed std::function object is not valid");
+		m_slots.push_front(f);
+		return m_slots.begin();
+	}
+	template<typename MP, typename TP> slotId connect(MP mp, TP *tp) {
+		tdSlot slot;
+		detail::bind<MP,TP,tdSlot>::template get<argsCount>(mp, tp, slot);
+		m_slots.push_front(slot);
+		return m_slots.begin();
+	}
+	void disconnect(slotId id) {
+		m_slots.erase(id);
+	}
+	void disconnectAll() {
+		m_slots.clear();
+	}
+	void fire(P... args) {
+		for(auto &it : m_slots) {
+			gassert(it, "call to invalid slot");
+			it(args...);
 		}
-		template<typename MP, typename TP> slotId connect(MP mp, TP *tp) {
-			tdSlot slot;
-			detail::bind<MP,TP,tdSlot>::template get<argsCount>(mp, tp, slot);
-			m_slots.push_back(tdSlotPair(m_counter, slot));
-			return m_counter++;
-		}
-		void disconnect(slotId id) {
-			auto pred = [&id](const tdSlotPair &it) -> bool {
-				return it.first == id;
-			};
-			m_slots.erase(std::remove_if(m_slots.begin(), m_slots.end(), pred), m_slots.end());
-		}
-		void disconnectAll() {
-			m_slots.clear();
-			m_counter = 0;
-		}
-		void fire(P... args) {
-			for(auto &it : m_slots) {
-				gassert(it.second, "call to invalid slot");
-				it.second(args...);
-			}
-		}
-		slotId operator+=(const tdSlot &f) { return connect(f); }
-		void operator-=(slotId id) { disconnect(id); }
+	}
+	slotId operator+=(const tdSlot &f) { return connect(f); }
+	void operator-=(slotId id) { disconnect(id); }
 };
-
 
 template<typename... P> class delegate
 {
