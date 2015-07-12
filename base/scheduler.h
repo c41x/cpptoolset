@@ -11,3 +11,21 @@
  */
 
 #pragma once
+
+#include "includes.h"
+
+namespace granite { namespace base {
+
+class job {
+public:
+	job() {}
+	~job() {}
+};
+
+class scheduler {
+public:
+	scheduler() {}
+	~scheduler() {}
+};
+
+}}
