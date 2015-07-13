@@ -1,5 +1,17 @@
 #include <base/base.h>
 
+bool test(const string &input, const string &expectedOutput) {
+	if (input == expectedOutput) {
+		std::cout << "[ok] " << input << " = " << expectedOutput << std::endl;
+		return true;
+	}
+
+	std::cout << "[fail] " << input << " != " << expectedOutput << std::endl;
+	return false;
+}
+
+//string input = "";
+
 class foo {
 public:
 	void zzz(int &x) {
