@@ -37,8 +37,8 @@ int main(int argc, char**argv) {
 	sig<int&> sigs;
 	sigs += [](int &a) { std::cout << "\nlambda: " << a << " c++11!"; };
 	sigs.connect(foobar);
-	slotId id2 = sigs.connect(&foo::zzz, &obiekt);
-	slotId id1 = sigs.connect(&foo::zzz, &obiekt);
+	sig<int&>::slotId id2 = sigs.connect(&foo::zzz, &obiekt);
+	sig<int&>::slotId id1 = sigs.connect(&foo::zzz, &obiekt);
 	sigs.connect(&bar::abc, &obiekt2);
 	int modMe = 667;
 	sigs.fire(modMe);
