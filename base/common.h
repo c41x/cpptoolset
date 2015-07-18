@@ -178,6 +178,13 @@ namespace granite{
 	#define toggleBreakpoint
 #endif
 
+// align
+#if defined(GE_COMPILER_VISUAL)
+#define GE_ALIGN(N) __declspec(align(N))
+#else
+#define GE_ALIGN(N) alignas(N)
+#endif
+
 // logging macros
 #define GE_LOG_PREFIX_STRING string(__FILE__ "@" __SLINE__ ":") + string(__SFUNC__) + string("> ")
 #define logError(message) granite::base::log::log(granite::base::log::logLevelError, GE_LOG_PREFIX_STRING + message)
