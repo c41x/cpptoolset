@@ -48,7 +48,7 @@ public:
 	void removeRule(int id);
 	token begin(const string &input, bool copyInput = true);
 	token next();
-	bool hasInputCopy() const { return input.size(); }
+	bool hasInputCopy() const { return input.size() > 0; }
 	void clear();
 };
 
