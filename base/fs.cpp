@@ -8,6 +8,7 @@
 #ifdef GE_PLATFORM_WINDOWS
 #include <shlobj.h>
 #include <direct.h>
+#include <io.h>
 #elif defined(GE_PLATFORM_LINUX)
 #include <unistd.h>
 #include <pwd.h>
@@ -72,13 +73,17 @@ bool _exists(const string &path) {
 // checks if file exists
 bool _exists_file(const string &file) {
 	struct stat buffer;
+	#ifdef GE_PLATFORM_WINDOWS
+	return stat(file.c_str(), &buffer) == 0 && (buffer.st_mode & S_IFREG) != 0;
+	#else
 	return stat(file.c_str(), &buffer) == 0 && S_ISREG(buffer.st_mode) != 0;
+	#endif
 }
 
 // resize given file
 void _resize(std::FILE *f, size_t newSize) {
 	#ifdef GE_PLATFORM_WINDOWS
-	_chsize(_fileno(f), newSize);
+	_chsize_s(_fileno(f), newSize);
 	#else
 	ftruncate(fileno(f), newSize);
 	#endif
@@ -241,7 +246,7 @@ string _vfs_extract_name(const string &id) {
 
 // writes index to file (write pointer must be set before call)
 void _vfs_write_index(vfs &v) {
-	uint32 filesCount = v.files.size();
+	uint32 filesCount = (uint32)v.files.size();
 
 	// write index to stream and write
 	stream s;
@@ -318,7 +323,7 @@ void _vfs_open(const string path) {
 			// read file index in one chunk
 			if (0 != std::fseek(v.f, 0, SEEK_END)) goto signalError;
 			size = std::ftell(v.f) - v.indexOffset;
-			if (0 != std::fseek(v.f, v.indexOffset, SEEK_SET)) goto signalError;
+			if (0 != std::fseek(v.f, (long)v.indexOffset, SEEK_SET)) goto signalError;
 			s.resize(size);
 			if (1 != std::fread(s.data(), size, 1, v.f)) goto signalError;
 
