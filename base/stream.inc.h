@@ -106,7 +106,7 @@ template <> inline size_t stream::read(string &s) {
 }
 
 template <> inline void stream::write(const string &s) {
-	write<uint32>(s.size());
+	write<uint32>((uint32)s.size());
 	write(&s[0], s.size());
 }
 
