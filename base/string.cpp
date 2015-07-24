@@ -77,8 +77,8 @@ std::vector<stringRange> divideString(const string &s, char divChar) {
 float matchString(const string &a, const string &b){ // check string similarity in 0-1 scale (GP Gems?)
 	char const *pa = a.c_str();
 	char const *pb = b.c_str();
-	uint32 lena = a.size();
-	uint32 lenb = b.size();
+	uint32 lena = (uint32)a.size();
+	uint32 lenb = (uint32)b.size();
 	uint32 len = std::max(lena, lenb);
 	float ret = 0.f;
 	while ((pa < (a.c_str() + lena)) && (pb < (b.c_str() + lenb))) {
