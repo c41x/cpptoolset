@@ -34,7 +34,7 @@ struct stringRange {
 	string::const_iterator end;
 	stringRange(string::const_iterator ibegin, string::const_iterator iend) : begin(ibegin), end(iend) { gassert(ibegin <= iend, "invalid range pointers positions"); }
 	explicit stringRange(const string &s) : begin(s.begin()), end(s.end()) {}
-	explicit stringRange(const char *c) : begin(c), end(c + strlen(c)) {}
+	//explicit stringRange(const char *c) : begin(c), end(c + strlen(c)) {}
 	stringRange &operator()(string::const_iterator ibegin, string::const_iterator iend) { gassert(ibegin <= iend, "invalid range pointers positions"); begin = ibegin; end = iend; return *this; }
 	stringRange &operator()(const string &s) { begin = s.begin(); end = s.end(); return *this; }
 	size_t ibegin(const string &s) const { return std::distance(s.begin(), begin); }
