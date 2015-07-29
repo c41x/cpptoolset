@@ -112,13 +112,7 @@ int main(int argc, char**argv){
 	std::cout<<str<<std::endl;
 
 	str="some|parameters|divided|1.0f|by|special|characters"; // empty strings may occur in results!
-	std::vector<string> out;
-	std::vector<stringRange> out2;
-	divideString(str,'|',out);
-	divideString(str,'|',out2);
-	std::cout<<"printing divided string:\n";
-	for(auto &it:out)
-		std::cout<<it<<std::endl;
+	std::vector<stringRange> out2 = divideString(str, '|');
 	std::cout<<"printing divided string ranges:\n";
 	for(auto &it:out2)
 		std::cout<<"range: (begin:"<<it.ibegin(str)<<", end:"<<it.iend(str)<<", count: "<<it.count()<<") string: "<<it.str()<<std::endl<<std::flush;

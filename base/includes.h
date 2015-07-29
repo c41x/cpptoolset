@@ -9,9 +9,6 @@
  * - 22-10-2012: add
  * - 20-01-2013: added windows/linux headers for hires timers
  * - 29-09-2013: changelog moved to GIT repository
- *
- * todo:
- * - 22-10-2012: fix linux includes as soon as possible
  */
 
 #pragma once
@@ -31,7 +28,6 @@
 #include <cstdarg>
 #include <cstring>
 #include <string>
-//#include <io.h>
 #include <iostream>
 #include <functional>
 #include <algorithm>
@@ -39,6 +35,7 @@
 #include <sstream>
 #include <cassert>
 #include <memory>
+#include <numeric>
 
 #ifdef GE_PLATFORM_WINDOWS
 #ifndef NOMINMAX
@@ -53,7 +50,7 @@
 // SIMD
 #include <mmintrin.h> //MMX
 #include <xmmintrin.h> //SSE
-//#include <emmintrin.h> //SSE 2 (not used directly)
+#include <emmintrin.h> //SSE 2
 #include <pmmintrin.h> //SSE 3
 
 //string as built-in type

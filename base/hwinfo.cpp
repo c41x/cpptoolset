@@ -2,6 +2,10 @@
 #include "string.h"
 #include "timer.h"
 
+#ifdef GE_COMPILER_VISUAL
+#include <intrin.h>
+#endif
+
 namespace granite { namespace base {
 
 namespace cpu {
@@ -23,40 +27,12 @@ bool _CMOV;
 bool _64BIT;
 
 #ifdef GE_COMPILER_VISUAL
-uint64 rdtsc() {
-	__asm {
-		; read time stamp counter;
-		rdtsc ;
-	}
+inline uint64 rdtsc() {
+	return __rdtsc();
 }
 
-void cpuid(int o[4], int i) {
-	int *X = o;
-	int *Y = o + 1;
-	int *Z = o + 2;
-	int *W = o + 3;
-	__asm {
-		push eax;
-		push ebx;
-		push ecx;
-		push edx;
-
-		mov eax,i;
-		cpuid;
-		mov esi,X;
-		mov [esi],eax;
-		mov esi,Y;
-		mov [esi],ebx;
-		mov esi,Z;
-		mov [esi],ecx;
-		mov esi,W;
-		mov [esi],edx;
-
-		pop eax;
-		pop ebx;
-		pop ecx;
-		pop edx;
-	}
+inline void cpuid(int o[4], int i) {
+	__cpuid(o, i);
 }
 #endif
 
@@ -136,7 +112,7 @@ void fetch(bool force = false) {
 					w = i;
 				else break;
 			}
-			strcpy(_BrandName, _BrandName + w + 1);
+			strcpy_s(_BrandName, 64, _BrandName + w + 1);
 		}
 
 		// rozszerzony 6

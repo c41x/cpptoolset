@@ -32,7 +32,11 @@
 
 // reverse shuffle
 #define SSE_RSHUFFLE(VX, VY, VZ, VW) _MM_SHUFFLE(VW, VZ, VY, VX)
+#ifdef GE_COMPILER_VISUAL
+#define SSE_RMASK(MX, MY, MZ, MW) (_mm_castsi128_ps(_mm_set_epi32(MW, MZ, MY, MX)))
+#else
 #define SSE_RMASK(MX, MY, MZ, MW) ((__m128)_mm_set_epi32(MW, MZ, MY, MX))
+#endif
 
 namespace granite {
 namespace base {
@@ -153,7 +157,7 @@ inline float hyperbInterp2d(float ileft, float ix, float iright, float itop, flo
 //- non optimized float vectors -
 class vec2f {
 public:
-	union alignas(16) {
+	union GE_ALIGN(16) {
 		struct{
 			float x, y;
 		};
@@ -191,7 +195,7 @@ public:
 
 class vec3f {
 public:
-	union alignas(16) {
+	union GE_ALIGN(16) {
 		struct{
 			float x, y, z;
 		};
@@ -241,7 +245,7 @@ public:
 
 class vec4f {
 public:
-	union alignas(16) {
+	union GE_ALIGN(16) {
 		struct{
 			float x, y, z, w;
 		};
