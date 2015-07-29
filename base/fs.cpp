@@ -5,13 +5,17 @@
 
 #include <regex>
 #include <sys/stat.h>
-#ifdef GE_PLATFORM_WINDOWS
+#include <sys/types.h>
+#ifdef GE_COMPILER_VISUAL
 #include <shlobj.h>
 #include <direct.h>
 #include <io.h>
-#elif defined(GE_PLATFORM_LINUX)
+#elif defined(GE_COMPILER_GCC) && defined(GE_PLATFORM_LINUX)
 #include <unistd.h>
 #include <pwd.h>
+#include <dirent.h>
+#elif defined(GE_COMPILER_GCC)
+#include <unistd.h>
 #include <dirent.h>
 #endif
 
@@ -82,7 +86,7 @@ bool _exists_file(const string &file) {
 
 // resize given file
 void _resize(std::FILE *f, size_t newSize) {
-	#ifdef GE_PLATFORM_WINDOWS
+	#ifdef GE_COMPILER_VISUAL
 	_chsize_s(_fileno(f), newSize);
 	#else
 	ftruncate(fileno(f), newSize);
@@ -95,11 +99,14 @@ bool _mkdirtree(const string &pathBase, const string &path) {
 	for (auto &e : divideString(path, GE_DIR_SEPARATOR)) {
 		p += e.str();
 		if (!_exists(p)) {
-			#ifdef GE_PLATFORM_WINDOWS
+			#ifdef GE_COMPILER_VISUAL
 			if (0 != _mkdir(p.c_str()))
 				return false;
-			#else
+			#elif GE_PLATFORM_LINUX
 			if (0 != mkdir(p.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH))
+				return false;
+			#else
+			if (0 != mkdir(p.c_str()))
 				return false;
 			#endif
 		}
@@ -644,7 +651,7 @@ string getExecutableDirectory() {
 }
 
 string getUserDirectory() {
-	#ifdef GE_PLATFORM_WINDOWS
+	#ifdef GE_COMPILER_VISUAL
 	char path[MAX_PATH];
 	if (SUCCEEDED(SHGetSpecialFolderPath(NULL, path, CSIDL_PROFILE, false)))
 		return string(path);
