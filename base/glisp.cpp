@@ -1768,7 +1768,9 @@ string lisp::eval(cells_t &code) {
 				std::cout << e << std::endl;
 			#endif
 
-			r += toString(retAddr) + "\n";
+			if (r != "")
+				r += "\n";
+			r += toString(retAddr);
 			ddebnt("return addr: ", detail::getAddress(*_s, retAddr),
 				   " | ", toString(retAddr));
 			ddebnt(detail::getState(*_s));
