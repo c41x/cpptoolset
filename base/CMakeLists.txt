@@ -7,8 +7,10 @@ add_library(base
   glisp.cpp
   random.cpp
   hwinfo.cpp
-  ../ext/lz4/lz4.c
-  fs.cpp)
+  image.cpp
+  ../ext/lz4/lz4.c)
+
+target_link_libraries(base zlibstatic)
 
 install(TARGETS base DESTINATION bin)
 
@@ -29,6 +31,7 @@ install(FILES
   hwinfo.h
   stream.h
   stream.inc.h
-  ../ext/lz4/lz4.h
   fs.h
+  image.h
+  ../ext/lz4/lz4.h
   DESTINATION include_base)

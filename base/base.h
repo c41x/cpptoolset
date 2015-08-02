@@ -25,5 +25,6 @@
 #include "hwinfo.h"
 #include "stream.h"
 #include "fs.h"
+#include "image.h"
 
 //~
