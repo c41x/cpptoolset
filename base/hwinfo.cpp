@@ -112,7 +112,7 @@ void fetch(bool force = false) {
 					w = i;
 				else break;
 			}
-			strcpy_s(_BrandName, 64, _BrandName + w + 1);
+			strcpy(_BrandName, _BrandName + w + 1);
 		}
 
 		// rozszerzony 6
