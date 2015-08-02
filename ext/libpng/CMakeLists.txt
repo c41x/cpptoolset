@@ -21,7 +21,8 @@ set(PNGLIB_NAME libpng${PNGLIB_MAJOR}${PNGLIB_MINOR})
 set(PNGLIB_VERSION ${PNGLIB_MAJOR}.${PNGLIB_MINOR}.${PNGLIB_RELEASE})
 
 # needed packages
-find_package(ZLIB REQUIRED)
+set(ZLIB_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/../zlib" "${PROJECT_SOURCE_DIR}/../zlib/build")
+set(ZLIB_LIBRARY "libzlibstatic")
 include_directories(${ZLIB_INCLUDE_DIR})
 
 if(NOT WIN32)
@@ -371,4 +372,3 @@ endif()
 # to create msvc import lib for mingw compiled shared lib
 # pexports libpng.dll > libpng.def
 # lib /def:libpng.def /machine:x86
-
