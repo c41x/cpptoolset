@@ -25,8 +25,9 @@ set(ZLIB_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/../zlib" "${PROJECT_SOURCE_DIR}/../z
 if(NOT WIN32)
 	set(ZLIB_LIBRARY "z")
 else()
-	set(ZLIB_LIBRARY "libzlibstatic")
+	set(ZLIB_LIBRARY "zlibstatic")
 endif()
+link_directories("${PROJECT_SOURCE_DIR}/../zlib/build")
 include_directories(${ZLIB_INCLUDE_DIR})
 
 if(NOT WIN32)
