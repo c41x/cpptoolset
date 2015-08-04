@@ -15,7 +15,7 @@ cd glfw
 mkdir build
 cd build
 echo Compiling GLFW
-cmake ../ -G"MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
+cmake ../ -G"MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=TRUE
 cmake --build . --config Release
 cd ../..
 

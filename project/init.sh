@@ -12,7 +12,7 @@ cd ../../ext
 cd glfw
 mkdir build
 cd build
-cmake ../ -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
+cmake ../ -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=TRUE
 cmake --build . --config Release
 cd ../..
 
