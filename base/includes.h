@@ -53,7 +53,9 @@
 #include <emmintrin.h> //SSE 2
 #include <pmmintrin.h> //SSE 3
 
-//string as built-in type
+// string as built-in type
+#ifndef GE_NO_STRING_WITHOUT_STD
 using std::string;
+#endif
 
 //~
