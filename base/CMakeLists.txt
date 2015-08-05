@@ -10,9 +10,9 @@ add_library(base
   image.cpp
   ../ext/lz4/lz4.c)
 
-target_link_libraries(base zlibstatic)
+#target_link_libraries(base zlibstatic)
 
-install(TARGETS base DESTINATION bin)
+install(TARGETS base DESTINATION granite/bin)
 
 install(FILES
   base.h
@@ -34,4 +34,4 @@ install(FILES
   fs.h
   image.h
   ../ext/lz4/lz4.h
-  DESTINATION include_base)
+  DESTINATION granite/include/base)
