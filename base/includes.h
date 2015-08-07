@@ -54,8 +54,8 @@
 #include <pmmintrin.h> //SSE 3
 
 // string as built-in type
-#ifndef GE_NO_STRING_WITHOUT_STD
+namespace granite { namespace base {
 using std::string;
-#endif
+}}
 
 //~
