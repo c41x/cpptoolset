@@ -1,6 +1,6 @@
-#include "hwinfo.h"
-#include "string.h"
-#include "timer.h"
+#include "hwinfo.hpp"
+#include "string.hpp"
+#include "timer.hpp"
 
 #ifdef GE_COMPILER_VISUAL
 #include <intrin.h>

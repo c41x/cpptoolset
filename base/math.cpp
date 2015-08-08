@@ -1,4 +1,4 @@
-#include "math.h"
+#include "math.hpp"
 #include <numeric>
 
 namespace granite{
@@ -7,7 +7,7 @@ namespace base{
 namespace {
 bool rayUpIntersectsLine(const vec2f &p, const vec2f &a, const vec2f &b){
 	float intersect_y;
-	
+
 	if(p.y <= std::max(a.y, b.y)){
 		if((p.x >= std::min(a.x, b.x)) && (p.x <= std::max(a.x, b.x))){
 			if(p.y <= std::min(a.y, b.y))
@@ -23,7 +23,7 @@ bool rayUpIntersectsLine(const vec2f &p, const vec2f &a, const vec2f &b){
 
 circle2d triangle2d::getInscribedCircle() const {
 	circle2d ret;
-	
+
 	// calculate radius
 	float area2 = getArea() * 2.f;
 	float perp = getPerimeter();
@@ -34,14 +34,14 @@ circle2d triangle2d::getInscribedCircle() const {
 	ret.o += a * (c - b).length();
 	ret.o += b * (a - c).length();
 	ret.o /= perp;
-	
+
 	return ret;
 }
 
 circle2d triangle2d::getCircumscribedCircle() const {
 	// based on nv_algebra
 	circle2d ret;
-	
+
 	vec2f e0, e1;
 	float d1, d2, d3;
 	float c1, c2, c3, oo_c;
@@ -49,15 +49,15 @@ circle2d triangle2d::getCircumscribedCircle() const {
 	e0 = c - a;
 	e1 = b - a;
 	d1 = e0.dot(e1);
-	      
+
 	e0 = c - b;
 	e1 = a - b;
 	d2 = e0.dot(e1);
-	      
+
 	e0 = a - c;
 	e1 = b - c;
 	d3 = e0.dot(e1);
-	      
+
 	c1 = d2 * d3;
 	c2 = d3 * d1;
 	c3 = d1 * d2;
@@ -74,7 +74,7 @@ circle2d triangle2d::getCircumscribedCircle() const {
 
 bool triangle2d::isPointInside(const vec2f &p) const{
 	int intersections = 0;
-	
+
 	if(rayUpIntersectsLine(p, a, b))
 		++intersections;
 	if(rayUpIntersectsLine(p, c, b))
@@ -104,7 +104,7 @@ polygon2d polygon2d::operator+(const vec2f &t) const {
 	polygon2d ret = *this;
 	return ret += t;
 }
-	
+
 float polygon2d::getArea() const {
 	if(points.size() < 3)
 		return 0.f;
@@ -126,13 +126,13 @@ float polygon2d::getPerimeter() const {
 
 	float per = 0.f;
 	auto prv = points.cbegin();
-	
+
 	for(auto curr = points.cbegin() + 1; curr != points.cend(); ++curr){
 		per += prv->distance(*curr);
 		prv = curr;
 	}
 	per += points.front().distance(points.back());
-	
+
 	return per;
 }
 
@@ -172,7 +172,7 @@ bool polygon2d::isPointInside(const vec2f &p) const {
 
 	int intersections = 0;
 	auto prv = points.cbegin(), curr = prv + 1;
-	
+
 	for(; curr != points.cend(); ++curr){
 		if(rayUpIntersectsLine(p, *curr, *prv))
 			++intersections;
@@ -199,7 +199,7 @@ vec2f quad2d::getCenter() const {
 
 rect2d quad2d::getBoundingRect() const {
 	return rect2d(std::min({a.x, b.x, c.x, d.x}), std::max({a.x, b.x, c.x, d.x}), std::min({a.y, b.y, c.y, d.y}), std::max({a.y, b.y, c.y, d.y}));
-	
+
 }
 
 bool quad2d::isPointInside(const vec2f &p) const {
@@ -332,7 +332,7 @@ void obbox::getEdges(vec *o) const {
 		axis[1] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(1, 1, 1, 3)),
 		axis[2] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(2, 2, 2, 3))
 	};
-	
+
 	o[0] = center + ax[0] + ax[1] + ax[2];
 	o[1] = center - ax[0] + ax[1] + ax[2];
 	o[2] = center - ax[0] - ax[1] + ax[2];
@@ -379,9 +379,9 @@ vec obbox::closestPoint(const vec &p) const {
 vec obbox::minPointAlongNormal(const vec &normal) const {
 	vec dt = dotAll(normal);
 	__m128 test = _mm_cmpgt_ps(dt, _mm_setzero_ps()); // create mask (dot > 0.f)
-	
+
 	vec r = center;
-	
+
 	// if(d[i] > 0.f) r -= axis[i] * size[i]
 	r -= _mm_and_ps(test, axis[0] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(0, 0, 0, 3)));
 	r -= _mm_and_ps(test, axis[1] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(1, 1, 1, 3)));
@@ -392,9 +392,9 @@ vec obbox::minPointAlongNormal(const vec &normal) const {
 vec obbox::maxPointAlongNormal(const vec &normal) const {
 	vec dt = dotAll(normal);
 	__m128 test = _mm_cmpgt_ps(dt, _mm_setzero_ps()); // create mask (dot > 0.f)
-	
+
 	vec r = center;
-	
+
 	// if(d[i] > 0.f) r += axis[i] * size[i]
 	r += _mm_and_ps(test, axis[0] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(0, 0, 0, 3)));
 	r += _mm_and_ps(test, axis[1] * _mm_shuffle_ps(scale, scale, SSE_RSHUFFLE(1, 1, 1, 3)));

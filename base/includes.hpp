@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include "common.h"
+#include "common.hpp"
 
 // C-STD/STL
 #include <ctime>

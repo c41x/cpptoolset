@@ -1,4 +1,4 @@
-#include <system/system.h>
+#include <system/system.hpp>
 
 using namespace granite;
 using namespace granite::base;

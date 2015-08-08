@@ -1,4 +1,4 @@
-#include <base/base.h>
+#include <base/base.hpp>
 
 using namespace granite::base;
 
@@ -28,7 +28,7 @@ void printBool(bool test, const std::string &desc) {
 
 int main(int argc, char**argv){
 	std::cout << std::boolalpha;
-	
+
 	vec t(1.f,2.f,3.f,0.f);
 	vec tt(1.f,3.f,3.f,666.f);
 	vec mul(2.f);
@@ -40,19 +40,19 @@ int main(int argc, char**argv){
 	printVec(-r,"-r");
 	printVec(r.zero(),"r.zero() ");
 	printVec(r-r,"r-r");
-	
+
 	vec a(2,4,5);
 	vec b=vec3f(5,-1,-1);
 	printVec(a,"a");
 	printVec(b,"b");
 	printVec(a^b,"a^b");
-	
+
 	a(3,2,1);
 	b=vec4f(1,2,3,0);
 	printVec(a,"a");
 	printVec(b,"b");
 	std::cout<<"\na dot b = "<<a.dot(b);
-	
+
 	a(5,5,0);
 	float lenA=a.length();
 	std::cout<<"\nlength of a: |(5,5,0)| = "<<lenA;
@@ -163,9 +163,9 @@ int main(int argc, char**argv){
 		printMatrix(matrix().setRotation(vec(1.f, 0.f, 0.f), degToRad(180.f)), "setRotation vec(1,0,0), pi");
 		printMatrix(matrix().setRotation(vec(1.f, 1.f, 0.f).normalized(), degToRad(90.f)), "setRotation vec(1,1,0), pi/2");
 	}
-	
+
 	std::cout << "\nfinished";
 	std::cout << std::flush;
-	
+
 	return 0;
 }

@@ -1,6 +1,6 @@
-#include "timer.h"
-#include "string.h"
-#include "log.h"
+#include "timer.hpp"
+#include "string.hpp"
+#include "log.hpp"
 
 namespace granite { namespace base {
 

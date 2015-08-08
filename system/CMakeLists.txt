@@ -12,7 +12,7 @@ endif()
 install(TARGETS system DESTINATION granite/bin)
 
 install(FILES
-  framework.h
-  includes.h
-  system.h
+  framework.hpp
+  includes.hpp
+  system.hpp
   DESTINATION granite/include/system)

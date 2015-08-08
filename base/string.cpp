@@ -1,5 +1,5 @@
-#include "string.h"
-#include "math.h"
+#include "string.hpp"
+#include "math.hpp"
 
 namespace granite { namespace base {
 

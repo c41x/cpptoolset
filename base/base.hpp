@@ -12,19 +12,19 @@
 
 #pragma once
 
-#include "log.h"
-#include "math.h"
-#include "sigslot.h"
-#include "timer.h"
-#include "string.h"
-#include "math.string.h"
-#include "tokenizer.h"
-#include "glisp.h"
-#include "gstdlib.h"
-#include "random.h"
-#include "hwinfo.h"
-#include "stream.h"
-#include "fs.h"
-#include "image.h"
+#include "log.hpp"
+#include "math.hpp"
+#include "sigslot.hpp"
+#include "timer.hpp"
+#include "string.hpp"
+#include "math.string.hpp"
+#include "tokenizer.hpp"
+#include "glisp.hpp"
+#include "gstdlib.hpp"
+#include "random.hpp"
+#include "hwinfo.hpp"
+#include "stream.hpp"
+#include "fs.hpp"
+#include "image.hpp"
 
 //~

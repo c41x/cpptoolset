@@ -9,10 +9,10 @@
  * - 29-08-2014: file created
  */
 
-#include "glisp.h"
-#include "math.string.h"
-#include "tokenizer.h"
-#include "gstdlib.h"
+#include "glisp.hpp"
+#include "math.string.hpp"
+#include "tokenizer.hpp"
+#include "gstdlib.hpp"
 
 // error checking
 #ifdef GLISP_DEBUG_ERROR

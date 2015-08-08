@@ -1,9 +1,10 @@
 //#define REPL
 
-#include <base/base.h>
+#include <base/base.hpp>
 
 using namespace granite;
 
+using std::string;
 bool test(base::lisp &gl, const string &input, const string &expectedOutput) {
 	string result = gl.eval(input);
 	if (result == expectedOutput) {

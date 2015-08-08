@@ -18,8 +18,8 @@
 
 #pragma once
 
-#include "includes.h"
-#include "log.h"
+#include "includes.hpp"
+#include "log.hpp"
 
 namespace granite { namespace base {
 

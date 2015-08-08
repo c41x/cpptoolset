@@ -1,5 +1,5 @@
 /*
- * granite engine 1.0 | 2006-2012 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
+ * granite engine 1.0 | 2006-2015 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
  * file: math.*
  * created: 22-10-2012
  *
@@ -28,7 +28,7 @@
 
 #pragma once
 
-#include "includes.h"
+#include "includes.hpp"
 
 // reverse shuffle
 #define SSE_RSHUFFLE(VX, VY, VZ, VW) _MM_SHUFFLE(VW, VZ, VY, VX)
@@ -840,7 +840,7 @@ public:
 	// TODO: quaternion interpolations
 };
 
-#include "math.inc.h"
+#include "math.inc.hpp"
 
 }}
 

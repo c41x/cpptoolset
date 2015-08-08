@@ -1,5 +1,5 @@
 /*
- * granite engine 1.0 | 2006-2013 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
+ * granite engine 1.0 | 2006-2015 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
  * file: timer.*
  * created: 19-01-2013
  *
@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "includes.h"
+#include "includes.hpp"
 
 namespace granite { namespace base {
 

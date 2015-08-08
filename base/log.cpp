@@ -1,4 +1,4 @@
-#include "log.h"
+#include "log.hpp"
 #include <csignal>
 #ifdef GE_PLATFORM_LINUX
 #include <execinfo.h>
@@ -83,7 +83,8 @@ bool init(const string &fileName) {
 	return v_file.good();
 }
 
-void log(logLevel level,const string &message) {
+void log(logLevel level, const string &message) { // TODO: thread safe!
+	// TODO: volatile v_pos? update v_pos first?
 	if(level == logLevelOK)
 		v_buffer[v_pos] = string("ok: ") + message;
 	else if(level == logLevelInfo)

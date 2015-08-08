@@ -12,10 +12,10 @@
 
 #pragma once
 
-#include "includes.h"
-#include "string.h"
-#include "math.h"
-#include "gstdlib.h"
+#include "includes.hpp"
+#include "string.hpp"
+#include "math.hpp"
+#include "gstdlib.hpp"
 
 namespace granite { namespace base {
 

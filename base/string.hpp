@@ -20,8 +20,8 @@
 
 #pragma once
 
-#include "includes.h"
-#include "log.h"
+#include "includes.hpp"
+#include "log.hpp"
 
 namespace granite { namespace base {
 
@@ -110,6 +110,6 @@ template<typename... Args> string strs(const Args&... args);
 template<typename... Args> string strf(const string &format, const Args&... args);
 
 // implementations
-#include "string.inc.h"
+#include "string.inc.hpp"
 
 }}

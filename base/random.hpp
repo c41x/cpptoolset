@@ -14,8 +14,8 @@
  */
 
 #pragma once
-#include "includes.h"
-#include "timer.h"
+#include "includes.hpp"
+#include "timer.hpp"
 
 namespace granite { namespace base {
 
@@ -103,7 +103,7 @@ public:
 	std::tuple<float, float> getAmplitude() const;
 };
 
-#include "random.inc.h"
+#include "random.inc.hpp"
 
 }}
 

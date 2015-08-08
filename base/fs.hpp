@@ -11,8 +11,8 @@
  */
 
 #pragma once
-#include "includes.h"
-#include "stream.h"
+#include "includes.hpp"
+#include "stream.hpp"
 
 namespace granite { namespace base {
 

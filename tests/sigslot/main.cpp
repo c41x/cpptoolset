@@ -1,5 +1,6 @@
-#include <base/base.h>
+#include <base/base.hpp>
 
+using std::string;
 bool test(const string &input, const string &expectedOutput) {
 	if (input == expectedOutput) {
 		std::cout << "[ok] " << input << " = " << expectedOutput << std::endl;

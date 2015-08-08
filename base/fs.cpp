@@ -1,6 +1,6 @@
-#include "fs.h"
-#include "string.h"
-#include "gstdlib.h"
+#include "fs.hpp"
+#include "string.hpp"
+#include "gstdlib.hpp"
 #include "lz4.h"
 
 #include <regex>

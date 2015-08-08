@@ -1,5 +1,5 @@
 /*
- * granite engine 1.0 | 2006-2013 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
+ * granite engine 1.0 | 2006-2015 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
  * file: math.inc.h
  * created: 27-10-2013
  *

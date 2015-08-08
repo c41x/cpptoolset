@@ -4,7 +4,7 @@
  * created: 26-03-2015
  *
  * description: detail implementation for string
- * note: should not be included directly (only for string.h)
+ * note: should not be included directly (only for string.hpp)
  *
  * changelog:
  * - 26-03-2015: file created

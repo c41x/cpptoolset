@@ -10,10 +10,10 @@
  */
 
 #pragma once
-#include "includes.h"
-#include "math.h"
-#include "stream.h"
-#include "fs.h"
+#include "includes.hpp"
+#include "math.hpp"
+#include "stream.hpp"
+#include "fs.hpp"
 
 // when defined - enables error checking via assert
 //#define GLISP_DEBUG_ERROR
@@ -102,7 +102,7 @@ public:
 	void addVariable(const string &name, cell value);
 };
 
-#include "glisp.inc.h"
+#include "glisp.inc.hpp"
 
 }}
 //~

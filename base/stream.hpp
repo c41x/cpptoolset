@@ -11,9 +11,9 @@
  */
 
 #pragma once
-#include "includes.h"
-#include "log.h"
-#include "string.h"
+#include "includes.hpp"
+#include "log.hpp"
+#include "string.hpp"
 
 namespace granite { namespace base {
 
@@ -56,7 +56,7 @@ public:
 	template <typename T> inline void write(const T &in);
 };
 
-#include "stream.inc.h"
+#include "stream.inc.hpp"
 
 }}
 

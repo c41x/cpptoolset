@@ -1,5 +1,5 @@
 /*
- * granite engine 1.0 | 2006-2014 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
+ * granite engine 1.0 | 2006-2015 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
  * file: system.*
  * created: 03-09-2014
  *
@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include <base/base.h>
-#include "framework.h"
+#include <base/base.hpp>
+#include "framework.hpp"
 
 //~

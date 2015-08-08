@@ -1,5 +1,5 @@
-#include "random.h"
-#include "math.h"
+#include "random.hpp"
+#include "math.hpp"
 
 namespace granite { namespace base{
 
