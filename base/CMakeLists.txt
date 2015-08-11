@@ -8,7 +8,8 @@ add_library(base
   random.cpp
   hwinfo.cpp
   image.cpp
-  ../ext/lz4/lz4.c)
+  ../ext/lz4/lz4.c
+  fs.cpp)
 
 #target_link_libraries(base zlibstatic)
 
