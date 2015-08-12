@@ -17,4 +17,4 @@ My C++ common libs:
 
 Requirements:
 - Platform: Windows / Linux
-- Compiler: C++14 compilant, GCC 4.9+, Visual Studio 2013+
+- Compiler: C++14 compilant: GCC 4.9+
