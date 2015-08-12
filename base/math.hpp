@@ -347,7 +347,9 @@ public:
 	bool operator>=(const vec &r) const { return 0xffff == _mm_movemask_epi8(_mm_castps_si128(_mm_cmpge_ps(xmm, r.xmm))); }
 
 	// fxs
-	vec &shuffle(const int &x, const int &y, const int &z, const int w) { xmm = _mm_shuffle_ps(xmm, xmm, _MM_SHUFFLE(x, y, z, w)); return *this; }
+	#ifndef GE_COMPILER_VISUAL
+	vec &shuffle(const int &x, const int &y, const int &z, const int &w) { xmm = _mm_shuffle_ps(xmm, xmm, _MM_SHUFFLE(x, y, z, w)); return *this; }
+	#endif
 	vec &negate() { return *this = -*this; }
 	vec &zero() { xmm = _mm_setzero_ps(); return *this; }
 	vec &setLength(const float &len) { xmm = _mm_mul_ps(_mm_set1_ps(len), _mm_div_ps(xmm, _mm_sqrt_ps(lengthSq()))); return *this; }
