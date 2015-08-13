@@ -164,8 +164,8 @@ inline string boolToStr(const bool &b) {
 }
 
 inline stringRange boolToStr(const bool &b, string &os) {
-	static const char *tt = "true";
-	static const char *ff = "false";
+	static const string tt = "true";
+	static const string ff = "false";
 	return stringRange(b ? tt : ff);
 }
 
@@ -297,7 +297,7 @@ template<> inline stringRange toStr(const double &i, string &os) { return detail
 template<> inline stringRange toStr(const bool &i, string &os) { return detail::boolToStr(i, os); }
 template<> inline stringRange toStr(const stringRange &s, string &os) { return s; }
 inline stringRange toStr(const string &ss, string &os) { return stringRange(ss); }
-inline stringRange toStr(const char *cs, string &os) { return stringRange(cs); }
+inline stringRange toStr(const char *cs, string &os) { size_t len = strlen(cs); os.resize(len); std::copy(cs, cs + len, os.begin()); return stringRange(os.begin(), os.begin() + len); }
 
 // custom specializations for strings
 inline string toStr(const string &s) { return s; }
@@ -324,6 +324,7 @@ template <typename T, typename... Args> void strf_(string &buffer, string &out, 
 			if (*(format + 1) == '%') // replace %% -> %
 				++format;
 			else {
+				buffer.resize(21);
 				stringRange r = toStr(v, buffer);
 				out.append(r.begin, r.end);
 				strf_(buffer, out, format + 1, formatEnd, args...);
@@ -337,10 +338,11 @@ template <typename T, typename... Args> void strf_(string &buffer, string &out, 
 }
 
 template <typename T> void strs_(string &buffer, string &out, const T &v) {
+	buffer.resize(21);
 	stringRange r = toStr(v, buffer);
 	out.append(r.begin, r.end);
 }
-template <typename T,typename... Args> void strs_(string &buffer, string &out, const T &val, const Args&... args) {
+template <typename T, typename... Args> void strs_(string &buffer, string &out, const T &val, const Args&... args) {
 	strs_(buffer, out, val);
 	strs_(buffer, out, args...);
 }
@@ -350,7 +352,6 @@ template <typename T,typename... Args> void strs_(string &buffer, string &out, c
 template <typename... Args> string strf(const string &format, const Args&... args) {
 	size_t s = format.size();
 	string ret, buffer;
-	buffer.resize(21);
 	ret.reserve(s + estimateSize(args...));
 	detail::strf_(buffer, ret, format.begin(), format.end(), args...);
 	return ret;
@@ -358,7 +359,6 @@ template <typename... Args> string strf(const string &format, const Args&... arg
 
 template <typename... Args> string strs(const Args&... args) {
 	string buff, ret;
-	buff.resize(21);
 	ret.reserve(estimateSize(args...));
 	detail::strs_(buff, ret, args...);
 	return ret;

@@ -121,7 +121,7 @@ template<> inline bool strIs<stream>(const stringRange &s) {
 
 template<> inline stream fromStr<stream>(const stringRange &s) {
 	stream r;
-	r.write(&s.begin, s.count());
+	r.write(&(*s.begin), s.count());
 	return r;
 }
 
