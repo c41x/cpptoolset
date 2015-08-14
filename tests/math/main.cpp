@@ -164,8 +164,15 @@ int main(int argc, char**argv){
 		printMatrix(matrix().setRotation(vec(1.f, 1.f, 0.f).normalized(), degToRad(90.f)), "setRotation vec(1,1,0), pi/2");
 	}
 
-	std::cout << "\nfinished";
+	// shuffle test
+	vec aax(0.f, 1.f, 2.f, 3.f);
+	std::cout << toStr(aax) << std::endl;
+	aax.shuffle<0, 0, 1, 3>();
+	std::cout << toStr(aax) << std::endl;
+
+	std::cout << "\nfinished\n";
 	std::cout << std::flush;
+
 
 	return 0;
 }
