@@ -13,7 +13,15 @@
 
 #pragma once
 #include "includes.hpp"
+#include "stream.hpp"
 
 namespace granite { namespace base {
+
+typedef std::vector<uint8> image;
+
+bool toImage(const stream &s, image &i);
+image toImage(const stream &s);
+
+#include "image.inc.hpp"
 
 }}
