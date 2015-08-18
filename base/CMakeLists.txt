@@ -11,7 +11,13 @@ add_library(base
   ../ext/lz4/lz4.c
   fs.cpp)
 
-#target_link_libraries(base zlibstatic)
+target_link_libraries(base jpeg)
+target_link_libraries(base png16_static)
+if(NOT WIN32)
+  target_link_libraries(base z)
+else()
+  target_link_libraries(base zlibstatic)
+endif()
 
 install(TARGETS base DESTINATION granite/bin)
 
