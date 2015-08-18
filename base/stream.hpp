@@ -56,8 +56,18 @@ public:
 	template <typename T> inline void write(const T &in);
 };
 
+class const_stream {
+	const void *_data;
+	const size_t _size;
+public:
+	inline const_stream(stream &&s);
+	inline const_stream(const stream &s);
+	inline const_stream(const void *m, const size_t s);
+	inline ~const_stream();
+	inline size_t size() const;
+	inline const uint8 *data() const;
+};
+
 #include "stream.inc.hpp"
 
 }}
-
-// TODO: carry mode: stream do not own memory (for optimizations)

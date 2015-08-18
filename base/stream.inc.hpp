@@ -110,6 +110,14 @@ template <> inline void stream::write(const string &s) {
 	write(&s[0], s.size());
 }
 
+//- const stream
+const_stream::const_stream(stream &&s) : _data(s.data()), _size(s.size()) { }
+const_stream::const_stream(const stream &s) : _data(s.data()), _size(s.size()) { }
+const_stream::const_stream(const void *m, const size_t s) : _data(m), _size(s) { }
+const_stream::~const_stream() {}
+size_t const_stream::size() const { return _size; }
+const uint8 *const_stream::data() const { return (uint8*)_data; }
+
 //- string conversions
 template<> inline size_t estimateSize(const stream &s) {
 	return s.size();
