@@ -44,9 +44,9 @@ else()
 endif()
 
 # COMMAND LINE OPTIONS
-option(PNG_SHARED "Build shared lib" ON)
+option(PNG_SHARED "Build shared lib" OFF)
 option(PNG_STATIC "Build static lib" ON)
-option(PNG_TESTS  "Build libpng tests" ON)
+option(PNG_TESTS  "Build libpng tests" OFF)
 
 # Many more configuration options could be added here
 option(PNG_FRAMEWORK "Build OS X framework" OFF)
@@ -276,11 +276,11 @@ if(PNG_STATIC)
   # MSVC doesn't use a different file extension for shared vs. static
   # libs.  We are able to change OUTPUT_NAME to remove the _static
   # for all other platforms.
-  if(NOT MSVC)
-    set_target_properties(${PNG_LIB_NAME_STATIC} PROPERTIES
-      OUTPUT_NAME ${PNG_LIB_NAME}
-      CLEAN_DIRECT_OUTPUT 1)
-  endif()
+#  if(NOT MSVC)
+#    set_target_properties(${PNG_LIB_NAME_STATIC} PROPERTIES
+#      OUTPUT_NAME ${PNG_LIB_NAME}
+#      CLEAN_DIRECT_OUTPUT 1)
+#  endif()
 endif()
 
 # If CMake > 2.4.x, we set a variable used below to export
