@@ -24,7 +24,7 @@ class simd_vector {
 public:
 	simd_vector() : _data(nullptr), _size(0), _psize(0) {}
 	~simd_vector() {
-		delete []_data;
+		_mm_free(_data);
 		_data = nullptr;
 		_size = _psize = 0;
 	}
@@ -38,6 +38,7 @@ public:
 	}
 
 	T *data() { return _data; }
+	const T *data() const { return _data; }
 
 	void assign(const T *const begin, const T *const end) {
 		resize(std::distance(begin, end));
