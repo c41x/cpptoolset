@@ -52,8 +52,7 @@ fileList listFilesFlat(const string &path = "", directoryType type = workingDire
 fileList findFiles(const string &name, const string &path = "", directoryType type = workingDirectory);
 fileList matchFiles(const string &regex, const string &path = "", directoryType type = workingDirectory);
 stream load(const string &path, directoryType type = workingDirectory);
-bool store(const string &path, stream &s, directoryType type = workingDirectory, bool compress = true);
-bool store(const string &path, stream &&s, directoryType type = workingDirectory, bool compress = true);
+bool store(const string &path, const_stream s, directoryType type = workingDirectory, bool compress = true);
 bool remove(const string &path, directoryType type = workingDirectory);
 bool exists(const string &name, directoryType type = workingDirectory);
 

@@ -520,7 +520,7 @@ bool _vfs_remove(vfs &v, const string &id) {
 }
 
 // add/rename file to archive and index
-bool _vfs_add(vfs &v, const string &id, const stream &s, bool compress = true) {
+bool _vfs_add(vfs &v, const string &id, const const_stream &s, bool compress = true) {
 	auto f = _vfs_find_file(v, id);
 
 	// replace file (remove old file first)
@@ -866,7 +866,7 @@ stream load(const string &path, directoryType type) {
 }
 
 // save stream to file/archive file
-bool store(const string &path, stream &s, directoryType type, bool compress) {
+bool store(const string &path, const_stream s, directoryType type, bool compress) {
 	bool vfs, valid;
 	string filepath, id;
 	std::tie(filepath, id, vfs, valid) = _resolveLocation(path, type, false);
@@ -900,11 +900,6 @@ bool store(const string &path, stream &s, directoryType type, bool compress) {
 
 	std::fclose(f);
 	return bytesWrite == 1;
-}
-
-// move version
-bool store(const string &path, stream &&s, directoryType type, bool compress) {
-	return store(path, std::forward<stream&>(s), type, compress);
 }
 
 // remove file / archive file
