@@ -2,8 +2,16 @@ cmake_minimum_required(VERSION 2.8)
 
 project(granite)
 
+option(ENABLE_SSSE3 "Enable SSSE3 optimizations" ON)
+
+if(ENABLE_SSSE3)
+  set(SSE_INSTRUCTIONS " -mssse3")
+  add_definitions(-DGE_ENABLE_SSSE3)
+  message("SSSE3 optimizations enabled")
+endif()
+
 if(CMAKE_COMPILER_IS_GNUCXX)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y -Wall -msse -msse2 -msse3 -mssse3")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y -Wall -msse -msse2 -msse3 ${SSE_INSTRUCTIONS}")
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 endif()
 
