@@ -16,17 +16,36 @@ namespace granite { namespace base {
 
 #define SSE_SET8(I0, I1, I2, I3, I4, I5, I6, I7, I8, I9, I10, I11, I12, I13, I14, I15) _mm_set_epi8(I15, I14, I13, I12, I11, I10, I9, I8, I7, I6, I5, I4, I3, I2, I1, I0)
 
-template <typename T, int padding>
+template <typename T, int padding = 0>
 class simd_vector {
 	T *_data;
 	size_t _size;
 	size_t _psize;
 public:
-	simd_vector() : _data(nullptr), _size(0), _psize(0) {}
+	simd_vector() : _data(nullptr), _size(0), _psize(0) { }
+
+	simd_vector(const simd_vector &r) {
+		_data = (T*)_mm_malloc(r._psize, 16);
+		_psize = r._psize;
+		_size = r._size;
+		memcpy(_data, r._data, _psize);
+	}
+
+	simd_vector(simd_vector &&m) : _data(m._data), _size(m._size), _psize(m._psize) {
+		m._data = nullptr;
+	}
+
 	~simd_vector() {
 		_mm_free(_data);
 		_data = nullptr;
 		_size = _psize = 0;
+	}
+
+	simd_vector &operator=(simd_vector v) {
+		std::swap(_data, v._data);
+		std::swap(_psize, v._psize);
+		std::swap(_size, v._size);
+		return *this;
 	}
 
 	void resize(size_t s) {
