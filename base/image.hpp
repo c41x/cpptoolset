@@ -14,13 +14,31 @@
 #pragma once
 #include "includes.hpp"
 #include "stream.hpp"
+#include "simd_vector.hpp"
 
 namespace granite { namespace base {
 
-typedef std::vector<uint8> image;
+enum imageCodec {
+	imageCodecJPEG,
+	imageCodecPNG,
+	imageCodecBMP,
+	imageCodecTGA
+};
 
-bool toImage(const stream &s, image &i);
-image toImage(const stream &s);
+struct image {
+	simd_vector<uint8, 3 * 16> data;
+	int channels;
+	int width;
+	int height;
+
+	// conversion operator for const stream
+	inline operator const_stream();
+};
+
+bool toImage(const_stream s, image &i);
+inline image toImage(const_stream s);
+bool fromImage(const image &i, stream &s, imageCodec codec);
+inline stream fromImage(const image &i, imageCodec);
 
 #include "image.inc.hpp"
 
