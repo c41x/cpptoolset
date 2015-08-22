@@ -2,7 +2,8 @@ cpptoolset
 ==========
 
 My C++ common libs:
-- very large SSE optimized math library (vectors, matrices, 2D/3D, bounding shapes, frustum and many more)
+- math library (SSE optimized) (vectors, matrices, 2D/3D, bounding shapes, frustum and many more)
+- image encoding / decoding (PNG, JPEG, BMP, TGA)
 - logger with signal handling
 - signal - slots, events
 - fast string manipulation utilities
@@ -17,4 +18,4 @@ My C++ common libs:
 
 Requirements:
 - Platform: Windows / Linux
-- Compiler: C++14 compilant: GCC 4.9+
+- Compiler: C++14 compilant: GCC 4.9+, MinGW 4.9+, VS 2015+
