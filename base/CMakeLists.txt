@@ -12,11 +12,12 @@ add_library(base
   fs.cpp)
 
 target_link_libraries(base jpeg)
-target_link_libraries(base png16_static)
 if(NOT WIN32)
   target_link_libraries(base z)
+  target_link_libraries(base png)
 else()
   target_link_libraries(base zlibstatic)
+  target_link_libraries(base png16_static)
 endif()
 
 install(TARGETS base DESTINATION granite/bin)

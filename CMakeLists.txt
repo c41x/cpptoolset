@@ -27,6 +27,7 @@ include_directories("${CMAKE_SOURCE_DIR}/ext/libpng/build")
 link_directories("${CMAKE_SOURCE_DIR}/ext/glfw/build/src")
 link_directories("${CMAKE_SOURCE_DIR}/ext/zlib/build")
 link_directories("${CMAKE_SOURCE_DIR}/ext/libjpeg-turbo/build")
+link_directories("${CMAKE_SOURCE_DIR}/ext/libjpeg-turbo/build/libs")
 link_directories("${CMAKE_SOURCE_DIR}/ext/libpng/build")
 
 add_subdirectory(base)
