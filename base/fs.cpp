@@ -102,7 +102,7 @@ bool _mkdirtree(const string &pathBase, const string &path) {
 			#ifdef GE_COMPILER_VISUAL
 			if (0 != _mkdir(p.c_str()))
 				return false;
-			#elif GE_PLATFORM_LINUX
+			#elif defined(GE_PLATFORM_LINUX)
 			if (0 != mkdir(p.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH))
 				return false;
 			#else
