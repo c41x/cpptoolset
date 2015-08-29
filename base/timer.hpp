@@ -25,7 +25,7 @@ class timer {
 	static double m_secsPerTick;
 
 public:
-	timer() { m_start = tick(); }
+	timer(){}
 	~timer(){}
 
 	// statics
@@ -57,16 +57,8 @@ public:
 	double getTimeNs() const { return deltaNs(m_start, tick()); }
 };
 
-#if defined(GE_PLATFORM_WINDOWS)
 double timer::deltaS(const int64 &t1, const int64 &t2) { return double(t2 - t1) * m_secsPerTick; }
 double timer::deltaMs(const int64 &t1, const int64 &t2) { return double(t2 - t1) * m_secsPerTick * 1000.0; }
 double timer::deltaUs(const int64 &t1, const int64 &t2) { return double(t2 - t1) * m_secsPerTick * 1000000.0; }
 double timer::deltaNs(const int64 &t1, const int64 &t2) { return double(t2 - t1) * m_secsPerTick * 1000000000.0; }
-#else
-double timer::deltaS(const int64 &t1, const int64 &t2) { return double(t2 - t1); }
-double timer::deltaMs(const int64 &t1, const int64 &t2) { return double(t2 - t1) * 0.001; }
-double timer::deltaUs(const int64 &t1, const int64 &t2) { return double(t2 - t1) * 0.000001; }
-double timer::deltaNs(const int64 &t1, const int64 &t2) { return double(t2 - t1) * 0.000000001; }
-#endif
-
 }}
