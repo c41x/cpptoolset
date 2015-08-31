@@ -34,6 +34,7 @@ bool timer::init(){
 }
 
 int64 timer::tick() {
+	gassert(m_secsPerTick != 1.0, "timer not initialized?");
 #ifdef GE_PLATFORM_WINDOWS
 	LARGE_INTEGER li;
 	gassert(QueryPerformanceCounter(&li), "query time failed, unable to use QueryPerformanceCounter");
