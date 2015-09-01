@@ -15,6 +15,7 @@ My C++ common libs:
 - file system utilities
 - streams
 - VFS / LZ4 compression
+- multithread task scheduler
 
 Requirements:
 - Platform: Windows / Linux
