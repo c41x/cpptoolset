@@ -9,7 +9,8 @@ add_library(base
   hwinfo.cpp
   image.cpp
   ../ext/lz4/lz4.c
-  fs.cpp)
+  fs.cpp
+  profiler.cpp)
 
 target_link_libraries(base jpeg)
 if(NOT WIN32)
@@ -36,6 +37,7 @@ install(FILES
   log.hpp
   math.hpp
   math.inc.hpp
+  profiler.hpp
   random.hpp
   random.inc.hpp
   scheduler.hpp

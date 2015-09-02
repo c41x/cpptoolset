@@ -28,5 +28,6 @@
 #include "image.hpp"
 #include "simd_vector.hpp"
 #include "scheduler.hpp"
+#include "profiler.hpp"
 
 //~
