@@ -20,3 +20,9 @@ My C++ common libs:
 Requirements:
 - Platform: Windows / Linux
 - Compiler: C++14 compilant: GCC 4.9+, MinGW 4.9+, VS 2015+
+
+*Installation*
+
+Submodules
+Repository uses submodules. To download all dependencies run '''git submodule init''' followed by '''git submodule update'''.
+More info: http://git-scm.com/book/en/v2/Git-Tools-Submodules
