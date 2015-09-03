@@ -1,7 +1,6 @@
-# cpptoolset
-==========
+# cpptoolset (my common C++ libs)
 
-# My C++ common libs:
+# Components:
 - math library (SSE optimized) (vectors, matrices, 2D/3D, bounding shapes, frustum and many more)
 - image encoding / decoding (PNG, JPEG, BMP, TGA)
 - logger with signal handling
