@@ -1,6 +1,6 @@
 # cpptoolset (my common C++ libs)
 
-# Components:
+## Components:
 - math library (SSE optimized) (vectors, matrices, 2D/3D, bounding shapes, frustum and many more)
 - image encoding / decoding (PNG, JPEG, BMP, TGA)
 - logger with signal handling
@@ -16,19 +16,19 @@
 - VFS / LZ4 compression
 - multithread task scheduler
 
-# Requirements:
+## Requirements:
 - Platform: Windows / Linux
 - Compiler: C++14 compilant: GCC 4.9+, MinGW 4.9+, VS 2015+
 
-# Installation
+## Installation
 
-## Submodules
+### Submodules
 Repository uses submodules. To download all dependencies run `git submodule init` followed by `git submodule update` right after clonning.
 More info: http://git-scm.com/book/en/v2/Git-Tools-Submodules
 
-## Preparing project and compiling dependencies
+### Preparing project and compiling dependencies
 - go to `project` directory.
 - run script `init.bat` (on Windows) or `sh init.sh` (on Linux)
 
-## Building
+### Building
 - run `cmake --build "project/release" --config Release
