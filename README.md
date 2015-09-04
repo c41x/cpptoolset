@@ -31,4 +31,4 @@ More info: http://git-scm.com/book/en/v2/Git-Tools-Submodules
 - run script `init.bat` (on Windows) or `sh init.sh` (on Linux)
 
 ### Building
-- run `cmake --build "project/release"` --config Release
+- run `cmake --build "project/release" --config Release`
