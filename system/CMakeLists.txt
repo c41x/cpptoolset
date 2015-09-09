@@ -9,10 +9,10 @@ else()
   target_link_libraries(system GL X11 Xxf86vm pthread Xrandr Xcursor Xi)
 endif()
 
-install(TARGETS system DESTINATION granite/bin)
+install(TARGETS system DESTINATION bin)
 
 install(FILES
   framework.hpp
   includes.hpp
   system.hpp
-  DESTINATION granite/include/system)
+  DESTINATION include/system)

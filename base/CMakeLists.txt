@@ -22,7 +22,7 @@ else()
   target_link_libraries(base zlibstatic)
 endif()
 
-install(TARGETS base DESTINATION granite/bin)
+install(TARGETS base DESTINATION bin)
 
 install(FILES
   base.hpp
@@ -33,19 +33,22 @@ install(FILES
   gstdlib.hpp
   hwinfo.hpp
   image.hpp
+  image.inc.hpp
   includes.hpp
   log.hpp
   math.hpp
   math.inc.hpp
+  math.string.hpp
   profiler.hpp
   random.hpp
   random.inc.hpp
   scheduler.hpp
   sigslot.hpp
+  simd_vector.hpp
   stream.hpp
   stream.inc.hpp
   string.hpp
   string.inc.hpp
   timer.hpp
   tokenizer.hpp
-  DESTINATION granite/include/base)
+  DESTINATION include/base)
