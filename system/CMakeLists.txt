@@ -9,7 +9,7 @@ else()
   target_link_libraries(system GL X11 Xxf86vm pthread Xrandr Xcursor Xi)
 endif()
 
-install(TARGETS system DESTINATION bin)
+install(TARGETS system DESTINATION lib)
 
 install(FILES
   framework.hpp

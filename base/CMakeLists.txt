@@ -22,7 +22,7 @@ else()
   target_link_libraries(base zlibstatic)
 endif()
 
-install(TARGETS base DESTINATION bin)
+install(TARGETS base DESTINATION lib)
 
 install(FILES
   base.hpp
