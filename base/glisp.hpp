@@ -98,6 +98,7 @@ public:
 	string eval(cells_t &&code);
 	string eval(const string &s);
 	const std::vector<string> &getError();
+	void signalError(const string &description);
 	void addProcedure(const string &name, procedure_t fx);
 	void addVariable(const string &name, cell value);
 };

@@ -1730,7 +1730,11 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 	return pushCell(s, s.c_nil, temporary);
 }
 
+void signalError(lispState &s, const string &description) {
+	derr(false, description);
 }
+
+} // detail end
 
 
 //- client side -
@@ -1790,6 +1794,10 @@ string lisp::eval(const string &s) {
 
 string lisp::eval(cells_t &&code) {
 	return eval(code);
+}
+
+void lisp::signalError(const string &description) {
+	detail::signalError(*_s, description);
 }
 
 const std::vector<string> &lisp::getError() {
