@@ -34,11 +34,11 @@
 #endif
 
 #if defined(GLISP_DEBUG_ERROR) || defined(GLISP_DEBUG_ERROR_ARRAY) || defined(GLISP_DEBUG_ERROR_STDOUT)
-#define derr(COND, ...) if (!(COND)) { derr_ERR(__VA_ARGS__); derr_ERR_ARR(__VA_ARGS__); derr_ERR_STD(__VA_ARGS__); } else;
-#define derrr(COND, RET, ...) if (!(COND)) { derr_ERR(__VA_ARGS__); derr_ERR_ARR(__VA_ARGS__); derr_ERR_STD(__VA_ARGS__); return RET; } else;
-#define derrnil(COND, RET, ...) if (!(COND)) { derr_ERR(__VA_ARGS__); derr_ERR_ARR(__VA_ARGS__); derr_ERR_STD(__VA_ARGS__); return s.c_nil; } else;
-#define derrpnil(COND, ...) if (!(COND)) { derr_ERR(__VA_ARGS__); derr_ERR_ARR(__VA_ARGS__); derr_ERR_STD(__VA_ARGS__); return pushCell(s, s.c_nil, temporary); } else;
-#define derrppnil(COND, ...) if (!(COND)) { derr_ERR(__VA_ARGS__); derr_ERR_ARR(__VA_ARGS__); derr_ERR_STD(__VA_ARGS__); return popCallStackLeaveData(s, s.c_nil, temporary); } else;
+#define derr(COND, ...) if (!(COND)) { derr_ERR(__VA_ARGS__); derr_ERR_ARR(__VA_ARGS__); derr_ERR_STD(__VA_ARGS__); } else {}
+#define derrr(COND, RET, ...) if (!(COND)) { derr_ERR(__VA_ARGS__); derr_ERR_ARR(__VA_ARGS__); derr_ERR_STD(__VA_ARGS__); return RET; } else {}
+#define derrnil(COND, RET, ...) if (!(COND)) { derr_ERR(__VA_ARGS__); derr_ERR_ARR(__VA_ARGS__); derr_ERR_STD(__VA_ARGS__); return s.c_nil; } else {}
+#define derrpnil(COND, ...) if (!(COND)) { derr_ERR(__VA_ARGS__); derr_ERR_ARR(__VA_ARGS__); derr_ERR_STD(__VA_ARGS__); return pushCell(s, s.c_nil, temporary); } else {}
+#define derrppnil(COND, ...) if (!(COND)) { derr_ERR(__VA_ARGS__); derr_ERR_ARR(__VA_ARGS__); derr_ERR_STD(__VA_ARGS__); return popCallStackLeaveData(s, s.c_nil, temporary); } else {}
 #else
 #define derr(COND, ...)
 #define derrnil(COND, ...)
