@@ -131,7 +131,7 @@ const string cell::getStr() const {
 	return "";
 }
 
-const bool operator==(const cell &l, const cell &r) {
+bool operator==(const cell &l, const cell &r) {
 	if (l.type == r.type) {
 		if (l.type == cell::typeInt ||
 			l.type == cell::typeList ||
@@ -143,7 +143,7 @@ const bool operator==(const cell &l, const cell &r) {
 	return false;
 }
 
-const bool operator<(const cell &l, const cell &r) {
+bool operator<(const cell &l, const cell &r) {
 	if (l.type == r.type) {
 		if (l.type == cell::typeInt) return l.i < r.i;
 		else if (l.type == cell::typeString || l.type == cell::typeIdentifier) return l.s < r.s;
@@ -153,10 +153,10 @@ const bool operator<(const cell &l, const cell &r) {
 	return false;
 }
 
-const bool operator!=(const cell &l, const cell &r) { return !(l == r); }
-const bool operator>=(const cell &l, const cell &r) { return !(l < r); }
-const bool operator>(const cell &l, const cell &r) { return r < l; }
-const bool operator<=(const cell &l, const cell &r) { return !(l > r); }
+bool operator!=(const cell &l, const cell &r) { return !(l == r); }
+bool operator>=(const cell &l, const cell &r) { return !(l < r); }
+bool operator>(const cell &l, const cell &r) { return r < l; }
+bool operator<=(const cell &l, const cell &r) { return !(l > r); }
 
 bool cellsEqual(cell_t a, cell_t b) {
 	if (a->type == cell::typeList && a->type == b->type && a->i == b->i) {
