@@ -178,7 +178,7 @@ bool cellsType(cell_t begin, cell_t end, cell::type_t t) {
 }
 
 bool isNil(cell_t c) {
-	return c->type == cell::typeIdentifier && c->s == "nil";
+	return c->isNil();
 }
 
 // operator generator for all types
@@ -217,6 +217,10 @@ cell_t findValue(cell_t lst, cell_t key) {
 // same as above but returns true/false
 bool valueFound(cell_t lst, cell_t key) {
 	return lst != findValue(lst, key);
+}
+
+bool cell::isNil() const {
+	return type == cell::typeIdentifier && s == "nil";
 }
 
 // some static constants

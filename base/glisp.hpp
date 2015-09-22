@@ -68,6 +68,7 @@ public:
 	cell(const string &_s) : type(typeString), s(_s) {}
 
 	const string getStr() const;
+	bool isNil() const;
 
 	// constants
 	const static cell nil;
