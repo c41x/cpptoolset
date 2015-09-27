@@ -224,8 +224,10 @@ bool cell::isNil() const {
 }
 
 // some static constants
+cell cell::list(int32 size) { return cell(cell::typeList, size); }
 const cell cell::nil = cell(cell::typeIdentifier, "nil");
 const cell cell::t = cell(cell::typeIdentifier, "t");
+const cell cell::quote = cell(cell::typeIdentifier, "quote");
 
 //- state -
 typedef std::tuple<string, size_t> var_key_t; // name, stack position

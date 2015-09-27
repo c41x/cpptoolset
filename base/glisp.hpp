@@ -70,9 +70,13 @@ public:
 	const string getStr() const;
 	bool isNil() const;
 
+	// builders
+	static cell list(int32 size);
+
 	// constants
 	const static cell nil;
 	const static cell t;
+	const static cell quote;
 };
 
 // lisp state
@@ -108,3 +112,4 @@ public:
 
 }}
 //~
+// TODO: move for cell
