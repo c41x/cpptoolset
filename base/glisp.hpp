@@ -99,6 +99,9 @@ public:
 	void close();
 
 	static cells_t parse(const string &s);
+	static inline bool validate(cell_t);
+	template <typename... Args> static bool validate(cell_t c, cell::type_t tt, Args... t);
+	template <typename... Args> static bool validate(cell_t c, const cell &tt, Args... t);
 	string eval(cells_t &code);
 	string eval(cells_t &&code);
 	string eval(const string &s);

@@ -52,3 +52,23 @@ template <> inline cells_t &fromStream(stream &s, cells_t &c) {
 	return c;
 }
 */
+
+bool lisp::validate(cell_t) { return true; }
+
+template <typename... Args> bool lisp::validate(cell_t c, cell::type_t tt, Args... t) {
+    return c->type == tt && lisp::validate(c + 1, t...);
+}
+
+template <typename... Args> bool lisp::validate(cell_t c, const cell &tt, Args... t) {
+	bool equal;
+	if (c->type == tt.type) {
+		if (c->type == cell::typeInt ||
+			c->type == cell::typeList ||
+			c->type == cell::typeDetach) equal = c->i == tt.i;
+		else if (c->type == cell::typeString || c->type == cell::typeIdentifier) equal = c->s == tt.s;
+		else if (c->type == cell::typeFloat) equal = c->f == tt.f;
+		else if (c->type == cell::typeInt64) equal = c->ii == tt.ii;
+	}
+	else equal = false;
+    return equal && lisp::validate(c + 1, t...);
+}
