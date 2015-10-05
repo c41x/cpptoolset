@@ -109,6 +109,11 @@ public:
 	void signalError(const string &description);
 	void addProcedure(const string &name, procedure_t fx);
 	void addVariable(const string &name, cell value);
+
+	// access to in-memory constants
+	cell_t nil() const;
+	cell_t t() const;
+
 };
 
 #include "glisp.inc.hpp"

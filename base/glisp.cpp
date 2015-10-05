@@ -1823,4 +1823,7 @@ void lisp::addVariable(const string &name, cell value) {
 	*detail::pushVariable(*_s, name, 1) = value;
 }
 
+cell_t lisp::nil() const { return _s->c_nil; }
+cell_t lisp::t() const { return _s->c_t; }
+
 }}
