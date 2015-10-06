@@ -98,15 +98,20 @@ public:
 	void init(size_t memSize = 100000);
 	void close();
 
+	// parsing and evaluation
 	static cells_t parse(const string &s);
-	static inline bool validate(cell_t);
-	template <typename... Args> static bool validate(cell_t c, cell::type_t tt, Args... t);
-	template <typename... Args> static bool validate(cell_t c, const cell &tt, Args... t);
 	string eval(cells_t &code);
 	string eval(cells_t &&code);
 	string eval(const string &s);
+
+	// error report and debugging
 	const std::vector<string> &getError();
+	static inline bool validate(cell_t);
+	template <typename... Args> static bool validate(cell_t c, cell::type_t tt, Args... t);
+	template <typename... Args> static bool validate(cell_t c, const cell &tt, Args... t);
 	void signalError(const string &description);
+
+	// extending API
 	void addProcedure(const string &name, procedure_t fx);
 	void addVariable(const string &name, cell value);
 
@@ -120,4 +125,3 @@ public:
 
 }}
 //~
-// TODO: move for cell
