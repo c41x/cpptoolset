@@ -23,7 +23,7 @@
 ## Installation
 
 ### Submodules
-Repository uses submodules. To download all dependencies run `git submodule init` followed by `git submodule update` right after clonning.
+Repository is using submodules. To download all dependencies run `git submodule init` followed by `git submodule update` right after clonning.
 More info: http://git-scm.com/book/en/v2/Git-Tools-Submodules
 
 ### Preparing project and compiling dependencies
