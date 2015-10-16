@@ -324,7 +324,7 @@ template <typename T, typename... Args> void strf_(string &buffer, string &out, 
 			if (*(format + 1) == '%') // replace %% -> %
 				++format;
 			else {
-				buffer.resize(21);
+				buffer.resize(std::max(buffer.size(), estimateSize(v)));
 				stringRange r = toStr(v, buffer);
 				out.append(r.begin, r.end);
 				strf_(buffer, out, format + 1, formatEnd, args...);
@@ -338,7 +338,7 @@ template <typename T, typename... Args> void strf_(string &buffer, string &out, 
 }
 
 template <typename T> void strs_(string &buffer, string &out, const T &v) {
-	buffer.resize(21);
+	buffer.resize(std::max(buffer.size(), estimateSize(v)));
 	stringRange r = toStr(v, buffer);
 	out.append(r.begin, r.end);
 }
@@ -364,4 +364,5 @@ template <typename... Args> string strs(const Args&... args) {
 	return ret;
 }
 
+// TODO: thread safety (buffer in strs and strf)
 //~
