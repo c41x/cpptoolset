@@ -68,6 +68,7 @@ template <typename... Args> bool lisp::validate(cell_t c, const cell &tt, Args..
 		else if (c->type == cell::typeString || c->type == cell::typeIdentifier) equal = c->s == tt.s;
 		else if (c->type == cell::typeFloat) equal = c->f == tt.f;
 		else if (c->type == cell::typeInt64) equal = c->ii == tt.ii;
+		else equal = false;
 	}
 	else equal = false;
     return equal && lisp::validate(c + 1, t...);
