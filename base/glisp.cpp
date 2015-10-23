@@ -1725,8 +1725,14 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 				if (d->i > 1)
 					evalNoStack(s, d + 2, endCell(d));
 
-				// call procedure
-				return popCallStackLeaveData(s, std::get<1>(*i)(r, s.stack), temporary);
+				// call procedure (when user returns end iterator - automatically returns added values)
+				cell_t returnBase = s.stack.end();
+				cell_t returned = std::get<1>(*i)(r, s.stack);
+				if (returned == s.stack.end())
+					returned = returnBase;
+
+				// leave result on stack
+				return popCallStackLeaveData(s, returned, temporary);
 			}
 			derr(false, "procedure / function \"", fxName, "\" not found");
 		}
