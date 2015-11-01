@@ -40,6 +40,19 @@ int main(int argc, char **argv) {
 	granite::base::lisp gl;
 	gl.init();
 
+	// granite::base::cells_t a;
+	// a.push_back(granite::base::cell::list(4));
+	// a.push_back(granite::base::cell(64));
+	// //a.push_back(granite::base::cell(3.1415f));
+	// a.push_back(granite::base::cell(3));
+	// a.push_back(granite::base::cell::quote);
+	// a.push_back(granite::base::cell(32));
+	// if (granite::base::lisp::validate(a.begin(), granite::base::cell::list(4), granite::base::cell::typeInt)) {
+	// 	std::cout << "valid!" << std::endl;
+	// }
+	// else std::cout << "not valid! " << std::endl;
+	// return 0;
+
 	// add custom procedures
 	gl.addProcedure("**", &c_mul);
 	gl.addProcedure("message", &c_message);
