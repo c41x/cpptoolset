@@ -17,6 +17,7 @@
 #elif defined(GE_COMPILER_GCC)
 #include <unistd.h>
 #include <dirent.h>
+#include <shlobj.h>
 #endif
 
 namespace granite { namespace base { namespace fs {
@@ -651,7 +652,7 @@ string getExecutableDirectory() {
 }
 
 string getUserDirectory() {
-	#ifdef GE_COMPILER_VISUAL
+	#ifdef GE_PLATFORM_WINDOWS
 	char path[MAX_PATH];
 	if (SUCCEEDED(SHGetSpecialFolderPath(NULL, path, CSIDL_PROFILE, false)))
 		return string(path);
@@ -697,6 +698,15 @@ void doNotCompress(std::vector<string> extensions) {
 
 void allowGlobalPaths(bool doAllow) {
 	_allowGlobal = doAllow;
+}
+
+void createFolderTree(const string &path) {
+	#ifdef GE_PLATFORM_WINDOWS
+	string normalizedPath = _normalizePath(path);
+	_mkdirtree(normalizedPath.substr(0, 2), normalizedPath.substr(3));
+	#else
+	_mkdirtree("", path);
+	#endif
 }
 
 // flush all archives (writes file index for all archives)

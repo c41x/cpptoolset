@@ -39,6 +39,7 @@ string getExecutableDirectory();
 string getUserDirectory();
 
 bool open(const string &path, directoryType type = workingDirectory);
+void createFolderTree(const string &path);
 void preferArchives(bool doPrefer);
 void doNotCompress(std::vector<string> extensions);
 void allowGlobalPaths(bool doAllow);
