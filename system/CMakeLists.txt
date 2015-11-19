@@ -6,7 +6,7 @@ target_link_libraries(system glfw3)
 if(${MINGW})
   target_link_libraries(system opengl32)
 else()
-  target_link_libraries(system GL X11 Xxf86vm pthread Xrandr Xcursor Xi)
+  target_link_libraries(system GL X11 Xxf86vm pthread Xrandr Xcursor Xi dl Xinerama)
 endif()
 
 install(TARGETS system DESTINATION lib)
