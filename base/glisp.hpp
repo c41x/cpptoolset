@@ -111,6 +111,9 @@ public:
 	template <typename... Args> static bool validate(cell_t c, const cell &tt, Args... t);
 	void signalError(const string &description);
 
+	// utils
+	static void mapc(cell_t c, std::function<void(cell_t)> fx);
+
 	// extending API
 	void addProcedure(const string &name, procedure_t fx);
 	void addVariable(const string &name, cell value);

@@ -1812,6 +1812,13 @@ void lisp::signalError(const string &description) {
 	detail::signalError(*_s, description);
 }
 
+// map over list util
+void lisp::mapc(cell_t c, std::function<void(cell_t)> fx) {
+	// TODO: consider assert to check if c is really a list
+	for (cell_t i = firstCell(c); i != endCell(c); i = nextCell(i))
+		fx(i);
+}
+
 const std::vector<string> &lisp::getError() {
 	#ifdef GLISP_DEBUG_ERROR_ARRAY
 	return _s->errors;
