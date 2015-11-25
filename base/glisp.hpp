@@ -77,6 +77,12 @@ public:
 	const static cell nil;
 	const static cell t;
 	const static cell quote;
+
+	// types for validator
+	struct listRange {
+		int32 min, max;
+		listRange(int32 emin, int32 emax = -1) : min(emin), max(emax) {}
+	};
 };
 
 // lisp state
@@ -109,6 +115,7 @@ public:
 	static inline bool validate(cell_t);
 	template <typename... Args> static bool validate(cell_t c, cell::type_t tt, Args... t);
 	template <typename... Args> static bool validate(cell_t c, const cell &tt, Args... t);
+	template <typename... Args> static bool validate(cell_t c, const cell::listRange &tt, Args... t);
 	void signalError(const string &description);
 
 	// utils

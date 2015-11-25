@@ -73,3 +73,10 @@ template <typename... Args> bool lisp::validate(cell_t c, const cell &tt, Args..
 	else equal = false;
     return equal && lisp::validate(c + 1, t...);
 }
+
+template <typename... Args> bool lisp::validate(cell_t c, const cell::listRange &tt, Args... t) {
+    return c->type == cell::typeList
+		&& c->i >= tt.min
+		&& (tt.max == -1 ? true : (c->i <= tt.max))
+		&& lisp::validate(c + 1, t...);
+}
