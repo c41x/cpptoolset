@@ -69,6 +69,7 @@ public:
 
 	const string getStr() const;
 	bool isNil() const;
+	int32 listSize() const;
 
 	// builders
 	static cell list(int32 size);

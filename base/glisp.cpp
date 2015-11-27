@@ -223,6 +223,10 @@ bool cell::isNil() const {
 	return type == cell::typeIdentifier && s == "nil";
 }
 
+int32 cell::listSize() const {
+	return i;
+}
+
 // some static constants
 cell cell::list(int32 size) { return cell(cell::typeList, size); }
 const cell cell::nil = cell(cell::typeIdentifier, "nil");
