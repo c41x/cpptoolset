@@ -215,6 +215,10 @@ int main(int argc, char **argv) {
 	test(gl, "(and (= 1 (- 2 1)) t)", "t");
 	test(gl, "(list (list))", "(nil)");
 	test(gl, "((lambda (a b c) (+ a b c)) 2 3 4)", "9");
+	test(gl, "(not t)", "nil");
+	test(gl, "(not nil)", "t");
+	test(gl, "(not (and 1 2 3))", "nil");
+	test(gl, "(not (member '(maple seeds666) trees))", "t");
 	std::cout << gl.eval("(print-state)");
 	#endif
 

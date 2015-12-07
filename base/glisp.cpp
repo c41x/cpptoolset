@@ -1521,6 +1521,14 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			// all t - return last
 			return popCallStackLeaveData(s, r, temporary);
 		}
+		else if (fxName == "not") {
+			derrpnil(d->i == 2, "not: expecting 1 argument, passed", d->i - 1);
+			pushCallStack(s);
+
+			// eval temporary test and return inverted value
+			cell_t test = eval(s, d + 2, true);
+			return popCallStackLeaveData(s, isNil(test) ? s.c_t : s.c_nil, temporary);
+		}
 		else if (fxName == "!=") {
 			derrpnil(d->i == 3, "!=: expecting 2 arguments, passed: ", d->i - 1);
 			pushCallStack(s);
