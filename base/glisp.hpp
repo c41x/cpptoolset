@@ -84,6 +84,11 @@ public:
 		int32 min, max;
 		listRange(int32 emin, int32 emax = -1) : min(emin), max(emax) {}
 	};
+
+	struct anyOf {
+		type_t t1, t2;
+		anyOf(type_t _t1, type_t _t2) : t1(_t1), t2(_t2) {}
+	};
 };
 
 // lisp state
@@ -117,6 +122,7 @@ public:
 	template <typename... Args> static bool validate(cell_t c, cell::type_t tt, Args... t);
 	template <typename... Args> static bool validate(cell_t c, const cell &tt, Args... t);
 	template <typename... Args> static bool validate(cell_t c, const cell::listRange &tt, Args... t);
+	template <typename... Args> static bool validate(cell_t c, const cell::anyOf &tt, Args... t);
 	void signalError(const string &description);
 
 	// utils

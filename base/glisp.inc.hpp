@@ -80,3 +80,7 @@ template <typename... Args> bool lisp::validate(cell_t c, const cell::listRange 
 		&& (tt.max == -1 ? true : (c->i <= tt.max))
 		&& lisp::validate(c + 1, t...);
 }
+
+template <typename... Args> bool lisp::validate(cell_t c, const cell::anyOf &tt, Args... t) {
+    return (c->type == tt.t1 || c->type == tt.t2) && lisp::validate(c + 1, t...);
+}
