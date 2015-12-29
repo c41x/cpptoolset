@@ -54,6 +54,8 @@ public:
 
 	template <typename T> inline size_t read(T &out);
 	template <typename T> inline void write(const T &in);
+	template <typename T> inline size_t read(std::vector<T> &out);
+	template <typename T> inline void write(const std::vector<T> &in);
 };
 
 class const_stream {

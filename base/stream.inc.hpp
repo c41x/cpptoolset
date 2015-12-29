@@ -100,14 +100,30 @@ template <> inline size_t stream::read(string &s) {
 	size_t r = read<uint32>(len);
 	if (r > 0) {
 		s.resize(len);
-		return read(&s[0], len) + r;
+		return read(&s[0], len * sizeof(string::value_type)) + r;
 	}
 	return 0;
 }
 
 template <> inline void stream::write(const string &s) {
 	write<uint32>((uint32)s.size());
-	write(&s[0], s.size());
+	write(&s[0], s.size() * sizeof(string::value_type));
+}
+
+// overloads for writing vectors
+template <typename T> inline size_t stream::read(std::vector<T> &out) {
+	uint32 len;
+	size_t r = read<uint32>(len);
+	if (r > 0) {
+		out.resize(len);
+		return read(&out[0], len * sizeof(T)) + r;
+	}
+	return 0;
+}
+
+template <typename T> inline void stream::write(const std::vector<T> &in) {
+	write<uint32>((uint32)in.size());
+	write(&in[0], in.size() * sizeof(T));
 }
 
 //- const stream
