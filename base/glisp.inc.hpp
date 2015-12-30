@@ -53,6 +53,29 @@ template <> inline cells_t &fromStream(stream &s, cells_t &c) {
 }
 */
 
+namespace detail {
+inline bool compare(const cell &c, const cell &tt) {
+	if (c.type == tt.type) {
+		if (c.type == cell::typeInt ||
+			c.type == cell::typeList ||
+			c.type == cell::typeDetach) return c.i == tt.i;
+		else if (c.type == cell::typeString || c.type == cell::typeIdentifier) return c.s == tt.s;
+		else if (c.type == cell::typeFloat) return c.f == tt.f;
+		else if (c.type == cell::typeInt64) return c.ii == tt.ii;
+	}
+	return false;
+}
+
+inline bool countedValidate(int32, cell_t) { return true; }
+
+template <typename T, typename... Args> bool countedValidate(int32 itemsToCheck, cell_t c, T tt, Args... t) {
+	if (itemsToCheck > 0)
+		return lisp::validate(c, tt) && countedValidate(--itemsToCheck, c + 1, t...);
+	return true;
+}
+// TODO: fix for validating something like that: listRange(2), int, int, float!, ..., ...
+}
+
 bool lisp::validate(cell_t) { return true; }
 
 template <typename... Args> bool lisp::validate(cell_t c, cell::type_t tt, Args... t) {
@@ -60,25 +83,14 @@ template <typename... Args> bool lisp::validate(cell_t c, cell::type_t tt, Args.
 }
 
 template <typename... Args> bool lisp::validate(cell_t c, const cell &tt, Args... t) {
-	bool equal;
-	if (c->type == tt.type) {
-		if (c->type == cell::typeInt ||
-			c->type == cell::typeList ||
-			c->type == cell::typeDetach) equal = c->i == tt.i;
-		else if (c->type == cell::typeString || c->type == cell::typeIdentifier) equal = c->s == tt.s;
-		else if (c->type == cell::typeFloat) equal = c->f == tt.f;
-		else if (c->type == cell::typeInt64) equal = c->ii == tt.ii;
-		else equal = false;
-	}
-	else equal = false;
-    return equal && lisp::validate(c + 1, t...);
+    return detail::compare(*c, tt) && lisp::validate(c + 1, t...);
 }
 
 template <typename... Args> bool lisp::validate(cell_t c, const cell::listRange &tt, Args... t) {
     return c->type == cell::typeList
 		&& c->i >= tt.min
-		&& (tt.max == -1 ? true : (c->i <= tt.max))
-		&& lisp::validate(c + 1, t...);
+		&& (tt.max == -1 || c->i <= tt.max)
+		&& detail::countedValidate(c->i, c + 1, t...);
 }
 
 template <typename... Args> bool lisp::validate(cell_t c, const cell::anyOf &tt, Args... t) {
