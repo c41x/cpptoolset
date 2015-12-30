@@ -71,9 +71,10 @@ inline bool countedValidate(int32, cell_t) { return true; }
 template <typename T, typename... Args> bool countedValidate(int32 itemsToCheck, cell_t c, T tt, Args... t) {
 	if (itemsToCheck > 0)
 		return lisp::validate(c, tt) && countedValidate(--itemsToCheck, c + 1, t...);
-	return true;
+
+	// validate rest of expression
+	return lisp::validate(c, tt, t...);
 }
-// TODO: fix for validating something like that: listRange(2), int, int, float!, ..., ...
 }
 
 bool lisp::validate(cell_t) { return true; }
