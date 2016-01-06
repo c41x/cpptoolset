@@ -1675,6 +1675,34 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 			// return result on stack
 			return popCallStackLeaveData(s, pushCell(s, {cell::typeString, res}));
 		}
+		else if (fxName == "require") {
+			// TODO: require
+		}
+		else if (fxName == "to-id") {
+			if (d->i != 2) {
+				// invalid arguments passed - return unknown id
+				return pushCell(s, {cell::typeIdentifier, "*unknown*"});
+			}
+
+			// convert any type to identifier
+			pushCallStack(s);
+			cell_t t = eval(s, d + 2);
+
+			// convert value and return as identifier
+			if (t->type == cell::typeInt)
+				return popCallStackLeaveData(s, pushCell(s, {cell::typeIdentifier, toStr(t->i)}));
+			else if (t->type == cell::typeFloat)
+				return popCallStackLeaveData(s, pushCell(s, {cell::typeIdentifier, toStr(t->f)}));
+			else if (t->type == cell::typeString)
+				return popCallStackLeaveData(s, pushCell(s, {cell::typeIdentifier, t->s}));
+			else if (t->type == cell::typeInt64)
+				return popCallStackLeaveData(s, pushCell(s, {cell::typeIdentifier, toStr(t->ii)}));
+			else if (t->type == cell::typeVector)
+				return popCallStackLeaveData(s, pushCell(s, {cell::typeIdentifier, toStr(vec4f(t->v4))}));
+
+			// evaluated argument has invalid type - just returns unknown identifier
+			return popCallStackLeaveData(s, pushCell(s, {cell::typeIdentifier, "*unknown*"}));
+		}
 		else if (fxName == "sort" ||
 				 fxName == "reverse") {
 			derrpnil(d->i == 2, fxName, ": expected 1 argument, passed: ", d->i - 1);
