@@ -133,7 +133,7 @@ void refresh() { detail::fetch(true); }
 string toStr() {
 	detail::fetch();
 	return strs(detail::_BrandName,
-				" cache line size: ", detail::_CacheLineSize, "kb ",
+				" cache line size: ", detail::_CacheLineSize, "b ",
 				detail::_CacheSize, "kb L2",
 				detail::_64BIT ? " 64bit [ " : " [ ",
 				detail::_MMX ? "MMX " : "",
