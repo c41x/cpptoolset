@@ -116,14 +116,19 @@ template <typename T> inline size_t stream::read(std::vector<T> &out) {
 	size_t r = read<uint32>(len);
 	if (r > 0) {
 		out.resize(len);
-		return read(&out[0], len * sizeof(T)) + r;
+		for (uint32 i = 0; i < len; ++i) {
+			r += read(out[i]);
+		}
+		return r;
 	}
 	return 0;
 }
 
 template <typename T> inline void stream::write(const std::vector<T> &in) {
 	write<uint32>((uint32)in.size());
-	write(&in[0], in.size() * sizeof(T));
+	for (size_t i = 0; i < in.size(); ++i) {
+		write(in[i]);
+	}
 }
 
 //- const stream
@@ -154,3 +159,6 @@ template<> inline stringRange toStr<stream>(const stream &st, string &os) {
 	st.read_const(&os[0], st.size());
 	return stringRange(os.begin(), os.begin() + st.size());
 }
+
+// TODO: consider returning size in write functions
+// TODO: optimize vector write (allocatinos)
