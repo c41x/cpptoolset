@@ -29,8 +29,7 @@ enum jobPriority {
 
 class scheduler {
 	struct thread {
-		std::thread t;
-		volatile bool running;
+		std::thread *t;
 	};
 
 	struct job {
@@ -55,7 +54,7 @@ class scheduler {
 	}
 
 	void fthread(size_t ti) {
-		while (_threads[ti].running || _jobs.size() > 0) {
+		while (_jobs.size() > 0) {
 			_jobMutex.lock();
 			if (_jobs.size() > 0) {
 				// find next job
@@ -103,15 +102,15 @@ public:
 
 	void stop() {
 		// signal all threads to stop, then join them and clear threads list
-		for (auto &t : _threads) t.running = false;
-		for (auto &t : _threads) t.t.join();
+		for (auto &t : _threads) t.t->join();
 		_threads.clear();
 	}
 
 	void start(size_t numThreads) {
 		// create and run threads
+		gassert(_threads.size() == 0, "threads already initialized");
 		for (size_t i = 0; i < numThreads; ++i)
-			_threads.push_back({ std::thread(&scheduler::fthread, this, i), true });
+			_threads.push_back({ new std::thread(&scheduler::fthread, this, i) });
 	}
 
 	jobID addJob(std::function<void()> fn, jobPriority priority, jobID parent = nullptr) {
