@@ -85,7 +85,7 @@ class scheduler {
 public:
 	typedef job *jobID;
 
-	scheduler(size_t maxJobs) {
+	explicit scheduler(size_t maxJobs) {
 		// allocate and initialize free list containing jobs
 		_jobsList.resize(maxJobs);
 		job *prv = nullptr;
@@ -148,3 +148,4 @@ typedef scheduler::jobID jobID;
 // TODO: condition variable to wake up / kill threads
 // TODO: relax max jobs limit - create temporary buffer with stored rest of jobs
 // TODO: message priority selection (test this)
+// TODO: someday - lock free version
