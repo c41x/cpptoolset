@@ -19,12 +19,45 @@
 
 namespace granite { namespace base {
 
+template<> inline size_t estimateSize(const vec2f &) {
+	return estimateSize(float()) * 2 + 3;
+}
+
+template<> inline size_t estimateSize(const vec3f &) {
+	return estimateSize(float()) * 3 + 3;
+}
+
 template<> inline size_t estimateSize(const vec4f &) {
 	return estimateSize(float()) * 4 + 3;
 }
 
 template<> inline size_t estimateSize(const vec &) {
 	return estimateSize(float()) * 4 + 3;
+}
+
+// TODO: find some template magic way to eleminate redundant code
+template<> inline bool strIs<vec2f>(const stringRange &s) {
+	auto tok = initToken(s);
+	int n = 2;
+	while(n--) {
+		if (endToken(s, tok))
+			return false;
+		if (!strIs<float>(nextToken(s, tok)))
+			return false;
+	}
+	return endToken(s, tok);
+}
+
+template<> inline bool strIs<vec3f>(const stringRange &s) {
+	auto tok = initToken(s);
+	int n = 3;
+	while(n--) {
+		if (endToken(s, tok))
+			return false;
+		if (!strIs<float>(nextToken(s, tok)))
+			return false;
+	}
+	return endToken(s, tok);
 }
 
 template<> inline bool strIs<vec4f>(const stringRange &s) {
@@ -41,6 +74,23 @@ template<> inline bool strIs<vec4f>(const stringRange &s) {
 
 template<> inline bool strIs<vec>(const stringRange &s) { return strIs<vec4f>(s); }
 
+template<> inline vec2f fromStr<vec2f>(const stringRange &s) {
+	vec2f r;
+	auto tok = initToken(s);
+	r.x = fromStr<float>(nextToken(s, tok));
+	r.y = fromStr<float>(nextToken(s, tok));
+	return r;
+}
+
+template<> inline vec3f fromStr<vec3f>(const stringRange &s) {
+	vec3f r;
+	auto tok = initToken(s);
+	r.x = fromStr<float>(nextToken(s, tok));
+	r.y = fromStr<float>(nextToken(s, tok));
+	r.z = fromStr<float>(nextToken(s, tok));
+	return r;
+}
+
 template<> inline vec4f fromStr<vec4f>(const stringRange &s) {
 	vec4f r;
 	auto tok = initToken(s);
@@ -52,6 +102,36 @@ template<> inline vec4f fromStr<vec4f>(const stringRange &s) {
 }
 
 template<> inline vec fromStr<vec>(const stringRange &s) { return fromStr<vec4f>(s); }
+
+template<> inline stringRange toStr<vec2f>(const vec2f &v, string &os) {
+	auto mark = os.begin();
+
+	stringRange t = toStr(v.x, os);
+	mark = copy_safe(t.begin, t.end, mark);
+	*mark++ = ' ';
+
+	t = toStr(v.y, os);
+	mark = copy_safe(t.begin, t.end, mark);
+
+	return stringRange(os.begin(), mark);
+}
+
+template<> inline stringRange toStr<vec3f>(const vec3f &v, string &os) {
+	auto mark = os.begin();
+
+	stringRange t = toStr(v.x, os);
+	mark = copy_safe(t.begin, t.end, mark);
+	*mark++ = ' ';
+
+	t = toStr(v.y, os);
+	mark = copy_safe(t.begin, t.end, mark);
+	*mark++ = ' ';
+
+	t = toStr(v.z, os);
+	mark = copy_safe(t.begin, t.end, mark);
+
+	return stringRange(os.begin(), mark);
+}
 
 template<> inline stringRange toStr<vec4f>(const vec4f &v, string &os) {
 	auto mark = os.begin();
