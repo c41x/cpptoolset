@@ -29,6 +29,7 @@
 #pragma once
 
 #include "includes.hpp"
+#include "simd_vector.hpp"
 
 // reverse shuffle
 #define SSE_RSHUFFLE(VX, VY, VZ, VW) _MM_SHUFFLE(VW, VZ, VY, VX)
@@ -157,7 +158,7 @@ inline float hyperbInterp2d(float ileft, float ix, float iright, float itop, flo
 //- non optimized float vectors -
 class vec2f {
 public:
-	union GE_ALIGN(16) {
+	union GE_ALIGN(1) { // non SSE aligned
 		struct{
 			float x, y;
 		};
@@ -195,7 +196,7 @@ public:
 
 class vec3f {
 public:
-	union GE_ALIGN(16) {
+	union GE_ALIGN(1) { // not SSE aligned!
 		struct{
 			float x, y, z;
 		};
@@ -336,6 +337,7 @@ public:
 	vec operator*(const float r) const { return vec(_mm_mul_ps(vec(r).xmm, xmm)); }
 	vec operator/(const float r) const { return vec(_mm_div_ps(vec(r).xmm, xmm)); }
 	vec operator^(const vec &v) const { return _mm_sub_ps(_mm_mul_ps(_mm_shuffle_ps(xmm, xmm, _MM_SHUFFLE(3, 0, 2, 1)), _mm_shuffle_ps(v.xmm, v.xmm, _MM_SHUFFLE(3, 1, 0, 2))), _mm_mul_ps(_mm_shuffle_ps(xmm, xmm, _MM_SHUFFLE(3, 1, 0, 2)), _mm_shuffle_ps(v.xmm, v.xmm, _MM_SHUFFLE(3, 0, 2, 1)))); }
+	operator vec2f() const { vec4f r; _mm_store_ps(r.data, xmm); return vec2f(r.x, r.y); }
 	operator vec3f() const { vec4f tr; _mm_store_ps(tr.data, xmm); return vec3f(tr.x, tr.y, tr.z); }
 	operator vec4f() const { vec4f r; _mm_store_ps(r.data, xmm); return r; }
 	operator __m128() const { return xmm; }
@@ -496,7 +498,7 @@ public:
 
 class polygon2d {
 public:
-	std::vector<vec2f> points;
+	simd_vector<vec2f, 1> points;
 
 	// const / dest
 	polygon2d(){}

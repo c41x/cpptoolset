@@ -137,7 +137,23 @@ float polygon2d::getPerimeter() const {
 }
 
 vec2f polygon2d::getCenter() const {
-	return std::accumulate(points.cbegin(), points.cend(), vec2f(0.f, 0.f)) / float(points.size());
+	if (points.size() == 0)
+		return vec2f(0.0f, 0.0f);
+	else if (points.size() == 1)
+		return points.front();
+
+	// sum all
+	size_t size = points.size() / 2 + points.size() % 2;
+	__m128 ret = _mm_setzero_ps();
+	for (size_t i = 0; i < size; ++i) {
+		ret = _mm_add_ps(_mm_load_ps((float*)(points.data() + i * 2)), ret);
+	}
+	__m128 vl = _mm_movehl_ps(ret, ret);
+	ret = _mm_add_ps(vl, ret);
+
+	// mean
+	ret = _mm_div_ps(ret, _mm_set1_ps((float)points.size()));
+	return vec(ret);
 }
 
 float polygon2d::getMaxx() const {
@@ -163,7 +179,10 @@ rect2d polygon2d::getBoundingRect() const {
 }
 
 void polygon2d::deleteDuplicates() {
-	std::unique(points.begin(), points.end(), [](const vec2f &a, const vec2f &b) -> bool { return equal(a.x, b.x) && equal(a.y, b.y); });
+	points.erase(std::unique(points.begin(), points.end(),
+							 [](const vec2f &a, const vec2f &b) -> bool {
+								 return equal(a.x, b.x) && equal(a.y, b.y);
+							 }), points.end());
 }
 
 bool polygon2d::isPointInside(const vec2f &p) const {
