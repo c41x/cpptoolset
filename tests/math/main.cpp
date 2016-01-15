@@ -170,9 +170,44 @@ int main(int argc, char**argv){
 	aax.shuffle<0, 0, 1, 3>();
 	std::cout << toStr(aax) << std::endl;
 
+	// simd_vector
+	{
+		std::cout << std::endl;
+		simd_vector<float> v;
+		v.resize(10);
+		float fi = 0.0f;
+		for (auto &e : v)
+			e = fi += 1.001f;
+		for (auto e : v)
+			std::cout << e << std::endl;
+		auto e = v.erase(v.begin(), v.begin() + 5);
+		v.erase(e);
+		v.resize(10, 666.0f);
+		std::cout << std::endl;
+		for (auto e : v)
+			std::cout << e << std::endl;
+	}
+
+	// polygon
+	{
+		std::cout << std::endl;
+		polygon2d p;
+		p.points.resize(11);
+		float fi = 0.0f;
+		for (auto &pt : p.points) {
+			pt = vec2f(fi, fi + 1.0f);
+			fi += 1.1f;
+		}
+
+		for (auto &pt : p.points) {
+			std::cout << toStr(pt) << std::endl;
+		}
+
+		std::cout << "center: " << toStr(p.getCenter()) << std::endl;
+	}
+
 	std::cout << "\nfinished\n";
 	std::cout << std::flush;
-
 
 	return 0;
 }
