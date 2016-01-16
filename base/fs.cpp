@@ -90,7 +90,8 @@ void _resize(std::FILE *f, size_t newSize) {
 	#ifdef GE_COMPILER_VISUAL
 	_chsize_s(_fileno(f), newSize);
 	#else
-	ftruncate(fileno(f), newSize);
+	if (0 != ftruncate(fileno(f), newSize))
+		logError(strs("ftruncate failed, errno: ", errno));
 	#endif
 }
 
