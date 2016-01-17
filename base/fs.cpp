@@ -479,18 +479,30 @@ void _vfs_read(vfs &v, const string &id, stream &s) {
 		if (f->flags & 1) {
 			// decompress
 			int64 realSize = 0;
-			std::fread(&realSize, sizeof(int64), 1, v.f);
+			if (1 != std::fread(&realSize, sizeof(int64), 1, v.f)) {
+				logError("vfs read: could not read compressed data size");
+				return;
+			}
 			stream sc(f->size - sizeof(int64));
-			std::fread(sc.data(), sc.size(), 1, v.f);
+			if (1 != std::fread(sc.data(), sc.size(), 1, v.f)) {
+				logError("vfs read: could not read compressed data");
+				return;
+			}
 			size_t offset = s.size();
 			s.resize(offset + realSize);
-			LZ4_decompress_safe((const char*)sc.data(), (char*)s.data() + offset, sc.size(), realSize);
+			if (LZ4_decompress_safe((const char*)sc.data(), (char*)s.data() + offset, sc.size(), realSize) < 0) {
+				logError("vfs read: could decompress data");
+				s.resize(0);
+			}
 		}
 		else {
 			// read
 			size_t offset = s.size();
 			s.resize(offset + f->size);
-			std::fread(s.data() + offset, f->size, 1, v.f);
+			if (1 != std::fread(s.data() + offset, f->size, 1, v.f)) {
+				logError("vfs read: could not read data");
+				s.resize(0);
+			}
 		}
 	}
 	else logError(strs("vfs read: file: ", id, " not found"));
