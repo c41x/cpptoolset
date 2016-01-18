@@ -201,4 +201,7 @@ namespace granite{
 #define gassertl(condition, message) if (!(condition)) logError(message); else
 #endif
 
+// disable Visual Studio's secure warnings (C4996)
+#pragma warning(disable:4996)
+
 //~
