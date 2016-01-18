@@ -158,7 +158,7 @@ inline float hyperbInterp2d(float ileft, float ix, float iright, float itop, flo
 //- non optimized float vectors -
 class vec2f {
 public:
-	union GE_ALIGN(1) { // non SSE aligned
+	union GE_ALIGN(4) { // non SSE aligned
 		struct{
 			float x, y;
 		};
@@ -196,7 +196,7 @@ public:
 
 class vec3f {
 public:
-	union GE_ALIGN(1) { // not SSE aligned!
+	union GE_ALIGN(4) { // not SSE aligned!
 		struct{
 			float x, y, z;
 		};
