@@ -164,7 +164,7 @@ int main(int argc, char**argv){
 	std::cout<<toStr<int64>(-1234567890,buff).str()<<std::endl;
 	std::cout<<toStr<int>(26668,buff).str()<<std::endl;
 	std::cout<<toStr<int64>(123321000666,buff).str()<<std::endl;
-	std::cout<<toStr<float>(3.141521,buff).str()<<std::endl;
+	std::cout<<toStr<float>(3.141521f,buff).str()<<std::endl;
 	std::cout<<toStr<double>(3.1415213642,buff).str()<<std::endl;
 	std::cout<<toStr(3.141521)<<std::endl;
 	std::cout<<toStr(3.1415213642)<<std::endl;

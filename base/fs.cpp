@@ -405,9 +405,9 @@ void _vfs_defragment(vfs &v) {
 		uint64 readed = 1;
 
 		while (readed != 0) {
-			std::fseek(v.f, from, SEEK_SET);
+			std::fseek(v.f, (long)from, SEEK_SET);
 			readed = std::fread(buff.data(), 1, std::min(buff.size(), (size_t)count), v.f);
-			std::fseek(v.f, to, SEEK_SET);
+			std::fseek(v.f, (long)to, SEEK_SET);
 			std::fwrite(buff.data(), readed, 1, v.f);
 			to += readed;
 			from += readed;
@@ -441,7 +441,7 @@ void _vfs_defragment(vfs &v) {
 void _vfs_close(vfs &v) {
 	_vfs_defragment(v);
 	if (v.dirty) {
-		std::fseek(v.f, v.indexOffset, SEEK_SET);
+		std::fseek(v.f, (long)v.indexOffset, SEEK_SET);
 		_vfs_write_index(v);
 
 		// update header
@@ -474,7 +474,7 @@ void _vfs_read(vfs &v, const string &id, stream &s) {
 	auto f = _vfs_find_file(v, id);
 	gassert(f != v.files.end(), strs("vfs file: ", id, " not found"));
 	if (f != v.files.end()) {
-		std::fseek(v.f, f->position, SEEK_SET);
+		std::fseek(v.f, (long)f->position, SEEK_SET);
 
 		if (f->flags & 1) {
 			// decompress
@@ -490,7 +490,7 @@ void _vfs_read(vfs &v, const string &id, stream &s) {
 			}
 			size_t offset = s.size();
 			s.resize(offset + realSize);
-			if (LZ4_decompress_safe((const char*)sc.data(), (char*)s.data() + offset, sc.size(), realSize) < 0) {
+			if (LZ4_decompress_safe((const char*)sc.data(), (char*)s.data() + offset, (int)sc.size(), (int)realSize) < 0) {
 				logError("vfs read: could decompress data");
 				s.resize(0);
 			}
@@ -551,10 +551,10 @@ bool _vfs_add(vfs &v, const string &id, const const_stream &s, bool compress = t
 	}
 
 	// create file
-	std::fseek(v.f, v.indexOffset, SEEK_SET);
+	std::fseek(v.f, (long)v.indexOffset, SEEK_SET);
 	if (compress) {
-		stream sc(LZ4_compressBound(s.size()));
-		uint64 compressedSize = LZ4_compress_default((const char*)s.data(), (char*)sc.data(), s.size(), sc.size());
+		stream sc(LZ4_compressBound((int)s.size()));
+		uint64 compressedSize = LZ4_compress_default((const char*)s.data(), (char*)sc.data(), (int)s.size(), (int)sc.size());
 		int64 realSize = s.size();
 		size_t chunksWritten = 0;
 		chunksWritten = std::fwrite(&realSize, sizeof(int64), 1, v.f);

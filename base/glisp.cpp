@@ -160,8 +160,8 @@ bool operator<=(const cell &l, const cell &r) { return !(l > r); }
 
 bool cellsEqual(cell_t a, cell_t b) {
 	if (a->type == cell::typeList && a->type == b->type && a->i == b->i) {
-		int elems = countElements(a);
-		for (int i = 0; i < elems; ++i)
+		size_t elems = countElements(a);
+		for (size_t i = 0; i < elems; ++i)
 			if (*(a + i) != *(b + i))
 				return false;
 		return true;
@@ -182,7 +182,10 @@ bool isNil(cell_t c) {
 }
 
 // operator generator for all types
-std::function<void(cell_t)> getOperator(cell &acc, auto op) {
+// TODO: C++17 concepts version (generic functions). By now it's in GCC extensions:
+// std::function<void(cell_t)> getOperator(cell &acc, auto op) {
+template <typename T>
+std::function<void(cell_t)> getOperator(cell &acc, T op) {
 	switch (acc.type) {
 		case cell::typeInt: return [&acc,&op](cell_t c) { op(acc.i, c->i); }; break;
 		case cell::typeInt64: return [&acc,&op](cell_t c) { op(acc.ii, c->ii); }; break;
@@ -699,7 +702,7 @@ cell_t popCallStackLeaveData(lispState &s, cell_t addr, bool temporary = false) 
 
 	// copy data or just return passed value
 	if (!temporary) {
-		int elemsCount = countElements(addr);
+		size_t elemsCount = countElements(addr);
 		whence = s.stack.begin() + s.callStack.top();
 
 		// we need more space

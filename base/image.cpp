@@ -84,7 +84,7 @@ boolean jpeg_empty_output_buffer(j_compress_ptr cinfo) {
 // koniec zapisu jpega - zapisyjemy ile trzeba do pliku
 void jpeg_term_destination(j_compress_ptr cinfo) {
 	jpeg_dst_mgr *dest = (jpeg_dst_mgr*)cinfo->dest;
-	uint32 saved = 4096 - dest->jdm.free_in_buffer;
+	uint32 saved = 4096 - (uint32)dest->jdm.free_in_buffer;
 	dest->os->write(dest->buffer, saved);
 }
 
@@ -324,7 +324,7 @@ bool toImage(const_stream s, image &i) {
 		png_read_update_info(png_ptr, info_ptr); // zastosowuje zmiany
 
 		// alokuje dane, dekompresja
-		uint32 _row = png_get_rowbytes(png_ptr, info_ptr);
+		uint32 _row = (uint32)png_get_rowbytes(png_ptr, info_ptr);
 		int8 _bypp = png_get_channels(png_ptr, info_ptr);
 		i.data.resize(_bypp * _width * _height);
 		uint8 *pd = i.data.data();

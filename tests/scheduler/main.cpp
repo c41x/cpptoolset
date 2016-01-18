@@ -5,9 +5,9 @@ using namespace granite;
 using namespace granite::base;
 
 void countWords(const string &s, int begin, int end, int &result) {
-	result = std::count(s.begin() + begin, s.begin() + end, ' ') +
-		std::count(s.begin() + begin, s.begin() + end, '\t') +
-		std::count(s.begin() + begin, s.begin() + end, '\n');
+	result = (int)std::count(s.begin() + begin, s.begin() + end, ' ') +
+		(int)std::count(s.begin() + begin, s.begin() + end, '\t') +
+		(int)std::count(s.begin() + begin, s.begin() + end, '\n');
 }
 
 void printResult(std::vector<int> &results) {

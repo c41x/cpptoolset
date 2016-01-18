@@ -12,15 +12,24 @@ add_library(base
   fs.cpp
   profiler.cpp)
 
-target_link_libraries(base jpeg)
-if(NOT WIN32)
+if (MSVC)
+  target_link_libraries(base turbojpeg-static)
+else ()
+  target_link_libraries(base jpeg)
+endif()
+
+if (NOT WIN32)
   target_link_libraries(base z)
   target_link_libraries(base png)
   target_link_libraries(base pthread)
-else()
-  target_link_libraries(base png16_static)
+else ()
+  if (MSVC)
+    target_link_libraries(base libpng16_static)
+  else ()
+    target_link_libraries(base png16_static)
+  endif()
   target_link_libraries(base zlibstatic)
-endif()
+endif ()
 
 install(TARGETS base DESTINATION lib)
 
