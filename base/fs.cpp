@@ -16,6 +16,7 @@
 #include <unistd.h>
 #include <pwd.h>
 #include <dirent.h>
+#include <sys/inotify.h>
 #elif defined(GE_COMPILER_GCC)
 #include <unistd.h>
 #include <dirent.h>
@@ -1146,7 +1147,161 @@ void removeWatch(uint32 id) {
 	delete wd.watchThread;
 	detail::watches.erase(e);
 }
+
 #elif defined(GE_PLATFORM_LINUX)
+
+#define EVENT_SIZE (sizeof(struct inotify_event))
+#define EVENT_BUF_LEN (1024 * (EVENT_SIZE + NAME_MAX + 1))
+#define WATCH_FLAGS (IN_CREATE | IN_DELETE)
+
+namespace detail {
+struct watchData {
+	std::thread *watchThread = nullptr;
+	char buffer[EVENT_BUF_LEN];
+	fd_set watchSet;
+	int fd;
+
+	bool recursive; // TODO: a
+
+	bool watchAvailable;
+	bool running;
+	std::mutex mtx;
+	std::condition_variable cv;
+	fileMonitorChanges changes;
+};
+
+std::map<uint32, watchData> watches;
+uint32 watchesId = 1;
+
+void watchThread(watchData &wd) {
+	while (wd.running) {
+		// wait for events here
+		select(wd.fd + 1, &wd.watchSet, NULL, NULL, NULL);
+
+		// wait for condition variable
+		// hangs up reading until someone reads and discards result
+		{
+			//std::unique_lock<std::mutex> lock(wd.mtx);
+			//while (wd.watchAvailable)
+			//	wd.cv.wait(lock);
+		}
+
+		// we have events, lets read them
+		int len = read(wd.fd, wd.buffer, EVENT_BUF_LEN);
+
+		if (len > 0) {
+			for (int i = 0; i < len; ) {
+				struct inotify_event *e = (struct inotify_event*)&wd.buffer[i];
+				if (e->wd != -1 && (e->mask & IN_Q_OVERFLOW) == 0
+					&& e->len != 0 && (e->mask & IN_IGNORED) != 0) {
+					if (e->mask & IN_CREATE) {
+						if (e->mask & IN_ISDIR) {
+							std::cout << "directory created: " << e->name << std::endl;
+						}
+						else {
+							std::cout << "file created: " << e->name << std::endl;
+						}
+					}
+					else if (e->mask & IN_DELETE) {
+						if (e->mask & IN_ISDIR) {
+							std::cout << "directory removed: " << e->name << std::endl;
+						}
+						else {
+							std::cout << "file removed: " << e->name << std::endl;
+						}
+					}
+				}
+				i += EVENT_SIZE + e->len;
+			}
+		}
+
+		::close(wd.fd);
+		fflush(stdout);
+	}
+}
+} // ~detail
+
+fileMonitorChanges pollWatch(uint32 id) {
+	auto e = detail::watches.find(id);
+	if (e == detail::watches.end())
+		return fileMonitorChanges();
+
+	detail::watchData &wd = e->second;
+	if (wd.watchAvailable) {
+		// take results (swap with empty vector)
+		fileMonitorChanges ret;
+		std::swap(ret, wd.changes);
+
+		// we have result -> notify watcher thread
+		std::unique_lock<std::mutex> lock(wd.mtx);
+		wd.watchAvailable = false;
+		wd.cv.notify_one();
+
+		// return results copy
+		return ret;
+	}
+	return fileMonitorChanges();
+}
+
+uint32 addWatch(const string &dir, bool recursively, directoryType type) {
+	// resolve path
+	bool vfs, valid;
+	string filepath, id;
+	std::tie(filepath, id, vfs, valid) = _resolveLocation(dir, type, true);
+	if (vfs) {
+		logError("directory watch is not supported in VFS");
+		return 0;
+	}
+
+	if (valid) {
+		logError("directory watch: specified path is not valid");
+		return 0;
+	}
+
+	gassert(detail::watches.find(detail::watchesId) == detail::watches.end(), "too many watches created");
+	detail::watchData &wd = detail::watches[detail::watchesId];
+
+	wd.fd = inotify_init1(IN_NONBLOCK);
+	if (wd.fd < 0) {
+		logError("inotify_init1 < 0");
+		return 0;
+	}
+
+	// use select watch list for non-blocking inotify read
+	FD_ZERO(&wd.watchSet);
+	FD_SET(wd.fd, &wd.watchSet);
+
+	// add watch to given directory
+	inotify_add_watch(wd.fd, filepath.c_str(), WATCH_FLAGS);
+
+	// fire thread loop
+	wd.watchThread = new std::thread(detail::watchThread, std::ref(wd));
+
+	logInfo(strs("created directory watch for: ", dir, " id: ", wd.fd));
+	return detail::watchesId++;
+}
+
+void removeWatch(uint32 id) {
+	auto e = detail::watches.find(id);
+	gassert(e != detail::watches.end(), strs("trying to remove non existing watch: ", id));
+	if (e == detail::watches.end())
+		return;
+
+	detail::watchData &wd = e->second;
+
+	// break watch thread
+	{
+		std::unique_lock<std::mutex> lock(wd.mtx);
+		wd.running = false;
+		wd.watchAvailable = false;
+		wd.cv.notify_one();
+	}
+	wd.watchThread->join();
+
+	// delete from index
+	delete wd.watchThread;
+	detail::watches.erase(e);
+}
 #else
 #error "platform not supported"
 #endif
