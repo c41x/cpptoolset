@@ -57,6 +57,19 @@ bool store(const string &path, const_stream s, directoryType type = workingDirec
 bool remove(const string &path, directoryType type = workingDirectory);
 bool exists(const string &name, directoryType type = workingDirectory);
 
+//- directory watcher
+enum fileMonitorChange {
+	fileMonitorAdd,
+	fileMonitorRemove,
+	fileMonitorModify
+};
+
+typedef std::vector<std::tuple<fileMonitorChange, string>> fileMonitorChanges;
+
+uint32 addWatch(const string &dir, bool recursively = false, directoryType type = workingDirectory);
+fileMonitorChanges pollWatch(uint32 id);
+void removeWatch(uint32 id);
+
 }
 
 }}

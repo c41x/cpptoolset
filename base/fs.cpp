@@ -4,6 +4,8 @@
 #include "lz4.h"
 
 #include <regex>
+#include <thread>
+#include <condition_variable>
 #include <sys/stat.h>
 #include <sys/types.h>
 #ifdef GE_COMPILER_VISUAL
@@ -975,5 +977,178 @@ bool exists(const string &name, directoryType type) {
 
 	return true;
 }
+
+//- directory watcher
+#if defined(GE_PLATFORM_WINDOWS)
+namespace detail {
+struct watchData {
+	std::thread *watchThread = nullptr;
+	HANDLE hdir;
+	OVERLAPPED overlapped;
+	BYTE buff[3 * 1024];
+	BOOL recursive;
+
+	bool watchAvailable;
+	bool running;
+	std::mutex mtx;
+	std::condition_variable cv;
+	fileMonitorChanges changes;
+};
+
+std::map<uint32, watchData> watches;
+uint32 watchesId = 1;
+
+void watchThread(watchData &wd) {
+	BOOL result = TRUE;
+	while (wd.running && result == TRUE) {
+		result = ReadDirectoryChangesW(wd.hdir, wd.buff, sizeof(wd.buff), wd.recursive,
+									   FILE_NOTIFY_CHANGE_CREATION | FILE_NOTIFY_CHANGE_SIZE |
+									   FILE_NOTIFY_CHANGE_FILE_NAME, NULL, &wd.overlapped, 0);
+
+		// hang thread until something is changed
+		WaitForSingleObject(wd.overlapped.hEvent, INFINITE);
+
+		// wait for condition variable
+		// hangs up reading until someone reads and discards result
+		{
+			std::unique_lock<std::mutex> lock(wd.mtx);
+			while (wd.watchAvailable)
+				wd.cv.wait(lock);
+		}
+
+		// we have data, processing:
+		TCHAR szFile[MAX_PATH];
+		PFILE_NOTIFY_INFORMATION pnotify;
+		size_t offset = 0;
+		bool newData = false;
+
+		// process watch data
+		do {
+			pnotify = (PFILE_NOTIFY_INFORMATION)&wd.buff;
+			offset += pnotify->NextEntryOffset;
+			#if defined(UNICODE)
+			lstrcpynW(szFile, pnotify->FileName,
+					  min(MAX_PATH, pnotify->FileNameLength / sizeof(WCHAR) + 1));
+			#else
+			int count = WideCharToMultiByte(CP_ACP, 0, pnotify->FileName,
+											pnotify->FileNameLength / sizeof(WCHAR),
+											szFile, MAX_PATH - 1, NULL, NULL);
+			szFile[count] = TEXT('\0');
+			#endif
+
+			switch(pnotify->Action) {
+				case FILE_ACTION_RENAMED_NEW_NAME:
+				case FILE_ACTION_ADDED:
+					wd.changes.push_back(std::make_tuple(fileMonitorAdd, szFile));
+					newData = true;
+					break;
+				case FILE_ACTION_RENAMED_OLD_NAME:
+				case FILE_ACTION_REMOVED:
+					wd.changes.push_back(std::make_tuple(fileMonitorRemove, szFile));
+					newData = true;
+					break;
+				case FILE_ACTION_MODIFIED:
+					wd.changes.push_back(std::make_tuple(fileMonitorModify, szFile));
+					newData = true;
+					break;
+			}
+		} while (pnotify->NextEntryOffset != 0);
+		wd.watchAvailable = newData;
+	}
+
+	CloseHandle(wd.overlapped.hEvent);
+	CloseHandle(wd.hdir);
+}
+} // ~detail
+
+fileMonitorChanges pollWatch(uint32 id) {
+	auto e = detail::watches.find(id);
+	if (e == detail::watches.end())
+		return fileMonitorChanges();
+
+	detail::watchData &wd = e->second;
+	if (wd.watchAvailable) {
+		// take results (swap with empty vector)
+		fileMonitorChanges ret;
+		std::swap(ret, wd.changes);
+
+		// we have result -> notify watcher thread
+		std::unique_lock<std::mutex> lock(wd.mtx);
+		wd.watchAvailable = false;
+		wd.cv.notify_one();
+
+		// return results copy
+		return ret;
+	}
+	return fileMonitorChanges();
+}
+
+uint32 addWatch(const string &dir, bool recursively, directoryType type) {
+	// resolve path
+	bool vfs, valid;
+	string filepath, id;
+	std::tie(filepath, id, vfs, valid) = _resolveLocation(dir, type, true);
+	if (vfs) {
+		logError("directory watch is not supported in VFS");
+		return 0;
+	}
+
+	if (valid) {
+		logError("directory watch: specified path is not valid");
+		return 0;
+	}
+
+	gassert(detail::watches.find(detail::watchesId) == detail::watches.end(), "too many watches created");
+	detail::watchData &wd = detail::watches[detail::watchesId];
+	wd.hdir = CreateFile(dir.c_str(), FILE_LIST_DIRECTORY, FILE_SHARE_READ |
+					  FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING,
+					  FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, NULL);
+
+	if (wd.hdir != INVALID_HANDLE_VALUE) {
+		wd.overlapped.OffsetHigh = 0;
+		wd.overlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+		wd.recursive = recursively;
+		wd.watchAvailable = false;
+		wd.running = true;
+		wd.watchThread = new std::thread(detail::watchThread, std::ref(wd));
+		logInfo(strs("created directory watch: ", dir, " id = ", detail::watchesId));
+		return detail::watchesId++;
+	}
+
+	gassertl(false, strs("could not create directory watch for: ", dir));
+	return 0;
+}
+
+void removeWatch(uint32 id) {
+	auto e = detail::watches.find(id);
+	gassert(e != detail::watches.end(), strs("trying to remove non existing watch: ", id));
+	if (e == detail::watches.end())
+		return;
+
+	// release system handles
+	detail::watchData &wd = e->second;
+	CancelIo(wd.hdir);
+	if (!HasOverlappedIoCompleted(&wd.overlapped))
+		SleepEx(5, TRUE);
+	CloseHandle(wd.overlapped.hEvent);
+	CloseHandle(wd.hdir);
+
+	// break watch thread
+	{
+		std::unique_lock<std::mutex> lock(wd.mtx);
+		wd.running = false;
+		wd.watchAvailable = false;
+		wd.cv.notify_one();
+	}
+	wd.watchThread->join();
+
+	// delete from index
+	delete wd.watchThread;
+	detail::watches.erase(e);
+}
+#elif defined(GE_PLATFORM_LINUX)
+#else
+#error "platform not supported"
+#endif
 
 }}}
