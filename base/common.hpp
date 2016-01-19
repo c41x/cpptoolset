@@ -202,7 +202,7 @@ namespace granite{
 #endif
 
 // disable Visual Studio's secure warnings (C4996)
-#if GE_COMPILER_VISUAL
+#ifdef GE_COMPILER_VISUAL
 #pragma warning(disable:4996)
 #endif
 
