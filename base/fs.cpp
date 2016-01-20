@@ -65,10 +65,13 @@ string _normalizePath(const string &s) {
 
 // expand path
 string fullPath(directoryType type, const string &p = "") {
+	string base = getPath(type);
 	#ifdef GE_PLATFORM_WINDOWS
-	return getPath(type) + GE_DIR_SEPARATOR + _normalizePath(p);
+	if (base.size() == 0) return _normalizePath(p);
+	return base + GE_DIR_SEPARATOR + _normalizePath(p);
 	#else
-	return getPath(type) + GE_DIR_SEPARATOR + p;
+	if (base.size() == 0) return p;
+	return base + GE_DIR_SEPARATOR + p;
 	#endif
 }
 
@@ -93,8 +96,10 @@ void _resize(std::FILE *f, size_t newSize) {
 	#ifdef GE_COMPILER_VISUAL
 	_chsize_s(_fileno(f), newSize);
 	#else
-	if (0 != ftruncate(fileno(f), newSize))
-		logError(strs("ftruncate failed, errno: ", errno));
+	if (0 != ftruncate(fileno(f), newSize)) {
+		const char *e = strerror(errno);
+		logError(strs("ftruncate failed, errno: ", e));
+	}
 	#endif
 }
 
@@ -273,7 +278,8 @@ void _vfs_write_index(vfs &v) {
 	}
 	size_t writeCount = std::fwrite(&filesCount, sizeof(uint32), 1, v.f);
 	writeCount += std::fwrite(s.data(), s.size(), 1, v.f);
-	gassertl(writeCount == 2, strs("could not write file index, errno: ", errno));
+	const char *e = strerror(errno);
+	gassertl(writeCount == 2, strs("could not write file index, errno: ", e));
 
 	// trim file here
 	_resize(v.f, std::ftell(v.f));
@@ -295,7 +301,8 @@ void _vfs_open(const string path) {
 		vfs v;
 		v.f = std::fopen(path.c_str(), "wb+");
 		if (v.f == NULL) {
-			gassertl(false, strs("vfs create: could not open file: ", path, "for write, errno: ", errno));
+			const char *e = strerror(errno);
+			gassertl(false, strs("vfs create: could not open file: ", path, "for write, errno: ", e));
 			return;
 		}
 		v.indexOffset = 4 + sizeof(uint64);
@@ -304,7 +311,8 @@ void _vfs_open(const string path) {
 		chunksWritten += std::fwrite("GFS2", 4, 1, v.f);
 		chunksWritten += std::fwrite(&v.indexOffset, sizeof(uint64), 1, v.f);
 		chunksWritten += std::fwrite(&filesCount, sizeof(uint32), 1, v.f);
-		gassertl(chunksWritten == 3, strs("vfs create: could not write to file: ", path, " errno: ", errno));
+		const char *e = strerror(errno);
+		gassertl(chunksWritten == 3, strs("vfs create: could not write to file: ", path, " errno: ", e));
 		_vfs[path] = v;
 	}
 	else {
@@ -317,7 +325,9 @@ void _vfs_open(const string path) {
 			size_t size;
 			v.f = std::fopen(path.c_str(), "rb+");
 			if (v.f == NULL) {
-				gassert(false, strs("vfs open: could not open file: ", path, " errno: ", errno));
+				const char *e = strerror(errno);
+				gassert(false, strs("vfs open: could not open file: ", path, " errno: ", e));
+				(void)e; // supress warning
 				return;
 			}
 			v.dirty = false;
@@ -359,7 +369,8 @@ void _vfs_open(const string path) {
 			// print error to log
 			signalError:
 			std::fclose(v.f);
-			gassertl(false, strs("vfs open: error reading file: ", path, " errno: ", errno));
+			const char *e = strerror(errno);
+			gassertl(false, strs("vfs open: error reading file: ", path, " errno: ", e));
 			return;
 		}
 		else {
@@ -450,7 +461,9 @@ void _vfs_close(vfs &v) {
 		// update header
 		std::fseek(v.f, 4, SEEK_SET);
 		if (1 != std::fwrite(&v.indexOffset, sizeof(uint32), 1, v.f)) {
-			gassert(false, strs("could not close vfs: write failed, errno: ", errno));
+			const char *e = strerror(errno);
+			gassert(false, strs("could not close vfs: write failed, errno: ", e));
+			(void)e; // supress warning
 		}
 		v.dirty = false;
 	}
@@ -574,7 +587,8 @@ bool _vfs_add(vfs &v, const string &id, const const_stream &s, bool compress = t
 	return true;
 
 	writeError:
-	gassertl(false, strs("error: could not write file to vfs: ", id, " errno: ", errno));
+	const char *e = strerror(errno);
+	gassertl(false, strs("error: could not write file to vfs: ", id, " errno: ", e));
 	return false;
 }
 
@@ -874,7 +888,8 @@ stream load(const string &path, directoryType type) {
 	// it's regular file - just load
 	std::FILE *f = std::fopen(filepath.c_str(), "rb");
 	if (f == NULL) {
-		gassertl(false, strs("could not open file: ", path, " errno:", errno));
+		const char *e = strerror(errno);
+		gassertl(false, strs("could not open file: ", path, " errno:", e));
 		return stream();
 	}
 
@@ -885,7 +900,8 @@ stream load(const string &path, directoryType type) {
 	stream s;
 	s.resize(size);
 	size_t readCount = std::fread(s.data(), size, 1, f);
-	gassertl(readCount == 1 || size == 0, strs("read file failed: ", path, " errno: ", errno));
+	const char *e = strerror(errno);
+	gassertl(readCount == 1 || size == 0, strs("read file failed: ", path, " errno: ", e));
 
 	std::fclose(f);
 	return s;
@@ -914,14 +930,16 @@ bool store(const string &path, const_stream s, directoryType type, bool compress
 		#endif
 		f = std::fopen(fullPath(type, path).c_str(), "wb+");
 		if (f == NULL) {
-			gassertl(false, strs("could not open file: ", path, " errno:", errno));
+			const char *e = strerror(errno);
+			gassertl(false, strs("could not open file: ", path, " errno:", e));
 			return false;
 		}
 	}
 
 	size_t bytesWrite = std::fwrite(s.data(), s.size(), 1, f);
 	if (s.size() != 0 && bytesWrite != 1) {
-		gassertl(false, strs("write file failed: ", path, " errno: ", errno));
+		const char *e = strerror(errno);
+		gassertl(false, strs("write file failed: ", path, " errno: ", e));
 	}
 
 	std::fclose(f);
@@ -949,7 +967,8 @@ bool remove(const string &path, directoryType type) {
 
 	int err = std::remove(filepath.c_str());
 	if (err != 0) {
-		gassertl(false, strs("error deleting file: ", filepath, " errno: ", errno));
+		const char *e = strerror(errno);
+		gassertl(false, strs("error deleting file: ", filepath, " errno: ", e));
 	}
 
 	// remove archive index also
@@ -980,6 +999,12 @@ bool exists(const string &name, directoryType type) {
 }
 
 //- directory watcher
+namespace detail {
+struct watchData;
+std::map<uint32, watchData> watches;
+uint32 watchesId = 1;
+}
+
 #if defined(GE_PLATFORM_WINDOWS)
 namespace detail {
 struct watchData {
@@ -995,9 +1020,6 @@ struct watchData {
 	std::condition_variable cv;
 	fileMonitorChanges changes;
 };
-
-std::map<uint32, watchData> watches;
-uint32 watchesId = 1;
 
 void watchThread(watchData &wd) {
 	BOOL result = TRUE;
@@ -1061,28 +1083,6 @@ void watchThread(watchData &wd) {
 	CloseHandle(wd.hdir);
 }
 } // ~detail
-
-fileMonitorChanges pollWatch(uint32 id) {
-	auto e = detail::watches.find(id);
-	if (e == detail::watches.end())
-		return fileMonitorChanges();
-
-	detail::watchData &wd = e->second;
-	if (wd.watchAvailable) {
-		// take results (swap with empty vector)
-		fileMonitorChanges ret;
-		std::swap(ret, wd.changes);
-
-		// we have result -> notify watcher thread
-		std::unique_lock<std::mutex> lock(wd.mtx);
-		wd.watchAvailable = false;
-		wd.cv.notify_one();
-
-		// return results copy
-		return ret;
-	}
-	return fileMonitorChanges();
-}
 
 uint32 addWatch(const string &dir, bool recursively, directoryType type) {
 	// resolve path
@@ -1152,7 +1152,7 @@ void removeWatch(uint32 id) {
 
 #define EVENT_SIZE (sizeof(struct inotify_event))
 #define EVENT_BUF_LEN (1024 * (EVENT_SIZE + NAME_MAX + 1))
-#define WATCH_FLAGS (IN_CREATE | IN_DELETE)
+#define WATCH_FLAGS (IN_CREATE | IN_DELETE | IN_MODIFY | IN_MOVED_TO | IN_MOVED_FROM)
 
 namespace detail {
 struct watchData {
@@ -1160,8 +1160,9 @@ struct watchData {
 	char buffer[EVENT_BUF_LEN];
 	fd_set watchSet;
 	int fd;
+	int wd;
 
-	bool recursive; // TODO: a
+	// TODO: bool recursive;
 
 	bool watchAvailable;
 	bool running;
@@ -1169,9 +1170,6 @@ struct watchData {
 	std::condition_variable cv;
 	fileMonitorChanges changes;
 };
-
-std::map<uint32, watchData> watches;
-uint32 watchesId = 1;
 
 void watchThread(watchData &wd) {
 	while (wd.running) {
@@ -1181,45 +1179,109 @@ void watchThread(watchData &wd) {
 		// wait for condition variable
 		// hangs up reading until someone reads and discards result
 		{
-			//std::unique_lock<std::mutex> lock(wd.mtx);
-			//while (wd.watchAvailable)
-			//	wd.cv.wait(lock);
+			std::unique_lock<std::mutex> lock(wd.mtx);
+			while (wd.watchAvailable)
+				wd.cv.wait(lock);
 		}
 
 		// we have events, lets read them
 		int len = read(wd.fd, wd.buffer, EVENT_BUF_LEN);
 
 		if (len > 0) {
+			bool dataAdded = false;
 			for (int i = 0; i < len; ) {
 				struct inotify_event *e = (struct inotify_event*)&wd.buffer[i];
-				if (e->wd != -1 && (e->mask & IN_Q_OVERFLOW) == 0
-					&& e->len != 0 && (e->mask & IN_IGNORED) != 0) {
-					if (e->mask & IN_CREATE) {
-						if (e->mask & IN_ISDIR) {
-							std::cout << "directory created: " << e->name << std::endl;
-						}
-						else {
-							std::cout << "file created: " << e->name << std::endl;
-						}
+				if (e->wd != -1 && (e->mask & IN_Q_OVERFLOW) == 0) {
+					if ((e->mask & IN_CREATE) ||
+						(e->mask & IN_MOVED_TO)) {
+						wd.changes.push_back(std::make_tuple(fileMonitorAdd, string(e->name)));
+						dataAdded = true;
 					}
-					else if (e->mask & IN_DELETE) {
-						if (e->mask & IN_ISDIR) {
-							std::cout << "directory removed: " << e->name << std::endl;
-						}
-						else {
-							std::cout << "file removed: " << e->name << std::endl;
-						}
+					else if ((e->mask & IN_DELETE) ||
+							 (e->mask & IN_MOVED_FROM)) {
+						wd.changes.push_back(std::make_tuple(fileMonitorRemove, string(e->name)));
+						dataAdded = true;
+					}
+					else if (e->mask & IN_MODIFY) {
+						wd.changes.push_back(std::make_tuple(fileMonitorModify, string(e->name)));
+						dataAdded = true;
 					}
 				}
 				i += EVENT_SIZE + e->len;
 			}
+			wd.watchAvailable = dataAdded;
 		}
-
-		::close(wd.fd);
-		fflush(stdout);
 	}
 }
 } // ~detail
+
+uint32 addWatch(const string &dir, bool recursively, directoryType type) {
+	// resolve path
+	string path = fullPath(type, dir);
+	if (!_exists(path)) {
+		logError("directory watch: specified path is not valid");
+		return 0;
+	}
+
+	gassert(detail::watches.find(detail::watchesId) == detail::watches.end(), "too many watches created");
+	detail::watchData &wd = detail::watches[detail::watchesId];
+
+	wd.fd = inotify_init1(IN_NONBLOCK);
+	if (wd.fd < 0) {
+		const char *e = strerror(errno);
+		logError(strs("inotify_init1 < 0, errno: ", e));
+		return 0;
+	}
+
+	// use select watch list for non-blocking inotify read
+	FD_ZERO(&wd.watchSet);
+	FD_SET(wd.fd, &wd.watchSet);
+
+	// add watch to given directory
+	wd.wd = inotify_add_watch(wd.fd, path.c_str(), WATCH_FLAGS);
+	if (wd.wd < 0) {
+		const char *e = strerror(errno);
+		logError(strs("inotify_add_watch failed, errno: ", e, " dir: ", path));
+		return 0;
+	}
+
+	// fire thread loop
+	wd.running = true;
+	wd.watchThread = new std::thread(detail::watchThread, std::ref(wd));
+	logInfo(strs("created directory watch for: ", dir, " id: ", wd.fd));
+	return detail::watchesId++;
+}
+
+void removeWatch(uint32 id) {
+	auto e = detail::watches.find(id);
+	gassert(e != detail::watches.end(), strs("trying to remove non existing watch: ", id));
+	if (e == detail::watches.end())
+		return;
+
+	detail::watchData &wd = e->second;
+	// break watch thread
+	{
+		std::unique_lock<std::mutex> lock(wd.mtx);
+		wd.running = false;
+		wd.watchAvailable = false;
+		wd.cv.notify_one();
+	}
+
+	// close all watch handles
+	inotify_rm_watch(wd.fd, wd.wd);
+	::close(wd.fd);
+	fflush(stdout);
+
+	// joint thread
+	wd.watchThread->join();
+
+	// delete from index
+	delete wd.watchThread;
+	detail::watches.erase(e);
+}
+#else
+#error "platform not supported"
+#endif
 
 fileMonitorChanges pollWatch(uint32 id) {
 	auto e = detail::watches.find(id);
@@ -1242,68 +1304,5 @@ fileMonitorChanges pollWatch(uint32 id) {
 	}
 	return fileMonitorChanges();
 }
-
-uint32 addWatch(const string &dir, bool recursively, directoryType type) {
-	// resolve path
-	bool vfs, valid;
-	string filepath, id;
-	std::tie(filepath, id, vfs, valid) = _resolveLocation(dir, type, true);
-	if (vfs) {
-		logError("directory watch is not supported in VFS");
-		return 0;
-	}
-
-	if (valid) {
-		logError("directory watch: specified path is not valid");
-		return 0;
-	}
-
-	gassert(detail::watches.find(detail::watchesId) == detail::watches.end(), "too many watches created");
-	detail::watchData &wd = detail::watches[detail::watchesId];
-
-	wd.fd = inotify_init1(IN_NONBLOCK);
-	if (wd.fd < 0) {
-		logError("inotify_init1 < 0");
-		return 0;
-	}
-
-	// use select watch list for non-blocking inotify read
-	FD_ZERO(&wd.watchSet);
-	FD_SET(wd.fd, &wd.watchSet);
-
-	// add watch to given directory
-	inotify_add_watch(wd.fd, filepath.c_str(), WATCH_FLAGS);
-
-	// fire thread loop
-	wd.watchThread = new std::thread(detail::watchThread, std::ref(wd));
-
-	logInfo(strs("created directory watch for: ", dir, " id: ", wd.fd));
-	return detail::watchesId++;
-}
-
-void removeWatch(uint32 id) {
-	auto e = detail::watches.find(id);
-	gassert(e != detail::watches.end(), strs("trying to remove non existing watch: ", id));
-	if (e == detail::watches.end())
-		return;
-
-	detail::watchData &wd = e->second;
-
-	// break watch thread
-	{
-		std::unique_lock<std::mutex> lock(wd.mtx);
-		wd.running = false;
-		wd.watchAvailable = false;
-		wd.cv.notify_one();
-	}
-	wd.watchThread->join();
-
-	// delete from index
-	delete wd.watchThread;
-	detail::watches.erase(e);
-}
-#else
-#error "platform not supported"
-#endif
 
 }}}
