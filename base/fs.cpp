@@ -1086,22 +1086,15 @@ void watchThread(watchData &wd) {
 
 uint32 addWatch(const string &dir, bool recursively, directoryType type) {
 	// resolve path
-	bool vfs, valid;
-	string filepath, id;
-	std::tie(filepath, id, vfs, valid) = _resolveLocation(dir, type, true);
-	if (vfs) {
-		logError("directory watch is not supported in VFS");
-		return 0;
-	}
-
-	if (valid) {
+	string path = fullPath(type, dir);
+	if (!_exists(path)) {
 		logError("directory watch: specified path is not valid");
 		return 0;
 	}
 
 	gassert(detail::watches.find(detail::watchesId) == detail::watches.end(), "too many watches created");
 	detail::watchData &wd = detail::watches[detail::watchesId];
-	wd.hdir = CreateFile(dir.c_str(), FILE_LIST_DIRECTORY, FILE_SHARE_READ |
+	wd.hdir = CreateFile(path.c_str(), FILE_LIST_DIRECTORY, FILE_SHARE_READ |
 					  FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING,
 					  FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, NULL);
 
@@ -1112,11 +1105,11 @@ uint32 addWatch(const string &dir, bool recursively, directoryType type) {
 		wd.watchAvailable = false;
 		wd.running = true;
 		wd.watchThread = new std::thread(detail::watchThread, std::ref(wd));
-		logInfo(strs("created directory watch: ", dir, " id = ", detail::watchesId));
+		logInfo(strs("created directory watch: ", path, " id = ", detail::watchesId));
 		return detail::watchesId++;
 	}
 
-	gassertl(false, strs("could not create directory watch for: ", dir));
+	gassertl(false, strs("could not create directory watch for: ", path));
 	return 0;
 }
 
