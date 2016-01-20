@@ -1167,6 +1167,14 @@ struct watchData {
 void watchThread(watchData &wd) {
 	while (wd.running) {
 		// wait for events here
+		// i have added 0.5s limit for select because closing file
+		// descriptor in another thread (close) causes undefined behaviour
+		// on some linux systems, as a result application will lock forever
+		// on select (see: man select)
+		struct timeval tv;
+		tv.tv_sec = 0;
+		tv.tv_usec = 500000;
+		//while (wd.running && select(wd.fd + 1, &wd.watchSet, NULL, NULL, &tv) == 0);
 		select(wd.fd + 1, &wd.watchSet, NULL, NULL, NULL);
 
 		// wait for condition variable
