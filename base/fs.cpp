@@ -1170,12 +1170,11 @@ void watchThread(watchData &wd) {
 		// i have added 0.5s limit for select because closing file
 		// descriptor in another thread (close) causes undefined behaviour
 		// on some linux systems, as a result application will lock forever
-		// on select (see: man select)
+		// on select (see: man select). There is no other way to break select
 		struct timeval tv;
 		tv.tv_sec = 0;
 		tv.tv_usec = 500000;
-		//while (wd.running && select(wd.fd + 1, &wd.watchSet, NULL, NULL, &tv) == 0);
-		select(wd.fd + 1, &wd.watchSet, NULL, NULL, NULL);
+		select(wd.fd + 1, &wd.watchSet, NULL, NULL, &tv);
 
 		// wait for condition variable
 		// hangs up reading until someone reads and discards result
@@ -1269,9 +1268,9 @@ void removeWatch(uint32 id) {
 	}
 
 	// close all watch handles
-	inotify_rm_watch(wd.fd, wd.wd);
 	::close(wd.fd);
 	fflush(stdout);
+	inotify_rm_watch(wd.fd, wd.wd);
 
 	// joint thread
 	wd.watchThread->join();
