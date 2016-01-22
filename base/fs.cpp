@@ -1021,7 +1021,20 @@ struct watchData {
 	fileMonitorChanges changes;
 };
 
-void watchThread(watchData &wd) {
+void watchThread(watchData &wd, string path, bool recursive) {
+	wd.hdir = CreateFile(path.c_str(), FILE_LIST_DIRECTORY, FILE_SHARE_READ |
+					  FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING,
+					  FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, NULL);
+
+	if (wd.hdir != INVALID_HANDLE_VALUE) {
+		wd.overlapped.OffsetHigh = 0;
+		wd.overlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+		wd.recursive = recursive ? TRUE : FALSE;
+		wd.watchAvailable = false;
+		wd.running = true;
+		logInfo(strs("directory watch initialized: ", path));
+	}
+
 	BOOL result = TRUE;
 	while (wd.running && result == TRUE) {
 		result = ReadDirectoryChangesW(wd.hdir, wd.buff, sizeof(wd.buff), wd.recursive,
@@ -1029,7 +1042,14 @@ void watchThread(watchData &wd) {
 									   FILE_NOTIFY_CHANGE_FILE_NAME, NULL, &wd.overlapped, 0);
 
 		// hang thread until something is changed
-		WaitForSingleObject(wd.overlapped.hEvent, INFINITE);
+		// check exit flag once in a while (500ms)
+		while (WaitForSingleObject(wd.overlapped.hEvent, 500) != 0) {
+			if (!wd.running) {
+				CloseHandle(wd.overlapped.hEvent);
+				CloseHandle(wd.hdir);
+				return;
+			}
+		}
 
 		// wait for condition variable
 		// hangs up reading until someone reads and discards result
@@ -1047,7 +1067,7 @@ void watchThread(watchData &wd) {
 
 		// process watch data
 		do {
-			pnotify = (PFILE_NOTIFY_INFORMATION)&wd.buff;
+			pnotify = (PFILE_NOTIFY_INFORMATION)&wd.buff[offset];
 			offset += pnotify->NextEntryOffset;
 			#if defined(UNICODE)
 			lstrcpynW(szFile, pnotify->FileName,
@@ -1086,7 +1106,11 @@ void watchThread(watchData &wd) {
 
 uint32 addWatch(const string &dir, bool recursively, directoryType type) {
 	// resolve path
-	string path = fullPath(type, dir);
+	string path;
+	if (isGlobal(dir))
+		path = dir;
+	else path = extractFilePath(fullPath(type, dir));
+
 	if (!_exists(path)) {
 		logError("directory watch: specified path is not valid");
 		return 0;
@@ -1094,23 +1118,9 @@ uint32 addWatch(const string &dir, bool recursively, directoryType type) {
 
 	gassert(detail::watches.find(detail::watchesId) == detail::watches.end(), "too many watches created");
 	detail::watchData &wd = detail::watches[detail::watchesId];
-	wd.hdir = CreateFile(path.c_str(), FILE_LIST_DIRECTORY, FILE_SHARE_READ |
-					  FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING,
-					  FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, NULL);
-
-	if (wd.hdir != INVALID_HANDLE_VALUE) {
-		wd.overlapped.OffsetHigh = 0;
-		wd.overlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-		wd.recursive = recursively;
-		wd.watchAvailable = false;
-		wd.running = true;
-		wd.watchThread = new std::thread(detail::watchThread, std::ref(wd));
-		logInfo(strs("created directory watch: ", path, " id = ", detail::watchesId));
-		return detail::watchesId++;
-	}
-
-	gassertl(false, strs("could not create directory watch for: ", path));
-	return 0;
+	wd.watchThread = new std::thread(detail::watchThread, std::ref(wd), path, recursively);
+	logInfo(strs("created directory watch: ", path, " id = ", detail::watchesId));
+	return detail::watchesId++;
 }
 
 void removeWatch(uint32 id) {
@@ -1118,6 +1128,8 @@ void removeWatch(uint32 id) {
 	gassert(e != detail::watches.end(), strs("trying to remove non existing watch: ", id));
 	if (e == detail::watches.end())
 		return;
+
+	logInfo(strs("releasing file watch: ", id));
 
 	// release system handles
 	detail::watchData &wd = e->second;
@@ -1139,6 +1151,7 @@ void removeWatch(uint32 id) {
 	// delete from index
 	delete wd.watchThread;
 	detail::watches.erase(e);
+	logInfo(strs("file watch released: ", id));
 }
 
 #elif defined(GE_PLATFORM_LINUX)
@@ -1210,7 +1223,11 @@ void watchThread(watchData &wd) {
 
 uint32 addWatch(const string &dir, bool recursively, directoryType type) {
 	// resolve path
-	string path = fullPath(type, dir);
+	string path;
+	if (isGlobal(dir))
+		path = dir;
+	else path = extractFilePath(fullPath(type, dir));
+
 	if (!_exists(path)) {
 		logError("directory watch: specified path is not valid");
 		return 0;
@@ -1241,7 +1258,7 @@ uint32 addWatch(const string &dir, bool recursively, directoryType type) {
 	// fire thread loop
 	wd.running = true;
 	wd.watchThread = new std::thread(detail::watchThread, std::ref(wd));
-	logInfo(strs("created directory watch for: ", dir, " id: ", wd.fd));
+	logInfo(strs("created directory watch for: ", path, " id: ", wd.fd));
 	return detail::watchesId++;
 }
 
@@ -1250,6 +1267,8 @@ void removeWatch(uint32 id) {
 	gassert(e != detail::watches.end(), strs("trying to remove non existing watch: ", id));
 	if (e == detail::watches.end())
 		return;
+
+	logInfo(strs("releasing file watch: ", id));
 
 	detail::watchData &wd = e->second;
 	// break watch thread
@@ -1271,6 +1290,7 @@ void removeWatch(uint32 id) {
 	// delete from index
 	delete wd.watchThread;
 	detail::watches.erase(e);
+	logInfo(strs("file watch released: ", id));
 }
 #else
 #error "platform not supported"
