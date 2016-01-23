@@ -9,10 +9,10 @@ using namespace gl33core;
 // error checking for shaders
 bool checkShader(GLuint obj) {
     GLint status;
-    glGetShaderiv(obj, GL_COMPILE_STATUS, &status);
+    glGetShaderiv(obj, (gl::GLenum)GL_COMPILE_STATUS, &status);
     if(status == GL_FALSE) {
         GLint length;
-        glGetShaderiv(obj, GL_INFO_LOG_LENGTH, &length);
+        glGetShaderiv(obj, (gl::GLenum)GL_INFO_LOG_LENGTH, &length);
         std::vector<char> log(length);
         glGetShaderInfoLog(obj, length, &length, &log[0]);
         logInfo((const char*)&log[0]);
@@ -24,10 +24,10 @@ bool checkShader(GLuint obj) {
 
 bool checkProgram(GLuint obj) {
     GLint status;
-    glGetProgramiv(obj, GL_LINK_STATUS, &status);
+    glGetProgramiv(obj, (gl::GLenum)GL_LINK_STATUS, &status);
     if(status == GL_FALSE) {
         GLint length;
-        glGetProgramiv(obj, GL_INFO_LOG_LENGTH, &length);
+        glGetProgramiv(obj, (gl::GLenum)GL_INFO_LOG_LENGTH, &length);
         std::vector<char> log(length);
         glGetProgramInfoLog(obj, length, &length, &log[0]);
         logInfo((const char*)&log[0]);
@@ -170,20 +170,20 @@ int main(int argc, char**argv) {
 	glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
     glGenBuffers(1, &vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 4 * 3, vertexData, GL_STATIC_DRAW);
+    glBindBuffer((gl::GLenum)GL_ARRAY_BUFFER, vbo);
+    glBufferData((gl::GLenum)GL_ARRAY_BUFFER, sizeof(GLfloat) * 4 * 3, vertexData, (gl::GLenum)GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, (gl::GLenum)GL_FLOAT, (gl::GLboolean)GL_FALSE, 0, 0);
     glGenBuffers(1, &ibo);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * 2 * 3, indexData, GL_STATIC_DRAW);
+	glBindBuffer((gl::GLenum)GL_ELEMENT_ARRAY_BUFFER, ibo);
+	glBufferData((gl::GLenum)GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * 2 * 3, indexData, (gl::GLenum)GL_STATIC_DRAW);
 	glBindVertexArray(0);
 
 	//- setup shaders
-    vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    vertexShader = glCreateShader((gl::GLenum)GL_VERTEX_SHADER);
+    fragmentShader = glCreateShader((gl::GLenum)GL_FRAGMENT_SHADER);
     shaderProgram = glCreateProgram();
-	currentFragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+	currentFragmentShader = glCreateShader((gl::GLenum)GL_FRAGMENT_SHADER);
 	currentShaderProgram = glCreateProgram();
 
 	// vertex shader is not changing
