@@ -12,3 +12,5 @@ target_link_libraries(rosemary system ${GLBINDING_LIBRARIES})
   # with add_executable WIN32 flag this allows us to disable console window
   # set_target_properties(rosemary PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
 #endif ()
+
+install(TARGETS rosemary DESTINATION bin)

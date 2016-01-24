@@ -35,3 +35,6 @@ find_package_handle_standard_args(GLBINDING  DEFAULT_MSG
                                   GLBINDING_LIBRARY GLBINDING_INCLUDE_DIR)
 
 mark_as_advanced(GLBINDING_INCLUDE_DIR GLBINDING_LIBRARY )
+
+message("glbinding found, includes: ${GLBINDING_INCLUDE_DIRS}")
+message("glbinding found, libraries: ${GLBINDING_LIBRARIES}")
