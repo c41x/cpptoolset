@@ -41,7 +41,7 @@ void debugOutputCallback(gl::GLenum source, gl::GLenum type, GLuint id, gl::GLen
 						 const GLchar *message, const void *userParam) {
 	string out = string("Message: ") + message + "\nSource: ";
 
-	switch (source) {
+	switch ((int)source) {
 		case GL_DEBUG_SOURCE_API: out += "API"; break;
 		case GL_DEBUG_SOURCE_WINDOW_SYSTEM: out += "Window System"; break;
 		case GL_DEBUG_SOURCE_SHADER_COMPILER: out += "Shader Compiler"; break;
@@ -53,7 +53,7 @@ void debugOutputCallback(gl::GLenum source, gl::GLenum type, GLuint id, gl::GLen
 
 	out += "\nType: ";
 
-	switch (type) {
+	switch ((int)type) {
 		case GL_DEBUG_TYPE_ERROR: out += "Error"; break;
 		case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: out += "Deprecated Behaviour"; break;
 		case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: out += "Undefined Behaviour"; break;
@@ -68,7 +68,7 @@ void debugOutputCallback(gl::GLenum source, gl::GLenum type, GLuint id, gl::GLen
 
 	out += "\nID: " + toStr(id) + "\nSeverity: ";
 
-	switch (severity) {
+	switch ((int)severity) {
 		case GL_DEBUG_SEVERITY_HIGH: out += "High"; break;
 		case GL_DEBUG_SEVERITY_MEDIUM: out += "Medium"; break;
 		case GL_DEBUG_SEVERITY_LOW: out += "Low"; break;
