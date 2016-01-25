@@ -1,10 +1,10 @@
-#include <glbinding/gl33core/gl.h>
+#include <glbinding/gl43core/gl.h>
 #include <glbinding/Binding.h>
 #include <system/system.hpp>
 
 using namespace granite;
 using namespace granite::base;
-using namespace gl33core;
+using namespace gl43core;
 
 // error checking for shaders
 bool checkShader(GLuint obj) {
@@ -35,6 +35,48 @@ bool checkProgram(GLuint obj) {
         return false;
     }
     return true;
+}
+
+void debugOutputCallback(gl::GLenum source, gl::GLenum type, GLuint id, gl::GLenum severity, GLsizei length,
+						 const GLchar *message, const void *userParam) {
+	string out = string("Message: ") + message + "\nSource: ";
+
+	switch (source) {
+		case GL_DEBUG_SOURCE_API: out += "API"; break;
+		case GL_DEBUG_SOURCE_WINDOW_SYSTEM: out += "Window System"; break;
+		case GL_DEBUG_SOURCE_SHADER_COMPILER: out += "Shader Compiler"; break;
+		case GL_DEBUG_SOURCE_THIRD_PARTY: out += "Third Party"; break;
+		case GL_DEBUG_SOURCE_APPLICATION: out += "Application"; break;
+		case GL_DEBUG_SOURCE_OTHER: out += "Other"; break;
+		default:;
+	}
+
+	out += "\nType: ";
+
+	switch (type) {
+		case GL_DEBUG_TYPE_ERROR: out += "Error"; break;
+		case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: out += "Deprecated Behaviour"; break;
+		case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: out += "Undefined Behaviour"; break;
+		case GL_DEBUG_TYPE_PORTABILITY: out += "Portability"; break;
+		case GL_DEBUG_TYPE_PERFORMANCE: out += "Performance"; break;
+		case GL_DEBUG_TYPE_MARKER: out += "Marker"; break;
+		case GL_DEBUG_TYPE_PUSH_GROUP: out += "Push Group"; break;
+		case GL_DEBUG_TYPE_POP_GROUP: out += "Pop Group"; break;
+		case GL_DEBUG_TYPE_OTHER: out += "Other"; break;
+		default:;
+	}
+
+	out += "\nID: " + toStr(id) + "\nSeverity: ";
+
+	switch (severity) {
+		case GL_DEBUG_SEVERITY_HIGH: out += "High"; break;
+		case GL_DEBUG_SEVERITY_MEDIUM: out += "Medium"; break;
+		case GL_DEBUG_SEVERITY_LOW: out += "Low"; break;
+		case GL_DEBUG_SEVERITY_NOTIFICATION: out += "Notification"; break;
+		default:;
+	}
+
+	logError(out);
 }
 
 // shader handles
@@ -128,6 +170,13 @@ int main(int argc, char**argv) {
 	if (strIs<int>(argv[3]))
 		height = fromStr<int>(argv[3]);
 
+	// debug output flag
+	bool debugOutput = false;
+	if (argc >= 5) {
+		if (strIs<bool>(argv[4]))
+			debugOutput = fromStr<bool>(argv[4]);
+	}
+
 	// setup file watcher
 	string shaderFileName = extractFileName(shaderFile);
 	watchId = fs::addWatch(shaderFileName);
@@ -146,6 +195,9 @@ int main(int argc, char**argv) {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	if (debugOutput) {
+		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
+	}
     window = glfwCreateWindow(width, height, "Rosemary", NULL, NULL);
     if (!window) {
 		logError("glfwCreateWindow error");
@@ -156,6 +208,25 @@ int main(int argc, char**argv) {
 
 	// initialize glbinding
 	glbinding::Binding::initialize();
+
+	// print OpenGL version
+	logInfo((const char*)glGetString(GL_VERSION));
+	logInfo((const char*)glGetString(GL_VENDOR));
+	logInfo((const char*)glGetString(GL_RENDERER));
+	logInfo((const char*)glGetString(GL_SHADING_LANGUAGE_VERSION));
+
+	// initialize error callback
+	if (debugOutput) {
+		if (glfwExtensionSupported("GL_ARB_debug_output")) {
+			glEnable(GL_DEBUG_OUTPUT);
+			glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+			glDebugMessageCallback(debugOutputCallback, nullptr);
+			logInfo("GL_ARB_debug_output initialized");
+		}
+		else {
+			logError("GL_ARB_debug_output not supported");
+		}
+	}
 
 	//- setup VAO
 	// create fullscreen quad VBO
@@ -250,8 +321,6 @@ int main(int argc, char**argv) {
 	return 0;
 }
 
-// TODO: opengl info
-// TODO: opengl error checking
 // TODO: delete all resources
 // TODO: OSC emacs integration
 // TODO: investigate double reloads when editing shader in emacs
