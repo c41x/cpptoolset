@@ -127,6 +127,7 @@ public:
 
 	// utils
 	static void mapc(cell_t c, std::function<void(cell_t)> fx);
+	static int32 size(cell_t c);
 
 	// extending API
 	void addProcedure(const string &name, procedure_t fx);
