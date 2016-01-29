@@ -2,6 +2,27 @@
 #include <glbinding/Binding.h>
 #include <system/system.hpp>
 
+// defines naming collisions (glbinding defines GLenum as enum's)
+#undef GL_DEBUG_SOURCE_API
+#undef GL_DEBUG_SOURCE_WINDOW_SYSTEM
+#undef GL_DEBUG_SOURCE_SHADER_COMPILER
+#undef GL_DEBUG_SOURCE_THIRD_PARTY
+#undef GL_DEBUG_SOURCE_APPLICATION
+#undef GL_DEBUG_SOURCE_OTHER
+#undef GL_DEBUG_TYPE_ERROR
+#undef GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR
+#undef GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR
+#undef GL_DEBUG_TYPE_PORTABILITY
+#undef GL_DEBUG_TYPE_PERFORMANCE
+#undef GL_DEBUG_TYPE_MARKER
+#undef GL_DEBUG_TYPE_PUSH_GROUP
+#undef GL_DEBUG_TYPE_POP_GROUP
+#undef GL_DEBUG_TYPE_OTHER
+#undef GL_DEBUG_SEVERITY_HIGH
+#undef GL_DEBUG_SEVERITY_MEDIUM
+#undef GL_DEBUG_SEVERITY_LOW
+#undef GL_DEBUG_SEVERITY_NOTIFICATION
+
 using namespace granite;
 using namespace granite::base;
 using namespace gl43core;
@@ -41,7 +62,7 @@ void debugOutputCallback(gl::GLenum source, gl::GLenum type, GLuint id, gl::GLen
 						 const GLchar *message, const void *userParam) {
 	string out = string("Message: ") + message + "\nSource: ";
 
-	switch ((int)source) {
+	switch (source) {
 		case GL_DEBUG_SOURCE_API: out += "API"; break;
 		case GL_DEBUG_SOURCE_WINDOW_SYSTEM: out += "Window System"; break;
 		case GL_DEBUG_SOURCE_SHADER_COMPILER: out += "Shader Compiler"; break;
@@ -53,7 +74,7 @@ void debugOutputCallback(gl::GLenum source, gl::GLenum type, GLuint id, gl::GLen
 
 	out += "\nType: ";
 
-	switch ((int)type) {
+	switch (type) {
 		case GL_DEBUG_TYPE_ERROR: out += "Error"; break;
 		case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: out += "Deprecated Behaviour"; break;
 		case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: out += "Undefined Behaviour"; break;
@@ -68,7 +89,7 @@ void debugOutputCallback(gl::GLenum source, gl::GLenum type, GLuint id, gl::GLen
 
 	out += "\nID: " + toStr(id) + "\nSeverity: ";
 
-	switch ((int)severity) {
+	switch (severity) {
 		case GL_DEBUG_SEVERITY_HIGH: out += "High"; break;
 		case GL_DEBUG_SEVERITY_MEDIUM: out += "Medium"; break;
 		case GL_DEBUG_SEVERITY_LOW: out += "Low"; break;
