@@ -227,6 +227,7 @@ bool cell::isNil() const {
 }
 
 int32 cell::listSize() const {
+	gassert(type == typeList, "called listSize() on non list cell");
 	return i;
 }
 
@@ -1860,6 +1861,10 @@ void lisp::mapc(cell_t c, std::function<void(cell_t)> fx) {
 	// TODO: consider assert to check if c is really a list
 	for (cell_t i = firstCell(c); i != endCell(c); i = nextCell(i))
 		fx(i);
+}
+
+int32 lisp::size(cell_t c) {
+	return countElements(c);
 }
 
 const std::vector<string> &lisp::getError() {
