@@ -12,6 +12,7 @@
 - random number generators
 - perlin noise generators, FBM generators
 - file system utilities
+- directory watch
 - streams
 - VFS / LZ4 compression
 - multithread task scheduler
@@ -23,7 +24,7 @@
 ## Installation
 
 ### Submodules
-Repository is using submodules. To download all dependencies run `git submodule init` followed by `git submodule update` right after clonning.
+Repository is using submodules. To download all dependencies run `git submodule init` followed by `git submodule update` after clonning.
 More info: http://git-scm.com/book/en/v2/Git-Tools-Submodules
 
 ### Preparing project and compiling dependencies
