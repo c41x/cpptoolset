@@ -123,6 +123,11 @@ public:
 	template <typename... Args> static bool validate(cell_t c, const cell &tt, Args... t);
 	template <typename... Args> static bool validate(cell_t c, const cell::listRange &tt, Args... t);
 	template <typename... Args> static bool validate(cell_t c, const cell::anyOf &tt, Args... t);
+	static inline string validateStr(cell::type_t tt);
+	static inline string validateStr(const cell &tt);
+	static inline string validateStr(const cell::listRange &tt);
+	static inline string validateStr(const cell::anyOf tt);
+	template <typename... Args, typename T> static string validateStr(T tt, Args... t);
 	void signalError(const string &description);
 
 	// utils

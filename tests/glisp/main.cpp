@@ -40,6 +40,9 @@ int main(int argc, char **argv) {
 	granite::base::lisp gl;
 	gl.init();
 
+	// using namespace granite::base;
+	// std::cout << lisp::validateStr(cell::typeString, cell::typeList, cell(1), cell::anyOf(cell::typeString, cell::typeIdentifier), cell::listRange(5), cell::listRange(1, 5), cell::list(555)) << std::endl;
+
 	// granite::base::cells_t a;
 	// a.push_back(granite::base::cell::list(4));
 	// a.push_back(granite::base::cell(64));

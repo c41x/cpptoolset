@@ -53,6 +53,7 @@ template <> inline cells_t &fromStream(stream &s, cells_t &c) {
 }
 */
 
+//- validate
 namespace detail {
 inline bool compare(const cell &c, const cell &tt) {
 	if (c.type == tt.type) {
@@ -95,4 +96,43 @@ template <typename... Args> bool lisp::validate(cell_t c, const cell::listRange 
 
 template <typename... Args> bool lisp::validate(cell_t c, const cell::anyOf &tt, Args... t) {
     return (c->type == tt.t1 || c->type == tt.t2) && lisp::validate(c + 1, t...);
+}
+
+//- validateStr
+string lisp::validateStr(cell::type_t tt) {
+	switch (tt) {
+		case cell::typeIdentifier: return "identifier";
+		case cell::typeInt: return "int";
+		case cell::typeInt64: return "int64";
+		case cell::typeFloat: return "float";
+		case cell::typeVector: return "vector";
+		case cell::typeString: return "string";
+		case cell::typeList: return "list";
+		default: return "?";
+	}
+}
+
+string lisp::validateStr(const cell &tt) {
+	switch (tt.type) {
+		case cell::typeIdentifier: return strs("identifier<", tt.s, ">");
+		case cell::typeInt: return strs("int<", tt.i, ">");
+		case cell::typeInt64: return strs("int64<", tt.ii, ">");
+		case cell::typeFloat: return strs("float<", tt.f, ">");
+		case cell::typeVector: return strs("vector<", vec4f(tt.v4), ">");
+		case cell::typeString: return strs("string<", tt.s, ">");
+		case cell::typeList: return strs("list<", tt.i, ">");
+		default: return "?";
+	}
+}
+
+string lisp::validateStr(const cell::listRange &tt) {
+	return strs("list<", tt.min, ", ", tt.max, ">");
+}
+
+string lisp::validateStr(const cell::anyOf tt) {
+	return strs(validateStr(tt.t1), "|", validateStr(tt.t2));
+}
+
+template <typename... Args, typename T> string lisp::validateStr(T tt, Args... t) {
+	return strs(validateStr(tt), " ", validateStr(t...));
 }
