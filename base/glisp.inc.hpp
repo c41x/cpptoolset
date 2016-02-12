@@ -98,6 +98,10 @@ template <typename... Args> bool lisp::validate(cell_t c, const cell::anyOf &tt,
     return (c->type == tt.t1 || c->type == tt.t2) && lisp::validate(c + 1, t...);
 }
 
+template <typename... Args> bool lisp::validate(cell_t c, const cell::any &tt, Args... t) {
+    return (detail::compare(tt.t1, *c) || detail::compare(tt.t2, *c)) && lisp::validate(c + 1, t...);
+}
+
 //- validateStr
 string lisp::validateStr(cell::type_t tt) {
 	switch (tt) {
@@ -130,6 +134,10 @@ string lisp::validateStr(const cell::listRange &tt) {
 }
 
 string lisp::validateStr(const cell::anyOf tt) {
+	return strs(validateStr(tt.t1), "|", validateStr(tt.t2));
+}
+
+string lisp::validateStr(const cell::any tt) {
 	return strs(validateStr(tt.t1), "|", validateStr(tt.t2));
 }
 

@@ -32,6 +32,11 @@ namespace granite { namespace base {
 
 // just data (variant)
 class cell {
+	template <typename T>
+	struct anyOf_ {
+		T t1, t2;
+		anyOf_(T _t1, T _t2) : t1(_t1), t2(_t2) {}
+	};
 public:
 	enum type_t {
 		typeIdentifier,
@@ -85,10 +90,8 @@ public:
 		listRange(int32 emin, int32 emax = -1) : min(emin), max(emax) {}
 	};
 
-	struct anyOf {
-		type_t t1, t2;
-		anyOf(type_t _t1, type_t _t2) : t1(_t1), t2(_t2) {}
-	};
+	typedef anyOf_<type_t> anyOf;
+	typedef anyOf_<cell> any;
 };
 
 // lisp state
@@ -123,10 +126,12 @@ public:
 	template <typename... Args> static bool validate(cell_t c, const cell &tt, Args... t);
 	template <typename... Args> static bool validate(cell_t c, const cell::listRange &tt, Args... t);
 	template <typename... Args> static bool validate(cell_t c, const cell::anyOf &tt, Args... t);
+	template <typename... Args> static bool validate(cell_t c, const cell::any &tt, Args... t);
 	static inline string validateStr(cell::type_t tt);
 	static inline string validateStr(const cell &tt);
 	static inline string validateStr(const cell::listRange &tt);
 	static inline string validateStr(const cell::anyOf tt);
+	static inline string validateStr(const cell::any tt);
 	template <typename... Args, typename T> static string validateStr(T tt, Args... t);
 	void signalError(const string &description);
 
