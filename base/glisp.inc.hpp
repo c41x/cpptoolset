@@ -99,7 +99,16 @@ template <typename... Args> bool lisp::validate(cell_t c, const cell::anyOf &tt,
 }
 
 template <typename... Args> bool lisp::validate(cell_t c, const cell::any &tt, Args... t) {
-    return (detail::compare(tt.t1, *c) || detail::compare(tt.t2, *c)) && lisp::validate(c + 1, t...);
+	if (detail::compare(tt.t1, *c)) {
+		if (tt.t1.type == cell::typeList)
+			return detail::countedValidate(tt.t1.i, c + 1, t...);
+	}
+	else if (detail::compare(tt.t2, *c)) {
+		if (tt.t2.type == cell::typeList)
+			return detail::countedValidate(tt.t2.i, c + 1, t...);
+	}
+	else return false;
+	return lisp::validate(c + 1, t...);
 }
 
 //- validateStr
