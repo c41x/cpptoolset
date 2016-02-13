@@ -23,7 +23,7 @@ int test() {
     glfwMakeContextCurrent(window);
 	glEnable(GL_DEPTH_TEST);
     while (!glfwWindowShouldClose(window) &&
-		   !glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
+		   !(glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)) {
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -73,7 +73,7 @@ int test() {
 		glBegin(GL_QUADS);
 		for (float x = -mm; x <= mm; x += ms) {
 			for (float z = -mm; z <= mm; z += ms) {
-				float c = 1.f - vec(x, 0.f, z).distance(vec(0.f, 0.f, 0.f)) / (mm / 2.5f);
+				//float c = 1.f - vec(x, 0.f, z).distance(vec(0.f, 0.f, 0.f)) / (mm / 2.5f);
 				//c *= 1.f / fy(x, z);
 				float off = 0.01f;
 				glColor3f(0.f, 0.f, 0.f);
