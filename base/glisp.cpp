@@ -352,7 +352,7 @@ cells_t parse(const string &s) {
 			else if (t.id == tokenVec)
 				cells.push_back(cell(fromStr<vec4f>(t.value)));
 			else if (isInteger(t.value))
-				cells.push_back(cell(fromStr<int>(t.value)));
+				cells.push_back(cell(fromStr<int>(t.value)));// TODO: support for int64 values
 			else if (isFloat(t.value))
 				cells.push_back(cell(fromStr<float>(t.value)));
 			else cells.push_back(cell(cell::typeIdentifier, t.value));
