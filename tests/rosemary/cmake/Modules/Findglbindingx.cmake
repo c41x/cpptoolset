@@ -25,8 +25,8 @@ find_library(GLBINDING_LIBRARY glbinding
              HINTS ${PC_GLBINDING_LIBDIR} ${PC_GLBINDING_LIBRARY_DIRS}
              PATHS ${PROGRAMFILES}/glbinding/lib)
 
-set(GLBINDING_LIBRARIES ${GLBINDING_LIBRARY} )
-set(GLBINDING_INCLUDE_DIRS ${GLBINDING_INCLUDE_DIR} )
+set(GLBINDING_LIBRARIES ${GLBINDING_LIBRARY})
+set(GLBINDING_INCLUDE_DIRS ${GLBINDING_INCLUDE_DIR})
 
 include(FindPackageHandleStandardArgs)
 # handle the QUIETLY and REQUIRED arguments and set GLBINDING_FOUND to TRUE
@@ -34,7 +34,7 @@ include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(GLBINDING  DEFAULT_MSG
                                   GLBINDING_LIBRARY GLBINDING_INCLUDE_DIR)
 
-mark_as_advanced(GLBINDING_INCLUDE_DIR GLBINDING_LIBRARY )
+mark_as_advanced(GLBINDING_INCLUDE_DIR GLBINDING_LIBRARY)
 
 message("glbinding found, includes: ${GLBINDING_INCLUDE_DIRS}")
 message("glbinding found, libraries: ${GLBINDING_LIBRARIES}")

@@ -15,7 +15,7 @@ int main(int argc, char **argv) {
 
 	// add directory watch
 	#if defined(GE_PLATFORM_LINUX)
-	auto wid = fs::addWatch("/home/kuba/tmp");
+	auto wid = fs::addWatch("/tmp");
 	#elif defined(GE_PLATFORM_WINDOWS)
 	auto wid = fs::addWatch("c:/tmp");
 	#endif
@@ -31,6 +31,7 @@ int main(int argc, char **argv) {
 			 	case fs::fileMonitorModify: std::cout << "= " << std::get<1>(c) << std::endl;
 			 }
 		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 
 	// cleanup
