@@ -1,5 +1,4 @@
 #include "framework.hpp"
-#include "../base/base.hpp"
 
 namespace granite { namespace system {
 
