@@ -54,3 +54,5 @@ void shutdown() {
 }
 }
 }}
+
+// TODO: visual c++ test
