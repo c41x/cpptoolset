@@ -1,16 +1,32 @@
-
 #include <system/system.hpp>
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
+/*#include <X11/Xlib.h>
+  #include <X11/Xutil.h>*/
 
 using namespace granite;
 using namespace granite::base;
+using namespace granite::system;
 
-bool keyBound = false;
+//bool keyBound = false;
 
-int x11errorHandler(Display *, XErrorEvent *) { keyBound = false; return 0; }
+//int x11errorHandler(Display *, XErrorEvent *) { keyBound = false; return 0; }
 
 int main(int argc, char**argv) {
+	bool run = true;
+	hotkey::init();
+	hotkey::add('B', modAlt, []() {
+			std::cout << "hotkey ALT + B pressed!!!" << std::endl;
+		});
+	hotkey::add(keyMediaPlayPause, modControl, [&run]() {
+			std::cout << "hotkey CTRL + B pressed!!!" << std::endl;
+			run = false;
+		});
+	while (run) {
+		hotkey::process();
+	}
+	hotkey::shutdown();
+
+
+/*
 	Display* dpy = XOpenDisplay(0);
 	Window root = DefaultRootWindow(dpy);
 	XEvent ev;
@@ -58,6 +74,6 @@ int main(int argc, char**argv) {
 		}
 	}
 
-	XCloseDisplay(dpy);
+	XCloseDisplay(dpy);*/
 	return 0;
 }
