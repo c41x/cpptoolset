@@ -1,5 +1,5 @@
 /*
- * granite engine 1.0 | 2006-2015 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
+ * granite engine 1.0 | 2006-2016 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
  * file: includes.h
  * created: 22-10-2012
  *
@@ -11,6 +11,12 @@
  */
 
 #pragma once
+#include "../base/base.hpp"
 #include <GLFW/glfw3.h>
+
+// base namespace is visible in system
+namespace granite { namespace system {
+using namespace ::granite::base;
+}}
 
 //~

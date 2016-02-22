@@ -1,5 +1,6 @@
 add_library(system
-  framework.cpp)
+  framework.cpp
+  hotkey.cpp)
 
 target_link_libraries(system base)
 target_link_libraries(system glfw3)
@@ -17,6 +18,8 @@ install(TARGETS system DESTINATION lib)
 
 install(FILES
   framework.hpp
+  hotkey.hpp
   includes.hpp
+  keycodes.hpp
   system.hpp
   DESTINATION include/system)
