@@ -12,7 +12,10 @@
 
 #pragma once
 #include "../base/base.hpp"
+
+#ifndef GE_DONT_INCLUDE_GLFW
 #include <GLFW/glfw3.h>
+#endif
 
 // base namespace is visible in system
 namespace granite { namespace system {
