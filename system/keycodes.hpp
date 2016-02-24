@@ -269,6 +269,17 @@ typedef UINT modId;
 
 //- LINUX (X11)
 #elif defined(GE_PLATFORM_LINUX)
-typedef int keyId;
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+
+typedef unsigned int keyId;
 typedef unsigned int modId;
+
+#define modAlt Mod1Mask
+#define modControl ControlMask
+#define modShift ShiftMask
+#define modWin Mod4Mask
+
+// TODO: key codes
+
 #endif

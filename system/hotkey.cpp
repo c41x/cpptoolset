@@ -2,15 +2,16 @@
 
 namespace granite { namespace system {
 namespace hotkey {
-namespace {
 
+#if defined(GE_PLATFORM_WINDOWS)
+
+namespace {
 struct hotkeyData {
 	std::function<void()> fx;
 };
 
 int currentId = 1;
 std::map<int, hotkeyData> binds;
-
 }
 
 bool init() {
@@ -52,6 +53,96 @@ void shutdown() {
 		UnregisterHotKey(NULL, e.first);
 	}
 }
+
+#elif defined(GE_PLATFORM_LINUX)
+
+namespace {
+struct hotkeyData {
+	std::function<void()> fx;
+	unsigned int mods;
+	unsigned int keycode;
+};
+
+int currentId = 1;
+std::map<int, hotkeyData> binds;
+bool keyBound = false;
+int x11errorHandler(Display *, XErrorEvent *) { keyBound = false; return 0; }
+Display* dpy = nullptr;
+Window root;
+}
+
+bool init() {
+	if (!dpy) {
+		dpy = XOpenDisplay(0);
+		root = DefaultRootWindow(dpy);
+		return true;
+	}
+	return false;
+}
+
+int add(keyId key, modId mods, std::function<void()> fx) {
+	unsigned int keycode = XKeysymToKeycode(dpy, key);
+
+	XSetErrorHandler(x11errorHandler);
+	keyBound = true;
+	XSync(dpy, 0);
+	XGrabKey(dpy, keycode, AnyModifier, root, False, GrabModeAsync, GrabModeAsync);
+	XSync(dpy, 0);
+
+	if (!keyBound) {
+		logError(strs("could not register hotkey key: ", key, " mod: ", mods));
+		XUngrabKey(dpy, keycode, AnyModifier, root);
+		return 0;
+	}
+
+	XSelectInput(dpy, root, KeyPressMask);
+	XSetErrorHandler(NULL);
+	binds.insert(std::make_pair(currentId, hotkeyData {fx, mods, keycode}));
+	return currentId++;
+}
+
+bool remove(int id) {
+	auto e = binds.find(id);
+	if (e != binds.end()) {
+		XUngrabKey(dpy, e->second.keycode, AnyModifier, root);
+		return true;
+	}
+	return false;
+}
+
+void process() {
+	if (XPending(dpy) > 0) {
+		XEvent ev;
+		XNextEvent(dpy, &ev);
+		auto mask = ev.xkey.state;
+
+		// ignore num lock, caps lock and scroll lock
+		mask &= ~Mod2Mask;
+		mask &= ~Mod3Mask;
+		mask &= ~LockMask;
+
+		if (ev.type == KeyPress) {
+			auto e = std::find_if(binds.begin(), binds.end(), [&ev, mask](const auto &a) -> bool {
+					return mask == a.second.mods && ev.xkey.keycode == a.second.keycode;
+				});
+			if (e != binds.end()) {
+				e->second.fx();
+			}
+		}
+	}
+}
+
+void shutdown() {
+	for (auto &e : binds) {
+		XUngrabKey(dpy, e.second.keycode, AnyModifier, root);
+	}
+	XCloseDisplay(dpy);
+}
+
+#else
+#error "not implemented"
+#endif
+
 }
 }}
 
