@@ -17,6 +17,18 @@
 typedef UINT keyId;
 typedef UINT modId;
 
+inline modId getModifier(const granite::base::string &mod) {
+	if (mod == "alt") return MOD_ALT;
+	else if (mod == "control") return MOD_CONTROL;
+	else if (mod == "shift") return MOD_SHIFT;
+	else if (mod == "win") return MOD_WIN;
+	return 0;
+}
+
+inline keyId getKey(const granite::base::string &key) {
+	// TODO: -
+}
+
 #define modAlt MOD_ALT
 #define modControl MOD_CONTROL
 #define modShift MOD_SHIFT
@@ -280,6 +292,16 @@ typedef unsigned int modId;
 #define modShift ShiftMask
 #define modWin Mod4Mask
 
-// TODO: key codes
+inline modId getModifier(const granite::base::string &mod) {
+	if (mod == "alt") return Mod1Mask;
+	else if (mod == "control") return ControlMask;
+	else if (mod == "shift") return ShiftMask;
+	else if (mod == "win") return Mod4Mask;
+	return 0;
+}
+
+inline keyId getKey(const granite::base::string &key) {
+	return (keyId)XStringToKeysym(key.c_str());
+}
 
 #endif
