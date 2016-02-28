@@ -31,6 +31,7 @@ bool remove(int id) {
 	auto e = binds.find(id);
 	if (e != binds.end()) {
 		UnregisterHotKey(NULL, e->first);
+		binds.erase(e);
 		return true;
 	}
 	return false;
@@ -86,12 +87,26 @@ int add(keyId key, modId mods, std::function<void()> fx) {
 	XSetErrorHandler(x11errorHandler);
 	keyBound = true;
 	XSync(dpy, 0);
-	XGrabKey(dpy, keycode, AnyModifier, root, False, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, keycode, mods, root, False, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, keycode, mods | Mod2Mask, root, False, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, keycode, mods | Mod3Mask, root, False, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, keycode, mods | LockMask, root, False, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, keycode, mods | Mod2Mask | Mod3Mask, root, False, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, keycode, mods | Mod2Mask | LockMask, root, False, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, keycode, mods | Mod3Mask | LockMask, root, False, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, keycode, mods | Mod2Mask | Mod3Mask | LockMask, root, False, GrabModeAsync, GrabModeAsync);
 	XSync(dpy, 0);
 
 	if (!keyBound) {
 		logError(strs("could not register hotkey key: ", key, " mod: ", mods));
-		XUngrabKey(dpy, keycode, AnyModifier, root);
+		XUngrabKey(dpy, keycode, mods, root);
+		XUngrabKey(dpy, keycode, mods | Mod2Mask, root);
+		XUngrabKey(dpy, keycode, mods | Mod3Mask, root);
+		XUngrabKey(dpy, keycode, mods | LockMask, root);
+		XUngrabKey(dpy, keycode, mods | Mod2Mask | Mod3Mask, root);
+		XUngrabKey(dpy, keycode, mods | Mod2Mask | LockMask, root);
+		XUngrabKey(dpy, keycode, mods | Mod3Mask | LockMask, root);
+		XUngrabKey(dpy, keycode, mods | Mod2Mask | Mod3Mask | LockMask, root);
 		return 0;
 	}
 
@@ -104,7 +119,15 @@ int add(keyId key, modId mods, std::function<void()> fx) {
 bool remove(int id) {
 	auto e = binds.find(id);
 	if (e != binds.end()) {
-		XUngrabKey(dpy, e->second.keycode, AnyModifier, root);
+		XUngrabKey(dpy, e->second.keycode, e->second.mods, root);
+		XUngrabKey(dpy, e->second.keycode, e->second.mods | Mod2Mask, root);
+		XUngrabKey(dpy, e->second.keycode, e->second.mods | Mod3Mask, root);
+		XUngrabKey(dpy, e->second.keycode, e->second.mods | LockMask, root);
+		XUngrabKey(dpy, e->second.keycode, e->second.mods | Mod2Mask | Mod3Mask, root);
+		XUngrabKey(dpy, e->second.keycode, e->second.mods | Mod2Mask | LockMask, root);
+		XUngrabKey(dpy, e->second.keycode, e->second.mods | Mod3Mask | LockMask, root);
+		XUngrabKey(dpy, e->second.keycode, e->second.mods | Mod2Mask | Mod3Mask | LockMask, root);
+		binds.erase(e);
 		return true;
 	}
 	return false;
