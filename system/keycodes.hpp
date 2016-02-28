@@ -14,25 +14,27 @@
 
 //- Windows
 #if defined(GE_PLATFORM_WINDOWS)
+
+namespace granite { namespace system {
 typedef UINT keyId;
 typedef UINT modId;
 
 inline modId getModifier(const granite::base::string &mod) {
-	if (mod == "alt") return MOD_ALT;
-	else if (mod == "control") return MOD_CONTROL;
-	else if (mod == "shift") return MOD_SHIFT;
-	else if (mod == "win") return MOD_WIN;
-	return 0;
+	modId mod = 0;
+	for (const auto &c : mod) {
+		if (c == 'M') mod |= MOD_ALT;
+		else if (c == 'C') mod |= MOD_CONTROL;
+		else if (c == 'S') mod |= MOD_SHIFT;
+		else if (c == 'W') mod |= MOD_WIN;
+	}
+	return mod;
 }
 
 inline keyId getKey(const granite::base::string &key) {
 	// TODO: -
 }
 
-#define modAlt MOD_ALT
-#define modControl MOD_CONTROL
-#define modShift MOD_SHIFT
-#define modWin MOD_WIN
+}}
 
 /*
  * Virtual Keys, Standard Set
@@ -284,24 +286,24 @@ inline keyId getKey(const granite::base::string &key) {
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
+namespace granite { namespace system {
 typedef unsigned int keyId;
 typedef unsigned int modId;
 
-#define modAlt Mod1Mask
-#define modControl ControlMask
-#define modShift ShiftMask
-#define modWin Mod4Mask
-
 inline modId getModifier(const granite::base::string &mod) {
-	if (mod == "alt") return Mod1Mask;
-	else if (mod == "control") return ControlMask;
-	else if (mod == "shift") return ShiftMask;
-	else if (mod == "win") return Mod4Mask;
-	return 0;
+	modId mod = 0;
+	for (const auto &c : mod) {
+		if (c == 'M') mod |= mod1Mask;
+		else if (c == 'C') mod |= ControlMask;
+		else if (c == 'S') mod |= ShiftMask;
+		else if (c == 'W') mod |= Mod4Mask;
+	}
+	return mod;
 }
 
 inline keyId getKey(const granite::base::string &key) {
-	return (keyId)XStringToKeysym(key.c_str());
+	return XStringToKeysym(key.c_str());
 }
 
+}}
 #endif
