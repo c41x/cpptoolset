@@ -20,14 +20,14 @@ typedef UINT keyId;
 typedef UINT modId;
 
 inline modId getModifier(const granite::base::string &mod) {
-	modId mod = 0;
+	modId r = 0;
 	for (const auto &c : mod) {
-		if (c == 'M') mod |= MOD_ALT;
-		else if (c == 'C') mod |= MOD_CONTROL;
-		else if (c == 'S') mod |= MOD_SHIFT;
-		else if (c == 'W') mod |= MOD_WIN;
+		if (c == 'M') r |= MOD_ALT;
+		else if (c == 'C') r |= MOD_CONTROL;
+		else if (c == 'S') r |= MOD_SHIFT;
+		else if (c == 'W') r |= MOD_WIN;
 	}
-	return mod;
+	return r;
 }
 
 inline keyId getKey(const granite::base::string &key) {
@@ -291,14 +291,14 @@ typedef unsigned int keyId;
 typedef unsigned int modId;
 
 inline modId getModifier(const granite::base::string &mod) {
-	modId mod = 0;
+	modId r = 0;
 	for (const auto &c : mod) {
-		if (c == 'M') mod |= mod1Mask;
-		else if (c == 'C') mod |= ControlMask;
-		else if (c == 'S') mod |= ShiftMask;
-		else if (c == 'W') mod |= Mod4Mask;
+		if (c == 'M') r |= Mod1Mask;
+		else if (c == 'C') r |= ControlMask;
+		else if (c == 'S') r |= ShiftMask;
+		else if (c == 'W') r |= Mod4Mask;
 	}
-	return mod;
+	return r;
 }
 
 inline keyId getKey(const granite::base::string &key) {
