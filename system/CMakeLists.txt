@@ -1,6 +1,7 @@
 add_library(system
   framework.cpp
-  hotkey.cpp)
+  hotkey.cpp
+  keycodes.cpp)
 
 target_link_libraries(system base)
 target_link_libraries(system glfw3)
