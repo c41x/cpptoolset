@@ -1,6 +1,7 @@
 #include "keycodes.hpp"
 
 namespace granite { namespace system {
+#ifdef GE_PLATFORM_WINDOWS
 namespace detail {
 std::map<string, keyId> s2k;
 
@@ -260,6 +261,7 @@ void initMap() {
 	 */
 }
 }
+#endif
 
 
 //- Windows
