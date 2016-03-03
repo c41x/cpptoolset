@@ -1734,6 +1734,14 @@ cell_t eval(lispState &s, cell_t d, bool temporary) {
 		else if (fxName == "print-state") {
 			return pushCell(s, {getState(s)});
 		}
+		else if (fxName == "operating-system") {
+			#ifdef GE_PLATFORM_WINDOWS
+			return pushCell(s, {"windows"});
+			#elif defined(GE_PLATFORM_LINUX)
+			return pushCell(s, {"linux"});
+			#endif
+			return pushCell(s, {"unknown"});
+		}
 
 		//- functions evaluation -
 		// get fx address
