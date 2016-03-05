@@ -16,6 +16,7 @@
 - streams
 - VFS / LZ4 compression
 - multithread task scheduler
+- system hotkeys
 
 ## Requirements:
 - Platform: Windows / Linux
