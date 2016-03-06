@@ -72,6 +72,8 @@ inline char getDigitToAlpha(char ii) { return (ii + '0'); }
 // string utilities
 void lowerCase(string &s);
 void upperCase(string &s);
+string lowerCase(const string &s);
+string upperCase(const string &s);
 void trimWhitespaces(string &s);
 void findAndDelete(string &s, const string &what);
 void findAndReplace(string &s, const string &what, const string &replacement);

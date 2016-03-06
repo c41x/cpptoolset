@@ -15,6 +15,18 @@ void upperCase(string &s) {
 		setUpper(it);
 }
 
+string lowerCase(const string &s) {
+	string r = s;
+	lowerCase(r);
+	return r;
+}
+
+string upperCase(const string &s) {
+	string r = s;
+	upperCase(r);
+	return r;
+}
+
 void trimWhitespaces(string &s) {
 	auto lmbIsNotWhitespace = [](const char &c) -> bool { return !isWhiteSpace(c); };
 	s.erase(s.begin(), std::find_if (s.begin(), s.end(), lmbIsNotWhitespace)); // leading
