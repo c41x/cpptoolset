@@ -165,7 +165,25 @@ int main(int argc, char**argv) {
 
 	// check program arguments
 	if (argc < 4) {
-		logError("incoplete program arguments: please specify fragment shader file");
+		logError("incoplete program arguments: <shader-file> <width> <height> | <monitor-id, -1 to default> <debug-output, true/false>");
+
+		// display available monitors
+		if (glfwInit()) {
+			int monitorsCount;
+			GLFWmonitor **monitors = glfwGetMonitors(&monitorsCount);
+			for (int i = 0; i < monitorsCount; ++i) {
+				int monitorWidth;
+				int monitorHeight;
+				auto mode = glfwGetVideoMode(monitors[i]);
+				monitorWidth = mode->width;
+				monitorHeight = mode->height;
+				logInfo(strf("monitor (%): % @%x%", i, glfwGetMonitorName(monitors[i]),
+							 monitorWidth, monitorHeight));
+			}
+			glfwTerminate();
+		}
+
+		// shutdown
 		shutdownGranite();
 		return -1;
 	}
@@ -191,11 +209,18 @@ int main(int argc, char**argv) {
 	if (strIs<int>(argv[3]))
 		height = fromStr<int>(argv[3]);
 
+	// monitor (only fullscreen, thanks GLFW)
+	int customMonitor = -1;
+	if (argc >= 5) {
+		if (strIs<int>(argv[4]))
+			customMonitor = fromStr<int>(argv[4]);
+	}
+
 	// debug output flag
 	bool debugOutput = false;
-	if (argc >= 5) {
-		if (strIs<bool>(argv[4]))
-			debugOutput = fromStr<bool>(argv[4]);
+	if (argc >= 6) {
+		if (strIs<bool>(argv[5]))
+			debugOutput = fromStr<bool>(argv[5]);
 	}
 
 	// setup file watcher
@@ -219,7 +244,15 @@ int main(int argc, char**argv) {
 	if (debugOutput) {
 		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 	}
-    window = glfwCreateWindow(width, height, "Rosemary", NULL, NULL);
+	int monitorsCount;
+	GLFWmonitor **monitors = glfwGetMonitors(&monitorsCount);
+	if (customMonitor == -1 || customMonitor >= monitorsCount) {
+		window = glfwCreateWindow(width, height, "Rosemary", NULL, NULL);
+	}
+	else {
+		auto mode = glfwGetVideoMode(monitors[customMonitor]);
+		window = glfwCreateWindow(mode->width, mode->height, "Rosemary", monitors[customMonitor], NULL);
+	}
     if (!window) {
 		logError("glfwCreateWindow error");
 		shutdownAll();
