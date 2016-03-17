@@ -186,7 +186,7 @@ namespace granite{
 #endif
 
 // logging macros
-#define GE_LOG_PREFIX_STRING string(__FILE__ "@" __SLINE__ ":") + string(__SFUNC__) + string("> ")
+#define GE_LOG_PREFIX_STRING granite::base::string(__FILE__ "@" __SLINE__ ":") + granite::base::string(__SFUNC__) + granite::base::string("> ")
 #define logError(message) granite::base::log::log(granite::base::log::logLevelError, GE_LOG_PREFIX_STRING + message)
 #define logOK(message) granite::base::log::log(granite::base::log::logLevelOK, GE_LOG_PREFIX_STRING + message)
 #define logInfo(message) granite::base::log::log(granite::base::log::logLevelInfo, GE_LOG_PREFIX_STRING + message)
@@ -194,7 +194,7 @@ namespace granite{
 
 // assert
 #ifdef GE_DEBUG
-#define gassert(condition, message) if(!(condition)) { const string e = string("assertion failed(" #condition ") ") + GE_LOG_PREFIX_STRING + message; std::cerr << e << std::endl; logError(e); toggleBreakpoint; } else
+#define gassert(condition, message) if(!(condition)) { const auto e = granite::base::string("assertion failed(" #condition ") ") + GE_LOG_PREFIX_STRING + message; std::cerr << e << std::endl; logError(e); toggleBreakpoint; } else
 #define gassertl(condition, message) gassert(condition, message); if (!(condition)) logError(message);
 #else
 #define gassert(condition, message)
