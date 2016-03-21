@@ -12,8 +12,8 @@ Commandline FBM texture generator. You can generate RGB image with perlin noise 
 
 ### Example output:
 `perlin_texgen "out.png" 256 256 0.7 7 true`
-![Preview](/out.png?raw=true "Preview")
+![Preview](https://github.com/c41x/cpptoolset/blob/master/tests/perlin_texgen/out.png?raw=true "Preview")
 
 ### Building
-- build granite (see: [Building Granite](https://github.com/c41x/cpptoolset/README.md))
+- build granite (see: [Building Granite](https://github.com/c41x/cpptoolset/blob/master/README.md))
 - run `cmake --build "project/release/tests/perlin_textgen" --config Release`
