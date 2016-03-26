@@ -1,5 +1,5 @@
 /*
- * granite engine 1.0 | 2006-2015 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
+ * granite engine 1.0 | 2006-2016 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
  * file: common.h
  * created: 22-10-2012
  *
