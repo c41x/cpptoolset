@@ -1,5 +1,5 @@
 /*
- * granite engine 1.0 | 2006-2015 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
+ * granite engine 1.0 | 2006-2016 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
  * file: math.*
  * created: 22-10-2012
  *
@@ -294,19 +294,16 @@ public:
 	float distance(const vec4f &v) const { return (*this - v).length(); }
 	float dot(const vec4f &v) const { return x * v.x + y * v.y + z * v.z; }
 	vec4f cross(const vec4f &v) const { vec4f r; r.x = v.y * z - v.z * y; r.y = v.x * z - v.z * x; r.z = v.x * y - v.y * x; return r; }
-
-	// TODO: color stuff
-	// TODO: interpolations
 };
 
 //- SSE optimized vector -
 class vec {
-	__m128 xmm;
+	__m128 xmm; // xyzw
 public:
 	// constructors/destructors
 	vec(){}
 	vec(const vec &copy) { xmm = copy.xmm; }
-	vec(const float &x, const float &y, const float &z, const float &w=0.f) { xmm = _mm_setr_ps(x, y, z, w); }
+	vec(const float &x, const float &y, const float &z, const float &w = 0.f) { xmm = _mm_setr_ps(x, y, z, w); }
 	vec(const float &a) { xmm = _mm_set1_ps(a); }
 	vec(const float *v) { xmm = _mm_loadu_ps(v); }
 	vec(const vec3f &v) { xmm = _mm_setr_ps(v.x, v.y, v.z, 0.f); }
@@ -776,6 +773,7 @@ class frustum {
 		POINT_FRT
 	};
 public:
+	// TODO: make private? some values may not be set
 	plane planes[6];
 	vec points[8];
 	float fov;
@@ -805,27 +803,30 @@ public:
 
 class quaternion{
 public:
-	vec wxyz; // xmm = w, x, y, z
+	vec xmm; // xyzw
 
     quaternion();
 	quaternion(float w, float x, float y, float z);
-	quaternion(const vec &_wxyz);
+	explicit quaternion(const vec &euler);
 	quaternion(const matrix &rotationMatrix);
 	quaternion(const vec &ax, const vec &ay, const vec &az);
+	quaternion(float angle, const vec &axis);
     ~quaternion();
 
-	quaternion &operator*(float s);
-	quaternion &operator*(const quaternion &q);
+	quaternion operator*(float s) const;
+	vec operator*(const vec &p) const;
+	quaternion operator*(const quaternion &q) const;
 	quaternion operator+(const quaternion &q) const;
 	quaternion operator-(const quaternion &q) const;
 	quaternion operator-() const;
 	operator matrix() const;
 	quaternion &operator()(float w, float x, float y, float z);
 	quaternion &operator()(const matrix &m);
-	quaternion &operator()(const vec &_wxyz);
+	quaternion &operator()(const vec &euler);
 	quaternion &operator()(const vec &ax, const vec &ay, const vec &az);
+	quaternion &operator()(float angle, const vec &axis);
 
-	matrix getMatrix() const;
+	matrix toMatrix() const;
 	float length() const;
 	float getRoll() const;
 	float getPitch() const;
@@ -834,12 +835,26 @@ public:
 	vec getYAxis() const;
 	vec getZAxis() const;
 	vec xmmLength() const;
+	vec euler() const;
+	float dot(const quaternion &q) const;
+	quaternion normalized() const;
+	quaternion inversed() const;
+	quaternion inversedUnit() const;
+	quaternion inversedAngle() const;
 
 	quaternion &identity();
 	quaternion &normalize();
-	quaternion &negateAxis();
-	quaternion &negateRotation();
-	// TODO: quaternion interpolations
+	quaternion &inverse();
+	quaternion &inverseUnit();
+	quaternion &inverseAngle();
+	quaternion &fromToRotation(const vec &from, const vec &to);
+	quaternion &lookRotation(const vec &forward, const vec &up);
+	quaternion &angleAxis(float angle, const vec &axis);
+	quaternion &rotateTowards(const quaternion &q, float maxAngle);
+	quaternion &euler(const vec &euler);
+
+	static quaternion lerp(const quaternion &q1, const quaternion &q2, float t);
+	static quaternion slerp(const quaternion &q1, const quaternion &q2, float t);
 };
 
 #include "math.inc.hpp"
@@ -847,3 +862,8 @@ public:
 }}
 
 //~
+// TODO: color stuff
+// TODO: interpolations naming
+// TODO: circle interpolation
+// TODO: simple modelview matrix inversions (inverseScale, inverseTransform, inverseRotation, or simply inverseTRS)
+// TODO: normalize division by 0

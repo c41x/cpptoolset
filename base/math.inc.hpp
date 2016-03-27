@@ -1,5 +1,5 @@
 /*
- * granite engine 1.0 | 2006-2015 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
+ * granite engine 1.0 | 2006-2016 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
  * file: math.inc.h
  * created: 27-10-2013
  *
@@ -226,6 +226,7 @@ inline matrix &matrix::lookAt(const vec &eye, const vec &iforward, const vec &iu
 	return *this;
 }
 
+// TODO: makes sense? fov, aspect, near and far may not be initialized in frustum
 //inline matrix &matrix::setFrustum(const frustum &f) {
 //	return setFrustum(f.fov, f.aspect, f.near, f.far);
 //}
@@ -537,98 +538,340 @@ inline bool frustum::contains(const obbox &b) const {
 inline quaternion::quaternion() {}
 
 inline quaternion::quaternion(float w, float x, float y, float z) {
-	wxyz = _mm_set_ps(w, x, y, z);
+	xmm = _mm_setr_ps(x, y, z, w);
 }
 
-inline quaternion::quaternion(const vec &_wxyz) : wxyz(_wxyz) {}
+inline quaternion::quaternion(const vec &e) {
+	euler(e);
+}
 
 inline quaternion::quaternion(const matrix &rotationMatrix) {
-	//TODO: -
+	// Ken Shoemake - 1987 SIGGRAPH "Quaternion Calculus and Fast Animation".
+	vec4f rx = rotationMatrix.x;
+	vec4f ry = rotationMatrix.y;
+	vec4f rz = rotationMatrix.z;
+	float trace = rx.x + ry.y + rz.z;
+	float root;
+	vec4f q;
+
+	if (trace > 0.0f) {
+		root = sqrtf(trace + 1.0f);
+		q.w = 0.5f * root;
+		root = 0.5f / root;
+		q.x = (ry.z - rz.y) * root;
+		q.y = (rz.x - rx.z) * root;
+		q.z = (rx.y - ry.x) * root;
+	}
+	else {
+		static size_t next[3] = { 1, 2, 0 };
+		vec4f *mat[3] = { &rx, &ry, &rz };
+		size_t i = 0;
+		if (ry.y > rx.x) i = 1;
+		if (rz.z > mat[i]->data[i]) i = 2;
+		size_t j = next[i];
+		size_t k = next[j];
+		root = sqrtf(mat[i]->data[i] - mat[j]->data[j] - mat[k]->data[k] + 1.0f);
+		float *qt[3] = { &q.x, &q.y, &q.z };
+		*qt[i] = 0.5f * root;
+		root = 0.5f / root;
+		q.w = (mat[k]->data[j] - mat[j]->data[k]) * root;
+		*qt[j] = (mat[j]->data[i] + mat[i]->data[j]) * root;
+		*qt[k] = (mat[k]->data[i] + mat[i]->data[k]) * root;
+	}
+
+	xmm = q;
 }
 
-inline quaternion::quaternion(const vec &ax, const vec &ay, const vec &az) {
-	//TODO: -
+inline quaternion::quaternion(const vec &ax, const vec &ay, const vec &az)
+		: quaternion(matrix(ax, ay, az, vec(0.f, 0.f, 0.f, 1.f))){}
+
+inline quaternion::quaternion(float angle, const vec &axis) {
+	angleAxis(angle, axis);
 }
 
 inline quaternion::~quaternion() {}
 
-inline quaternion &quaternion::operator*(float s) { return *this; }  //TODO: -
-inline quaternion &quaternion::operator*(const quaternion &q) { return *this; } //TODO: -
-inline quaternion quaternion::operator+(const quaternion &q) const { return quaternion(); } //TODO: -
-inline quaternion quaternion::operator-(const quaternion &q) const { return quaternion(); } //TODO: -
+inline quaternion quaternion::operator*(float s) const {
+	quaternion r;
+	r.xmm = xmm * s;
+	return r;
+}
+
+inline quaternion quaternion::operator*(const quaternion &q) const {
+	__m128 a = _mm_shuffle_ps(xmm, xmm, SSE_RSHUFFLE(3, 3, 3, 3));
+	a = _mm_mul_ps(a, _mm_shuffle_ps(q.xmm, q.xmm, SSE_RSHUFFLE(0, 1, 2, 3)));
+	__m128 b = _mm_setr_ps(1.0f, 1.0f, 1.0f, -1.0f);
+	b = _mm_mul_ps(b, _mm_shuffle_ps(xmm, xmm, SSE_RSHUFFLE(0, 1, 2, 0)));
+	b = _mm_mul_ps(b, _mm_shuffle_ps(q.xmm, q.xmm, SSE_RSHUFFLE(3, 3, 3, 0)));
+	a = _mm_add_ps(a, b);
+	b = _mm_setr_ps(1.0f, 1.0f, 1.0f, -1.0f);
+	b = _mm_mul_ps(b, _mm_shuffle_ps(xmm, xmm, SSE_RSHUFFLE(1, 2, 0, 1)));
+	b = _mm_mul_ps(b, _mm_shuffle_ps(q.xmm, q.xmm, SSE_RSHUFFLE(2, 0, 1, 1)));
+	a = _mm_add_ps(a, b);
+	b = _mm_setr_ps(-1.0f, -1.0f, -1.0f, -1.0f);
+	b = _mm_mul_ps(b, _mm_shuffle_ps(xmm, xmm, SSE_RSHUFFLE(2, 0, 1, 2)));
+	b = _mm_mul_ps(b, _mm_shuffle_ps(q.xmm, q.xmm, SSE_RSHUFFLE(1, 2, 0, 2)));
+	quaternion r;
+	r.xmm = _mm_add_ps(a, b);
+	return r;
+}
+
+vec quaternion::operator*(const vec &p) const {
+	vec uv = xmm.cross(p);
+	vec uuv = xmm.cross(uv);
+	vec w = _mm_shuffle_ps(xmm, xmm, SSE_RSHUFFLE(3, 3, 3, 3));
+	uv *= w * 2.0f;
+	uuv *= 2.0f;
+	return p + uv + uuv;
+}
+
+inline quaternion quaternion::operator+(const quaternion &q) const {
+	quaternion r;
+	r.xmm = _mm_add_ps(xmm, q.xmm);
+	return r;
+}
+
+inline quaternion quaternion::operator-(const quaternion &q) const {
+	quaternion r;
+	r.xmm = _mm_sub_ps(xmm, q.xmm);
+	return r;
+}
 
 inline quaternion quaternion::operator-() const {
-	quaternion q(*this);
-	return q.negateAxis();
+	quaternion q;
+	static const vec signMask(-0.f, -0.f, -0.f, -0.f);
+	q.xmm = _mm_xor_ps(xmm, signMask);
+	return q;
 }
 
 inline quaternion::operator matrix() const {
-	//TODO: -
-	return matrix();
+	return toMatrix();
 }
 
 inline quaternion &quaternion::operator()(float w, float x, float y, float z) {
-	wxyz = _mm_setr_ps(w, x, y, z);
+	xmm = _mm_setr_ps(x, y, z, w);
 	return *this;
 }
 
 inline quaternion &quaternion::operator()(const matrix &m) {
-	//TODO: -
-	return *this;
+	return *this = quaternion(m);
 }
 
-inline quaternion &quaternion::operator()(const vec &_wxyz) {
-	wxyz = _wxyz;
-	return *this;
+inline quaternion &quaternion::operator()(const vec &e) {
+	return euler(e);
 }
 
 inline quaternion &quaternion::operator()(const vec &ax, const vec &ay, const vec &az) {
-	//TODO: -
+	return *this = quaternion(ax, ay, az);
+}
+
+inline quaternion &quaternion::operator()(float angle, const vec &axis) {
+	angleAxis(angle, axis);
 	return *this;
 }
 
-inline matrix quaternion::getMatrix() const {
-	//TODO: -
-	return matrix();
+inline matrix quaternion::toMatrix() const {
+	matrix r;
+	static const __m128 maskw = SSE_RMASK(~0, ~0, ~0, 0);
+	__m128 q = _mm_and_ps(xmm, maskw);
+	q = _mm_add_ps(xmm, q); // x + x, y + y, z + z, w
+
+	__m128 a = _mm_setr_ps(-1.0f, 1.0f, 1.0f, 0.0f);
+	a = _mm_mul_ps(a, _mm_shuffle_ps(xmm, xmm, SSE_RSHUFFLE(1, 0, 0, 3)));
+	a = _mm_mul_ps(a, _mm_shuffle_ps(q, q, SSE_RSHUFFLE(1, 1, 2, 3)));
+	__m128 b = _mm_setr_ps(-1.0f, 1.0f, -1.0f, 0.0f);
+	b = _mm_mul_ps(b, _mm_shuffle_ps(xmm, xmm, SSE_RSHUFFLE(2, 3, 3, 3)));
+	b = _mm_mul_ps(b, _mm_shuffle_ps(q, q, SSE_RSHUFFLE(2, 2, 1, 3)));
+	b = _mm_add_ps(b, _mm_setr_ps(1.0f, 0.0f, 0.0f, 0.0f));
+	r.x = _mm_add_ps(a, b);
+
+	a = _mm_setr_ps(1.0f, -1.0f, 1.0f, 0.0f);
+	a = _mm_mul_ps(a, _mm_shuffle_ps(xmm, xmm, SSE_RSHUFFLE(0, 0, 1, 3)));
+	a = _mm_mul_ps(a, _mm_shuffle_ps(q, q, SSE_RSHUFFLE(1, 0, 2, 3)));
+	b = _mm_setr_ps(-1.0f, -1.0f, 1.0f, 0.0f);
+	b = _mm_mul_ps(b, _mm_shuffle_ps(xmm, xmm, SSE_RSHUFFLE(3, 2, 3, 3)));
+	b = _mm_mul_ps(b, _mm_shuffle_ps(q, q, SSE_RSHUFFLE(2, 2, 0, 3)));
+	b = _mm_add_ps(b, _mm_setr_ps(0.0f, 1.0f, 0.0f, 0.0f));
+	r.y = _mm_add_ps(a, b);
+
+	a = _mm_setr_ps(1.0f, 1.0f, -1.0f, 0.0f);
+	a = _mm_mul_ps(a, _mm_shuffle_ps(xmm, xmm, SSE_RSHUFFLE(0, 1, 0, 3)));
+	a = _mm_mul_ps(a, _mm_shuffle_ps(q, q, SSE_RSHUFFLE(2, 2, 0, 3)));
+	b = _mm_setr_ps(1.0f, -1.0f, -1.0f, 0.0f);
+	b = _mm_mul_ps(b, _mm_shuffle_ps(xmm, xmm, SSE_RSHUFFLE(3, 3, 1, 3)));
+	b = _mm_mul_ps(b, _mm_shuffle_ps(q, q, SSE_RSHUFFLE(1, 0, 1, 3)));
+	b = _mm_add_ps(b, _mm_setr_ps(0.0f, 0.0f, 1.0f, 0.0f));
+	r.z = _mm_add_ps(a, b);
+	r.t = _mm_setr_ps(0.0f, 0.0f, 0.0f, 1.0f);
+	return r;
 }
 
 inline float quaternion::length() const {
 	return _mm_cvtss_f32(xmmLength());
 }
 
-inline float quaternion::getRoll() const { return 0.f; }//TODO: -
-inline float quaternion::getPitch() const { return 0.f; }//TODO: -
-inline float quaternion::getYaw() const { return 0.f; }//TODO: -
-inline vec quaternion::getXAxis() const { return vec(); }//TODO: -
-inline vec quaternion::getYAxis() const { return vec(); }//TODO: -
-inline vec quaternion::getZAxis() const { return vec(); }//TODO: -
+inline float quaternion::getRoll() const {
+	vec4f q = xmm;
+	//return atan2(2.0f * (q.x * q.y + q.w * q.z), q.w * q.w + q.x * q.x - q.y * q.y - q.z * q.z);  // alternative version (without reprojection)
+	// calculate x axis and calculate angle (atan)
+	float fTy = 2.0f * q.y;
+	float fTz = 2.0f * q.z;
+	float fTwz = fTz * q.w;
+	float fTxy = fTy * q.x;
+	float fTyy = fTy * q.y;
+	float fTzz = fTz * q.z;
+	return atan2(fTxy + fTwz, 1.0f - (fTyy + fTzz));
+}
+
+inline float quaternion::getPitch() const {
+	vec4f q = xmm;
+	//return atan2(2.0f * (q.y * q.z + q.w * q.x), q.w * q.w - q.x * q.x - q.y * q.y + q.z * q.z);  // alternative version (without reprojection)
+	float fTx = 2.0f * q.x;
+	float fTz = 2.0f * q.z;
+	float fTwx = fTx * q.w;
+	float fTxx = fTx * q.x;
+	float fTyz = fTz * q.y;
+	float fTzz = fTz * q.z;
+	return atan2(fTyz + fTwx, 1.0f - (fTxx + fTzz));
+}
+
+inline float quaternion::getYaw() const {
+	vec4f q = xmm;
+	//return asin(-2.0f * (q.x * q.z - q.w * q.y)); // alternative version (without reprojection)
+	float fTx = 2.0f * q.x;
+	float fTy = 2.0f * q.y;
+	float fTz = 2.0f * q.z;
+	float fTwy = fTy * q.w;
+	float fTxx = fTx * q.x;
+	float fTxz = fTz * q.x;
+	float fTyy = fTy * q.y;
+	return atan2(fTxz + fTwy, 1.0f - (fTxx + fTyy));
+}
+
+inline vec quaternion::getXAxis() const {
+	__m128 t = _mm_setr_ps(-2.f, 2.f, 2.f, 0.f);
+	t = _mm_mul_ps(t, _mm_shuffle_ps(xmm, xmm, SSE_RSHUFFLE(1, 0, 0, 3)));
+	t = _mm_mul_ps(t, _mm_shuffle_ps(xmm, xmm, SSE_RSHUFFLE(1, 1, 2, 3)));
+	__m128 q = _mm_setr_ps(-2.f, 2.f, -2.f, 0.f);
+	q = _mm_mul_ps(q, _mm_shuffle_ps(xmm, xmm, SSE_RSHUFFLE(2, 3, 3, 3)));
+	q = _mm_mul_ps(q, _mm_shuffle_ps(xmm, xmm, SSE_RSHUFFLE(2, 2, 1, 3)));
+	return _mm_add_ps(_mm_setr_ps(1.0f, 0.0f, 0.0f, 0.0f), _mm_add_ps(q, t));
+
+}
+
+inline vec quaternion::getYAxis() const {
+	__m128 t = _mm_setr_ps(2.0f, -2.0f, 2.0f, 0.0f);
+	t = _mm_mul_ps(t, _mm_shuffle_ps(xmm, xmm, SSE_RSHUFFLE(0, 0, 1, 3)));
+	t = _mm_mul_ps(t, _mm_shuffle_ps(xmm, xmm, SSE_RSHUFFLE(1, 0, 2, 3)));
+	__m128 q = _mm_setr_ps(-2.0f, -2.0f, 2.0f, 0.0f);
+	q = _mm_mul_ps(q, _mm_shuffle_ps(xmm, xmm, SSE_RSHUFFLE(3, 2, 3, 3)));
+	q = _mm_mul_ps(q, _mm_shuffle_ps(xmm, xmm, SSE_RSHUFFLE(2, 2, 0, 3)));
+	return _mm_add_ps(_mm_setr_ps(0.0f, 1.0f, 0.0f, 0.0f), _mm_add_ps(t, q));
+}
+
+inline vec quaternion::getZAxis() const {
+	__m128 t = _mm_setr_ps(2.0f, 2.0f, -2.0f, 0.0f);
+	t = _mm_mul_ps(t, _mm_shuffle_ps(xmm, xmm, SSE_RSHUFFLE(0, 1, 0, 3)));
+	t = _mm_mul_ps(t, _mm_shuffle_ps(xmm, xmm, SSE_RSHUFFLE(2, 2, 0, 3)));
+	__m128 q = _mm_setr_ps(2.0, -2.0f, -2.0f, 0.0f);
+	q = _mm_mul_ps(q, _mm_shuffle_ps(xmm, xmm, SSE_RSHUFFLE(3, 3, 1, 3)));
+	q = _mm_mul_ps(q, _mm_shuffle_ps(xmm, xmm, SSE_RSHUFFLE(1, 0, 1, 3)));
+	return _mm_add_ps(_mm_setr_ps(0.0f, 0.0f, 1.0f, 0.0f), _mm_add_ps(t, q));
+}
 
 inline vec quaternion::xmmLength() const {
-	vec t = wxyz * wxyz;
+	vec t = xmm * xmm;
 	t = _mm_hadd_ps(t, t);
-	t = _mm_hadd_ps(t, t);
+	t = _mm_hadd_ps(t, t); // 4 component dot
 	return _mm_sqrt_ps(t);
 }
 
+inline vec quaternion::euler() const {
+	return vec(getPitch(), getYaw(), getRoll());
+}
+
+inline float quaternion::dot(const quaternion &q) const {
+	vec t = xmm * q.xmm;
+	t = _mm_hadd_ps(t, t);
+	t = _mm_hadd_ps(t, t);
+	return _mm_cvtss_f32(t);
+}
+
+quaternion quaternion::normalized() const {
+	return quaternion(*this).normalize();
+}
+
+quaternion quaternion::inversed() const {
+	return quaternion(*this).inverse();
+}
+
+quaternion quaternion::inversedUnit() const {
+	return quaternion(*this).inverseUnit();
+}
+
+quaternion quaternion::inversedAngle() const {
+	return quaternion(*this).inverseAngle();
+}
+
 inline quaternion &quaternion::identity() {
-	_mm_set_ps(1.f, 0.f, 0.f, 0.f);
+	xmm =_mm_set_ps(1.f, 0.f, 0.f, 0.f);
 	return *this;
 }
 
 inline quaternion &quaternion::normalize() {
-	wxyz /= xmmLength();
+	xmm /= xmmLength();
 	return *this;
 }
 
-inline quaternion &quaternion::negateAxis() {
-	static const vec signMask(0.f, -0.f, -0.f, -0.f);
-	wxyz = _mm_xor_ps(wxyz, signMask);
+inline quaternion &quaternion::inverse() {
+	return normalize().inverseUnit();
+}
+
+inline quaternion &quaternion::inverseUnit() {
+	static const vec signMask(-0.f, -0.f, -0.f, 0.f);
+	xmm = _mm_xor_ps(xmm, signMask);
 	return *this;
 }
 
-inline quaternion &quaternion::negateRotation() {
-	static const vec signMask(-0.f, 0.f, 0.f, 0.f);
-	wxyz = _mm_xor_ps(wxyz, signMask);
+inline quaternion &quaternion::inverseAngle() {
+	static const vec signMask(0.f, 0.f, 0.f, -0.f);
+	xmm = _mm_xor_ps(xmm, signMask);
+	return *this;
+}
+
+inline quaternion &quaternion::fromToRotation(const vec &from, const vec &to) {
+	// TODO: -
+	return *this;
+}
+
+inline quaternion &quaternion::lookRotation(const vec &forward, const vec &up) {
+	// TODO: -
+	return *this;
+}
+
+inline quaternion &quaternion::angleAxis(float angle, const vec &axis) {
+	float halfAngle = angle * 0.5f;
+	float s = sinf(halfAngle);
+	static const __m128 oneW = _mm_setr_ps(0.f, 0.f, 0.f, 1.f);
+	__m128 r = _mm_setr_ps(s, s, s, cosf(halfAngle));
+	__m128 a = _mm_add_ps(axis.xmmVec3(), oneW); // just set w to 1
+	xmm = _mm_mul_ps(r, a);
+	return *this;
+}
+
+inline quaternion &quaternion::rotateTowards(const quaternion &q, float maxAngle) {
+	// TODO: -
+	return *this;
+}
+
+inline quaternion &quaternion::euler(const vec &euler) {
+	vec4f e = euler * 0.5f;
+	vec4f s(sinf(e.x), sinf(e.y), sinf(e.z));
+	vec4f c(cosf(e.x), cosf(e.y), cosf(e.z));
+	xmm = _mm_setr_ps(s.x * c.y * c.z - c.x * s.y * s.z,
+					  c.x * s.y * c.z + s.x * c.y * s.z,
+					  c.x * c.y * s.z - s.x * s.y * c.z,
+					  c.x * c.y * c.z + s.x * s.y * s.z);
 	return *this;
 }
 

@@ -431,4 +431,14 @@ float plane::intersection(const vec *v, int count) const {
 	return first;
 }
 
+quaternion quaternion::lerp(const quaternion &q1, const quaternion &q2, float t) {
+	// TODO: -
+	return quaternion();
+}
+
+quaternion quaternion::slerp(const quaternion &q1, const quaternion &q2, float t) {
+	// TODO: -
+	return quaternion();
+}
+
 }}
