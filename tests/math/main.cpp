@@ -26,6 +26,15 @@ void printBool(bool test, const std::string &desc) {
 	std::cout << "\n" << desc << ": " << test;
 }
 
+void printQuat(const quaternion &q, const std::string &desc) {
+	vec4f v = q.xmm;
+	std::cout << "\nquaternion " << desc << ": " << "(" << v.x << "," << v.y << "," << v.z << "," << v.w << ")";
+}
+
+void printFloat(float f, const std::string &desc) {
+	std::cout << "\nf " << desc << ": " << f;
+}
+
 int main(int argc, char**argv){
 	std::cout << std::boolalpha;
 
@@ -204,6 +213,37 @@ int main(int argc, char**argv){
 		}
 
 		std::cout << "center: " << toStr(p.getCenter()) << std::endl;
+	}
+
+	// quaternion
+	{
+		quaternion q;
+		q.angleAxis(GE_PI * 0.3f, vec(1.f, 0.f, 0.f));
+		printQuat(q, "angleAxis(pi * 0.3, (1,0,0)) =? (0.4539, 0.0, 0.0, 0.8910)");
+		quaternion q2(GE_PI * 2.3f, vec(1.f, 1.f, 1.f).normalized());
+		printQuat(q2, "angleAxis(pi * 2.3, (1,1,1)) =? -0.262112,-0.262112,-0.262112,-0.891007");
+		printFloat(q2.dot(q), "dot =? -0.91128");
+		printVec(q.getXAxis(), "x axis of q");
+		printVec(q.getYAxis(), "y axis of q");
+		printVec(q.getZAxis(), "z axis of q");
+		printVec(q2.getXAxis(), "x axis of q2");
+		printVec(q2.getYAxis(), "y axis of q2");
+		printVec(q2.getZAxis(), "z axis of q2");
+		printVec(quaternion(30.0f, vec(0.0f, 1.0f, 2.0f).normalized()).euler() * (360.0f * (GE_PI / 2.0f)), "euler");
+
+		printQuat(quaternion(vec(90.0f, 0.0f, 0.0f)), "x90 quat");
+		printVec(quaternion(vec(90.0f, 0.0f, 0.0f)).getXAxis(), "x90 quat xaxix");
+		printVec(quaternion(vec(90.0f, 0.0f, 0.0f)).getYAxis(), "x90 quat yaxix");
+		printVec(quaternion(vec(90.0f, 0.0f, 0.0f)).getZAxis(), "x90 quat zaxix");
+		printVec(quaternion(vec(90.0f, 0.0f, 0.0f)).euler() * (360.0f * (GE_PI / 2.0f)), "x90 quat euler back");
+
+		printQuat(q2, "q2 itself");
+		printMatrix(q2.toMatrix(), "q2 to matrix");
+		matrix mat = q2.toMatrix();
+		printQuat(quaternion(mat), "q2 to matrix and back to quaternion");
+		printQuat(q * q2, "q * q2");
+		vec ptt(10.0f, 2.0f, -1.0f);
+		printVec(q2 * ptt, "q2 * ptt");
 	}
 
 	std::cout << "\nfinished\n";
