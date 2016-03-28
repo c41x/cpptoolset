@@ -616,7 +616,7 @@ inline quaternion quaternion::operator*(const quaternion &q) const {
 	return r;
 }
 
-vec quaternion::operator*(const vec &p) const {
+inline vec quaternion::operator*(const vec &p) const {
 	vec uv = xmm.cross(p);
 	vec uuv = xmm.cross(uv);
 	vec w = _mm_shuffle_ps(xmm, xmm, SSE_RSHUFFLE(3, 3, 3, 3));
@@ -797,19 +797,19 @@ inline float quaternion::dot(const quaternion &q) const {
 	return _mm_cvtss_f32(t);
 }
 
-quaternion quaternion::normalized() const {
+inline quaternion quaternion::normalized() const {
 	return quaternion(*this).normalize();
 }
 
-quaternion quaternion::inversed() const {
+inline quaternion quaternion::inversed() const {
 	return quaternion(*this).inverse();
 }
 
-quaternion quaternion::inversedUnit() const {
+inline quaternion quaternion::inversedUnit() const {
 	return quaternion(*this).inverseUnit();
 }
 
-quaternion quaternion::inversedAngle() const {
+inline quaternion quaternion::inversedAngle() const {
 	return quaternion(*this).inverseAngle();
 }
 
