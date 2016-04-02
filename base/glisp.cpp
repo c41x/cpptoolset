@@ -1866,7 +1866,7 @@ void lisp::signalError(const string &description) {
 
 // map over list util
 void lisp::mapc(cell_t c, std::function<void(cell_t)> fx) {
-	// TODO: consider assert to check if c is really a list
+	gassert(c->type == cell::typeList, "mapc: c must be a list");
 	for (cell_t i = firstCell(c); i != endCell(c); i = nextCell(i))
 		fx(i);
 }
