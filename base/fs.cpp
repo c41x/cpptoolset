@@ -869,14 +869,14 @@ stream load(const string &path, directoryType type) {
 
 	// check if path is correctly resolved
 	if (!valid) {
-		gassert(false, strs("could not resolve file location: ", path));
+		gassertl(false, strs("could not resolve file location: ", path));
 		return stream();
 	}
 
 	// load / decompress vfs
 	if (vfs) {
 		auto v = _vfs.find(filepath);
-		gassert(v != _vfs.end(), strs("vfs index not found: ", path));
+		gassertl(v != _vfs.end(), strs("vfs index not found: ", path));
 		if (v != _vfs.end()) {
 			stream s;
 			_vfs_read(v->second, id, s);
