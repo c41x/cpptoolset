@@ -29,6 +29,7 @@ Repository is using submodules. To download all dependencies run `git submodule 
 More info: http://git-scm.com/book/en/v2/Git-Tools-Submodules
 
 ### Preparing project and compiling dependencies
+- install NASM (nasm executable must be in path)
 - go to `project` directory.
 - run script `init.bat` (on Windows) or `sh init.sh` (on Linux)
 
