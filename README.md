@@ -30,6 +30,9 @@ More info: http://git-scm.com/book/en/v2/Git-Tools-Submodules
 
 ### Preparing project and compiling dependencies
 - install NASM (nasm executable must be in path)
+- install OpenGL development files (libgl1-mesa-dev, mesa-common-dev)
+- install X11 development files (xorg-dev)
+- build and install glbinding (https://github.com/cginternals/glbinding)
 - go to `project` directory.
 - run script `init.bat` (on Windows) or `sh init.sh` (on Linux)
 
