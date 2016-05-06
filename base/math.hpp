@@ -349,20 +349,21 @@ public:
 	template <int x, int y, int z, int w> vec &shuffle() { xmm = _mm_shuffle_ps(xmm, xmm, SSE_RSHUFFLE(x, y, z, w)); return *this; }
 	vec &negate() { return *this = -*this; }
 	vec &zero() { xmm = _mm_setzero_ps(); return *this; }
-	vec &setLength(const float &len) { xmm = _mm_mul_ps(_mm_set1_ps(len), _mm_div_ps(xmm, _mm_sqrt_ps(lengthSq()))); return *this; }
-	vec &setDirectionFrom(const vec &v) { __m128 len = _mm_sqrt_ps(lengthSq()); xmm = _mm_mul_ps(len, _mm_div_ps(v.xmm, _mm_sqrt_ps(v.lengthSq()))); return *this; }
-	vec &normalize() { xmm = _mm_div_ps(xmm, _mm_sqrt_ps(lengthSq())); return *this; } // precise version, for fast version use mulps and rsqrt (rsqrt uses internal CPU lookup table to compute result)
+	vec &setLength(const float &len) { xmm = _mm_mul_ps(_mm_set1_ps(len), _mm_div_ps(xmm, _mm_sqrt_ps(xmmLengthSq()))); return *this; }
+	vec &setDirectionFrom(const vec &v) { __m128 len = _mm_sqrt_ps(xmmLengthSq()); xmm = _mm_mul_ps(len, _mm_div_ps(v.xmm, _mm_sqrt_ps(v.xmmLengthSq()))); return *this; }
+	vec &normalize() { xmm = _mm_div_ps(xmm, _mm_sqrt_ps(xmmLengthSq())); return *this; } // precise version, for fast version use mulps and rsqrt (rsqrt uses internal CPU lookup table to compute result)
 	vec normalized() const { return vec(*this).normalize(); }
 	vec reflection(const vec &normal) const {float x = 2.f * this->dot(normal); return (*this) - normal * x; }
 	float angle(const vec &v) const { return acosf(this->dot(v)); } // angle between vectors in radians (vectors must be normalized)
 	float length() const { return _mm_cvtss_f32(xmmLength()); }
-	vec lengthSq() const { __m128 m = _mm_mul_ps(xmm, xmm); __m128 t1 = _mm_hadd_ps(m, m); return _mm_hadd_ps(t1, t1);}
+	float lengthSq() const { return _mm_cvtss_f32(xmmLengthSq()); }
 	float distance(const vec &v) const { return (*this - v).length(); }
 	float dot(const vec &v) const { return _mm_cvtss_f32(xmmDot(v)); }
 	vec cross(const vec &v) const { return *this ^ v; }
 
 	// xmm stuff 4U
-	vec xmmLength() const { return _mm_sqrt_ps(lengthSq()); }
+	vec xmmLengthSq() const { __m128 m = _mm_mul_ps(xmm, xmm); __m128 t1 = _mm_hadd_ps(m, m); return _mm_hadd_ps(t1, t1);}
+	vec xmmLength() const { return _mm_sqrt_ps(xmmLengthSq()); }
 	vec xmmDistance(const vec &v) const {return (*this - v).xmmLength(); }
 	vec xmmVec3() const { static const __m128 mask = SSE_RMASK(~0, ~0, ~0, 0); return _mm_and_ps(mask, xmm); } // zeroes w component
 	vec xmmVec3W() const { return _mm_shuffle_ps(xmm, xmm, _MM_SHUFFLE(0, 1, 2, 3)); }
