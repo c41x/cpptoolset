@@ -6,11 +6,61 @@ using namespace granite;
 int main(int argc, char**argv)  {
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
     GLFWwindow *window = glfwCreateWindow(800, 600, "Rosemary Vulkan", nullptr, nullptr);
 
+    // checking vulkan extension support
+    uint32 vkExtensionsCount = 0;
+    vkEnumerateInstanceExtensionProperties(nullptr, &vkExtensionsCount, nullptr);
+    std::vector<VkExtensionProperties> vkExtensions(vkExtensionsCount);
+    vkEnumerateInstanceExtensionProperties(nullptr, &vkExtensionsCount, vkExtensions.data());
+    for (const auto &e : vkExtensions) {
+        std::cout << "supported extension: " << e.extensionName << std::endl;
+    }
+
+    // initialize vulkan instance
     uint32 extensionsCount = 0;
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionsCount, nullptr);
-    std::cout << extensionsCount << " extensions" << std::endl;
+    const char **extensions;
+    extensions = glfwGetRequiredInstanceExtensions(&extensionsCount); // checks extensions required by glfw
+    for (uint32 i = 0; i < extensionsCount; ++i) {
+        std::cout << "required extension: " << extensions[i] << std::endl;
+    }
+
+    // verify that all required extensions are supported
+    for (uint32 i = 0; i < extensionsCount; ++i) {
+        if (std::find_if(vkExtensions.begin(), vkExtensions.end(),
+                         [&extensions, &i](const VkExtensionProperties &prop) {
+                             return strcmp(extensions[i], prop.extensionName) == 0;
+                         }) == std::end(vkExtensions)) {
+            std::cout << "extension: " << extensions[i] << " not supported" << std::endl;
+        }
+    }
+
+    VkInstance instance;
+
+    VkApplicationInfo appInfo = {};
+    appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    appInfo.pApplicationName = "Rosemary";
+    appInfo.applicationVersion = VK_MAKE_VERSION(1, 1, 0);
+    appInfo.pEngineName = "Granite";
+    appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+    appInfo.apiVersion = VK_API_VERSION_1_0;
+
+    VkInstanceCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    createInfo.pApplicationInfo = &appInfo;
+    createInfo.enabledExtensionCount = extensionsCount;
+    createInfo.ppEnabledExtensionNames = extensions;
+    createInfo.enabledLayerCount = 0;
+
+    auto result = vkCreateInstance(&createInfo, nullptr, &instance);
+
+    if (result != VK_SUCCESS) {
+        std::cout << "failed to create vulkan instance" << std::endl;
+    }
+    else {
+        std::cout << "created vulkan instance" << std::endl;
+    }
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
