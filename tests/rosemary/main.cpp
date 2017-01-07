@@ -3,13 +3,25 @@
 
 using namespace granite;
 
+VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags,
+                                             VkDebugReportObjectTypeEXT objType,
+                                             uint64_t obj,
+                                             size_t location,
+                                             int32 code,
+                                             const char *layerPrefix,
+                                             const char *msg,
+                                             void *userData) {
+    std::cout << "validation layer: " << msg << std::endl;
+    return VK_FALSE;
+}
+
 int main(int argc, char**argv)  {
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
     GLFWwindow *window = glfwCreateWindow(800, 600, "Rosemary Vulkan", nullptr, nullptr);
 
-    // checking vulkan extension support
+    //- checking vulkan extension support
     uint32 vkExtensionsCount = 0;
     vkEnumerateInstanceExtensionProperties(nullptr, &vkExtensionsCount, nullptr);
     std::vector<VkExtensionProperties> vkExtensions(vkExtensionsCount);
@@ -18,23 +30,49 @@ int main(int argc, char**argv)  {
         std::cout << "supported extension: " << e.extensionName << std::endl;
     }
 
-    // initialize vulkan instance
+    uint32 layersCount = 0;
+    vkEnumerateInstanceLayerProperties(&layersCount, nullptr);
+    std::vector<VkLayerProperties> availableLayers(layersCount);
+    vkEnumerateInstanceLayerProperties(&layersCount, availableLayers.data());
+    for (const auto &e : availableLayers) {
+        std::cout << "supported validation layer: " << e.layerName << std::endl;
+    }
+
+    //- initialize vulkan instance
     uint32 extensionsCount = 0;
     const char **extensions;
     extensions = glfwGetRequiredInstanceExtensions(&extensionsCount); // checks extensions required by glfw
+    std::vector<const char*> vkRequiredExtensions;
+    vkRequiredExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
     for (uint32 i = 0; i < extensionsCount; ++i) {
+        vkRequiredExtensions.push_back(extensions[i]);
         std::cout << "required extension: " << extensions[i] << std::endl;
     }
 
+    const std::vector<const char*> validationLayers = {
+        "VK_LAYER_LUNARG_standard_validation"
+    };
+
     // verify that all required extensions are supported
-    for (uint32 i = 0; i < extensionsCount; ++i) {
+    for (const auto &ext : vkRequiredExtensions) {
         if (std::find_if(vkExtensions.begin(), vkExtensions.end(),
-                         [&extensions, &i](const VkExtensionProperties &prop) {
-                             return strcmp(extensions[i], prop.extensionName) == 0;
+                         [&ext](const VkExtensionProperties &prop) {
+                             return strcmp(ext, prop.extensionName) == 0;
                          }) == std::end(vkExtensions)) {
-            std::cout << "extension: " << extensions[i] << " not supported" << std::endl;
+            std::cout << "extension: " << ext << " not supported" << std::endl;
         }
     }
+
+    // verify validation layers support
+    for (uint32 i = 0; i < validationLayers.size(); ++i) {
+        if (std::find_if(availableLayers.begin(), availableLayers.end(),
+                         [&validationLayers, &i](const VkLayerProperties &lay) {
+                             return strcmp(validationLayers[i], lay.layerName) == 0;
+                         }) == std::end(availableLayers)) {
+            std::cout << "validation layer: " << validationLayers[i] << " not supported" << std::endl;
+        }
+    }
+
 
     VkInstance instance;
 
@@ -49,9 +87,10 @@ int main(int argc, char**argv)  {
     VkInstanceCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo = &appInfo;
-    createInfo.enabledExtensionCount = extensionsCount;
-    createInfo.ppEnabledExtensionNames = extensions;
-    createInfo.enabledLayerCount = 0;
+    createInfo.enabledExtensionCount = vkRequiredExtensions.size();
+    createInfo.ppEnabledExtensionNames = vkRequiredExtensions.data();
+    createInfo.enabledLayerCount = validationLayers.size();
+    createInfo.ppEnabledLayerNames = validationLayers.data();
 
     auto result = vkCreateInstance(&createInfo, nullptr, &instance);
 
@@ -62,9 +101,42 @@ int main(int argc, char**argv)  {
         std::cout << "created vulkan instance" << std::endl;
     }
 
+    //- setup needed function pointers
+    auto vkCreateDebugReportCallbackEXT = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugReportCallbackEXT");
+    auto vkDestroyDebugReportCallbackEXT = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugReportCallbackEXT");
+
+    if (vkCreateDebugReportCallbackEXT == nullptr) { std::cout << "extension not present: vkCreateDebugReportCallbackEXT" << std::endl; }
+    if (vkDestroyDebugReportCallbackEXT == nullptr) { std::cout << "extension not present: vkDestroyDebugReportCallbackEXT" << std::endl; }
+
+    //- setup debug callback
+    VkDebugReportCallbackCreateInfoEXT createDebugInfo = {};
+    createDebugInfo.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT;
+    createDebugInfo.flags =
+        VK_DEBUG_REPORT_ERROR_BIT_EXT |
+        VK_DEBUG_REPORT_WARNING_BIT_EXT |
+        //VK_DEBUG_REPORT_INFORMATION_BIT_EXT |
+        VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT// |
+        //VK_DEBUG_REPORT_DEBUG_BIT_EXT
+        ;
+    createDebugInfo.pfnCallback = debugCallback;
+
+    VkDebugReportCallbackEXT callback;
+    result = vkCreateDebugReportCallbackEXT(instance, &createDebugInfo, nullptr, &callback);
+
+    if (result != VK_SUCCESS) {
+        std::cout << "failed to setup vulkan debug report" << std::endl;
+    }
+    else {
+        std::cout << "created vulkan debug report" << std::endl;
+    }
+
+    //- run applcation loop
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
     }
+
+    vkDestroyDebugReportCallbackEXT(instance, callback, nullptr);
+    vkDestroyInstance(instance, nullptr);
 
     glfwDestroyWindow(window);
     glfwTerminate();
