@@ -130,11 +130,83 @@ int main(int argc, char**argv)  {
         std::cout << "created vulkan debug report" << std::endl;
     }
 
+    //- enumerate devices
+    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+    uint32 deviceCount = 0;
+    vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+    if (deviceCount == 0) {
+        std::cout << "no devices found" << std::endl;
+    }
+    std::vector<VkPhysicalDevice> devices(deviceCount);
+    vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+
+    for (auto &device : devices) {
+        VkPhysicalDeviceProperties deviceProperties;
+        vkGetPhysicalDeviceProperties(device, &deviceProperties);
+        VkPhysicalDeviceFeatures deviceFeatures;
+        vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+        if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+            physicalDevice = device;
+            std::cout << "choosing device: " << deviceProperties.deviceName << std::endl;
+            break;
+        }
+    }
+
+    if (physicalDevice == VK_NULL_HANDLE) {
+        std::cout << "could not found physical device" << std::endl;
+    }
+
+    uint32 queueFamilyCount = 0;
+    int queueFamilyIndex = -1; // graphics queue index
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
+    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies.data());
+    for (const auto &queue : queueFamilies) {
+        queueFamilyIndex++;
+        if (queue.queueCount > 0 && queue.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+            std::cout << "graphics queue found for selected physical device" << std::endl;
+            break;
+        }
+    }
+
+    //- initialize logical device
+    VkDevice device;
+    VkDeviceQueueCreateInfo queueCreateInfo = {};
+    float queuePriorities = 1.0f;
+    queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queueCreateInfo.queueFamilyIndex = queueFamilyIndex;
+    queueCreateInfo.queueCount = 1;
+    queueCreateInfo.pQueuePriorities = &queuePriorities;
+
+    VkPhysicalDeviceFeatures deviceFeatures = {};
+
+    VkDeviceCreateInfo deviceCreateInfo = {};
+    deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    deviceCreateInfo.queueCreateInfoCount = 1;
+    deviceCreateInfo.pQueueCreateInfos = &queueCreateInfo;
+    deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
+    deviceCreateInfo.enabledExtensionCount = 0;
+    deviceCreateInfo.enabledLayerCount = validationLayers.size(); // same as in instance
+    deviceCreateInfo.ppEnabledLayerNames = validationLayers.data();
+
+    result = vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device);
+
+    if (result != VK_SUCCESS) {
+        std::cout << "failed to create vulkan device" << std::endl;
+    }
+    else {
+        std::cout << "created vulkan device" << std::endl;
+    }
+
+    VkQueue queue;
+    vkGetDeviceQueue(device, queueFamilyIndex, 0, &queue);
+
     //- run applcation loop
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
     }
 
+    vkDestroyDevice(device, nullptr);
     vkDestroyDebugReportCallbackEXT(instance, callback, nullptr);
     vkDestroyInstance(instance, nullptr);
 
