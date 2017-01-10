@@ -385,6 +385,42 @@ int main(int argc, char**argv)  {
         }
     }
 
+    //- render passes
+    VkAttachmentDescription colorAttachment = {};
+    colorAttachment.format = surfaceFormat.format;
+    colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    VkAttachmentReference colorAttachmentReference = {};
+    colorAttachmentReference.attachment = 0;
+    colorAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription subpass = {};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &colorAttachmentReference; // 0 index output in fragment shader (layout(location = 0))
+
+    VkRenderPass renderPass;
+    VkRenderPassCreateInfo renderPassCreateInfo = {};
+    renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    renderPassCreateInfo.attachmentCount = 1;
+    renderPassCreateInfo.pAttachments = &colorAttachment;
+    renderPassCreateInfo.subpassCount = 1;
+    renderPassCreateInfo.pSubpasses = &subpass;
+
+    result = vkCreateRenderPass(device, &renderPassCreateInfo, nullptr, &renderPass);
+    if (result != VK_SUCCESS) {
+        std::cout << "failed to create render pass" << std::endl;
+    }
+    else {
+        std::cout << "created render pass" << std::endl;
+    }
+
     //- pipeline
     auto createShaderModule = [&device](const base::stream &s) -> VkShaderModule {
         VkShaderModuleCreateInfo createInfo = {};
@@ -519,6 +555,7 @@ int main(int argc, char**argv)  {
 
     //- delete vulkan stuff
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+    vkDestroyRenderPass(device, renderPass, nullptr);
     for (auto &siw : swapchainImageViews) {
         vkDestroyImageView(device, siw, nullptr);
     }
