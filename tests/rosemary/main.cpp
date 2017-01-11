@@ -456,6 +456,8 @@ int main(int argc, char**argv)  {
     fssInfo.module = fShaderModule;
     fssInfo.pName = "main";
 
+    VkPipelineShaderStageCreateInfo shaderStages[] = { vssInfo, fssInfo };
+
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertexInputInfo.vertexBindingDescriptionCount = 0;
@@ -498,6 +500,7 @@ int main(int argc, char**argv)  {
     rasterizerCreateInfo.depthBiasConstantFactor = 0.0f;
     rasterizerCreateInfo.depthBiasClamp = 0.0f;
     rasterizerCreateInfo.depthBiasSlopeFactor = 0.0f;
+    rasterizerCreateInfo.lineWidth = 1.0f;
 
     VkPipelineMultisampleStateCreateInfo multisampling = {};
     multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
@@ -545,6 +548,34 @@ int main(int argc, char**argv)  {
         std::cout << "created pipeline layout" << std::endl;
     }
 
+    VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
+    pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipelineCreateInfo.stageCount = 2;
+    pipelineCreateInfo.pStages = shaderStages;
+    pipelineCreateInfo.pVertexInputState = &vertexInputInfo;
+    pipelineCreateInfo.pInputAssemblyState = &inputAssembly;
+    pipelineCreateInfo.pViewportState = &viewportState;
+    pipelineCreateInfo.pRasterizationState = &rasterizerCreateInfo;
+    pipelineCreateInfo.pMultisampleState = &multisampling;
+    pipelineCreateInfo.pDepthStencilState = nullptr;
+    pipelineCreateInfo.pColorBlendState = &colorBlending;
+    pipelineCreateInfo.pDynamicState = nullptr;
+    pipelineCreateInfo.layout = pipelineLayout;
+    pipelineCreateInfo.renderPass = renderPass;
+    pipelineCreateInfo.subpass = 0;
+    pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE; // specifing previous handle could be much faster
+    pipelineCreateInfo.basePipelineIndex = -1;
+
+    VkPipeline pipeline;
+    result = vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline);
+
+    if (result != VK_SUCCESS) {
+        std::cout << "failed to create pipeline" << std::endl;
+    }
+    else {
+        std::cout << "created pipeline" << std::endl;
+    }
+
     vkDestroyShaderModule(device, vShaderModule, nullptr);
     vkDestroyShaderModule(device, fShaderModule, nullptr);
 
@@ -554,6 +585,7 @@ int main(int argc, char**argv)  {
     }
 
     //- delete vulkan stuff
+    vkDestroyPipeline(device, pipeline, nullptr);
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
     vkDestroyRenderPass(device, renderPass, nullptr);
     for (auto &siw : swapchainImageViews) {
