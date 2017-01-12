@@ -284,6 +284,7 @@ int main(int argc, char**argv)  {
 
         if (queue.queueCount > 0 && queue.queueFlags & VK_QUEUE_GRAPHICS_BIT && presentSupport) {
             std::cout << "graphics queue found for selected physical device" << std::endl;
+            break;
         }
     }
 
@@ -579,12 +580,101 @@ int main(int argc, char**argv)  {
     vkDestroyShaderModule(device, vShaderModule, nullptr);
     vkDestroyShaderModule(device, fShaderModule, nullptr);
 
+    //- framebuffers
+    std::vector<VkFramebuffer> swapchainFramebuffers(swapchainImageViews.size());
+    int index = 0;
+    for (auto &swapchainFramebuffer : swapchainFramebuffers) {
+        VkImageView attachments[] = { swapchainImageViews[index++] };
+        VkFramebufferCreateInfo createInfo = {};
+        createInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        createInfo.renderPass = renderPass;
+        createInfo.attachmentCount = 1;
+        createInfo.pAttachments = attachments;
+        createInfo.width = extent.width;
+        createInfo.height = extent.height;
+        createInfo.layers = 1;
+
+        result = vkCreateFramebuffer(device, &createInfo, nullptr, &swapchainFramebuffer);
+        if (result != VK_SUCCESS) {
+            std::cout << "failed to create framebuffer" << std::endl;
+        }
+        else {
+            std::cout << "created framebuffer" << std::endl;
+        }
+    }
+
+    //- command buffers and command pool & render
+    VkCommandPool commandPool;
+    VkCommandPoolCreateInfo commandPoolCreateInfo = {};
+    commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    commandPoolCreateInfo.queueFamilyIndex = queueFamilyIndex;
+    commandPoolCreateInfo.flags = 0;
+
+    result = vkCreateCommandPool(device, &commandPoolCreateInfo, nullptr, &commandPool);
+    if (result != VK_SUCCESS) {
+        std::cout << "failed to create command pool" << std::endl;
+    }
+    else {
+        std::cout << "created command pool" << std::endl;
+    }
+
+    std::vector<VkCommandBuffer> commandBuffers(swapchainFramebuffers.size());
+    VkCommandBufferAllocateInfo commandBufferAllocInfo = {};
+    commandBufferAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    commandBufferAllocInfo.commandPool = commandPool;
+    commandBufferAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    commandBufferAllocInfo.commandBufferCount = (uint32)commandBuffers.size();
+
+    result = vkAllocateCommandBuffers(device, &commandBufferAllocInfo, commandBuffers.data());
+    if (result != VK_SUCCESS) {
+        std::cout << "failed to allocate command buffers" << std::endl;
+    }
+    else {
+        std::cout << "created allocate command buffers" << std::endl;
+    }
+
+    // filling commands
+    for (size_t i = 0; i < commandBuffers.size(); ++i) {
+        VkCommandBufferBeginInfo beginInfo = {};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+        beginInfo.pInheritanceInfo = nullptr;
+        vkBeginCommandBuffer(commandBuffers[i], &beginInfo);
+
+        VkRenderPassBeginInfo renderPassInfo = {};
+        VkClearValue clearColor = { 0.0f, 0.2f, 0.1f, 1.0f };
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassInfo.renderPass = renderPass;
+        renderPassInfo.framebuffer = swapchainFramebuffers[i];
+        renderPassInfo.renderArea.offset = { 0, 0 };
+        renderPassInfo.renderArea.extent = extent;
+        renderPassInfo.clearValueCount = 1;
+        renderPassInfo.pClearValues = &clearColor;
+        vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+        vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+        vkCmdEndRenderPass(commandBuffers[i]);
+
+        result = vkEndCommandBuffer(commandBuffers[i]);
+        if (result != VK_SUCCESS) {
+            std::cout << "failed call to vkEndCommandBuffer" << std::endl;
+        }
+        else {
+            std::cout << "ok call to vkEndCommandBuffer" << std::endl;
+        }
+    }
+
     //- run applcation loop
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
     }
 
     //- delete vulkan stuff
+    vkFreeCommandBuffers(device, commandPool, (uint32)commandBuffers.size(), commandBuffers.data());
+    vkDestroyCommandPool(device, commandPool, nullptr);
+    for (auto &f : swapchainFramebuffers) {
+        vkDestroyFramebuffer(device, f, nullptr);
+    }
     vkDestroyPipeline(device, pipeline, nullptr);
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
     vkDestroyRenderPass(device, renderPass, nullptr);
