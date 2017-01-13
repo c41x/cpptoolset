@@ -406,6 +406,14 @@ int main(int argc, char**argv)  {
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = &colorAttachmentReference; // 0 index output in fragment shader (layout(location = 0))
 
+    VkSubpassDependency dependency = {};
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependency.dstSubpass = 0;
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.srcAccessMask = 0;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
     VkRenderPass renderPass;
     VkRenderPassCreateInfo renderPassCreateInfo = {};
     renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -413,6 +421,8 @@ int main(int argc, char**argv)  {
     renderPassCreateInfo.pAttachments = &colorAttachment;
     renderPassCreateInfo.subpassCount = 1;
     renderPassCreateInfo.pSubpasses = &subpass;
+    renderPassCreateInfo.dependencyCount = 1;
+    renderPassCreateInfo.pDependencies = &dependency;
 
     result = vkCreateRenderPass(device, &renderPassCreateInfo, nullptr, &renderPass);
     if (result != VK_SUCCESS) {
@@ -664,12 +674,71 @@ int main(int argc, char**argv)  {
         }
     }
 
+    //- synchronization, semaphores, fences
+    VkSemaphore smfImageAvailable;
+    VkSemaphore smfRenderFinished;
+
+    VkSemaphoreCreateInfo semaphoreInfo = {};
+    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+    result = vkCreateSemaphore(device, &semaphoreInfo, nullptr, &smfImageAvailable);
+    if (result != VK_SUCCESS) {
+        std::cout << "failed to create semaphore" << std::endl;
+    }
+    else {
+        std::cout << "created semaphore" << std::endl;
+    }
+
+    result = vkCreateSemaphore(device, &semaphoreInfo, nullptr, &smfRenderFinished);
+    if (result != VK_SUCCESS) {
+        std::cout << "failed to create semaphore" << std::endl;
+    }
+    else {
+        std::cout << "created semaphore" << std::endl;
+    }
+
     //- run applcation loop
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
+
+        uint32 imageIndex;
+        vkAcquireNextImageKHR(device, swapchain, std::numeric_limits<uint64>::max(),
+                              smfImageAvailable, VK_NULL_HANDLE, &imageIndex);
+
+        VkSemaphore waitSemaphores[] = { smfImageAvailable };
+        VkSemaphore signalSemaphores[] = { smfRenderFinished };
+        VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+        VkSubmitInfo submitInfo = {};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.waitSemaphoreCount = 1;
+        submitInfo.pWaitSemaphores = waitSemaphores;
+        submitInfo.pWaitDstStageMask = waitStages;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores = signalSemaphores;
+
+        if (vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
+            std::cout << "failed to submit queue" << std::endl;
+        }
+
+        VkPresentInfoKHR presentInfo = {};
+        VkSwapchainKHR swapchains[] = { swapchain };
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = signalSemaphores;
+        presentInfo.swapchainCount = 1;
+        presentInfo.pSwapchains = swapchains;
+        presentInfo.pImageIndices = &imageIndex;
+        presentInfo.pResults = nullptr;
+        vkQueuePresentKHR(queue, &presentInfo);
     }
 
     //- delete vulkan stuff
+    vkQueueWaitIdle(queue);
+    vkDeviceWaitIdle(device);
+    vkDestroySemaphore(device, smfRenderFinished, nullptr);
+    vkDestroySemaphore(device, smfImageAvailable, nullptr);
     vkFreeCommandBuffers(device, commandPool, (uint32)commandBuffers.size(), commandBuffers.data());
     vkDestroyCommandPool(device, commandPool, nullptr);
     for (auto &f : swapchainFramebuffers) {
