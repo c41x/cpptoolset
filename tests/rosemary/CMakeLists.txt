@@ -7,7 +7,7 @@ add_executable(rosemary main.cpp) # WIN32
 include_directories(${GLBINDING_INCLUDE_DIRS})
 include_directories(${VULKAN_INCLUDE_DIR})
 
-target_link_libraries(rosemary system ${GLBINDING_LIBRARIES} ${VULKAN_LIBRARY})
+target_link_libraries(rosemary system ${GLBINDING_LIBRARIES} ${VULKAN_LIBRARY} glsl2spirv)
 
 #if (MSVC)
   # this flag allows to use main entry function instead WinMain.

@@ -1,5 +1,6 @@
 #define GLFW_INCLUDE_VULKAN
 #include <system/system.hpp>
+#include <glsl2spirv.hpp>
 
 using namespace granite;
 
@@ -16,6 +17,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags,
 }
 
 int main(int argc, char**argv)  {
+    glsl2spirvInit();
     const uint32 width = 800;
     const uint32 height = 600;
     glfwInit();
@@ -433,11 +435,23 @@ int main(int argc, char**argv)  {
     }
 
     //- pipeline
-    auto createShaderModule = [&device](const base::stream &s) -> VkShaderModule {
+    auto createShaderModule = [&device](const base::stream &s, glsl2spirvShaderType type) -> VkShaderModule {
+        // compile to SPIRV first
+        std::vector<unsigned int> spv;
+        char *str = new char[s.size() + 1];
+        memcpy(str, s.data(), s.size());
+        str[s.size()] = '\0';
+        if (glsl2spirv(type, "shader", str, spv, [](const char *m) { std::cout<< m << std::endl; })) {
+            std::cout << "succesfully compiled shader" << std::endl;
+        }
+        else {
+            std::cout << "error compiling shader" << std::endl;
+        }
+
         VkShaderModuleCreateInfo createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        createInfo.codeSize = s.size();
-        createInfo.pCode = (uint32*)s.data();
+        createInfo.codeSize = spv.size() * sizeof(uint32);
+        createInfo.pCode = spv.data();
 
         VkShaderModule module;
 
@@ -452,8 +466,8 @@ int main(int argc, char**argv)  {
         return module;
     };
 
-    VkShaderModule vShaderModule = createShaderModule(base::fs::load("/home/calx/dev/granite/tests/rosemary/vert.spv"));
-    VkShaderModule fShaderModule = createShaderModule(base::fs::load("/home/calx/dev/granite/tests/rosemary/frag.spv"));
+    VkShaderModule vShaderModule = createShaderModule(base::fs::load("/home/calx/dev/granite/tests/rosemary/shader.vert"), glsl2spirvShaderTypeVertex);
+    VkShaderModule fShaderModule = createShaderModule(base::fs::load("/home/calx/dev/granite/tests/rosemary/shader.frag"), glsl2spirvShaderTypeFragment);
 
     VkPipelineShaderStageCreateInfo vssInfo = {};
     vssInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -662,7 +676,7 @@ int main(int argc, char**argv)  {
         renderPassInfo.pClearValues = &clearColor;
         vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
         vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-        vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+        vkCmdDraw(commandBuffers[i], 6, 1, 0, 0);
         vkCmdEndRenderPass(commandBuffers[i]);
 
         result = vkEndCommandBuffer(commandBuffers[i]);
@@ -758,6 +772,7 @@ int main(int argc, char**argv)  {
 
     glfwDestroyWindow(window);
     glfwTerminate();
+    glsl2spirvShutdown();
     return 0;
 }
 

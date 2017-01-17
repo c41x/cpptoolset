@@ -19,18 +19,18 @@ namespace granite { namespace base {
 namespace fs {
 
 enum directoryType {
-	programData,
-	userData,
-	workingDirectory
+    programData,
+    userData,
+    workingDirectory
 };
 
 struct fileInfo {
-	string path;
-	string name;
-	bool dir;
-	uint64 createTime, modTime;
-	string fullPath() const;
-	bool operator==(const fileInfo &f) const;
+    string path;
+    string name;
+    bool dir;
+    uint64 createTime, modTime;
+    string fullPath() const;
+    bool operator==(const fileInfo &f) const;
 };
 
 typedef std::vector<fileInfo> fileList;
@@ -59,9 +59,9 @@ bool exists(const string &name, directoryType type = workingDirectory);
 
 //- directory watcher
 enum fileMonitorChange {
-	fileMonitorAdd,
-	fileMonitorRemove,
-	fileMonitorModify
+    fileMonitorAdd,
+    fileMonitorRemove,
+    fileMonitorModify
 };
 
 typedef std::vector<std::tuple<fileMonitorChange, string>> fileMonitorChanges;
@@ -73,3 +73,4 @@ void removeWatch(uint32 id);
 }
 
 }}
+// TODO: null delimited char load (see rosemary vulkan shader loading (double allocation only to have null terminator))
