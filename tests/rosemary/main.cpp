@@ -557,13 +557,24 @@ int main(int argc, char**argv)  {
     colorBlending.blendConstants[2] = 0.0f;
     colorBlending.blendConstants[3] = 0.0f;
 
+    struct alignas(1) _pushConstants {
+        float mouse[4];
+        float size[2];
+        float time;
+    } pushConstants;
+
+    VkPushConstantRange pushConstantInfo = {};
+    pushConstantInfo.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    pushConstantInfo.offset = 0;
+    pushConstantInfo.size = sizeof(pushConstants);
+
     VkPipelineLayout pipelineLayout;
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {};
     pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutCreateInfo.setLayoutCount = 0;
     pipelineLayoutCreateInfo.pSetLayouts = nullptr;
-    pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
-    pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
+    pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
+    pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantInfo;
 
     result = vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout);
     if (result != VK_SUCCESS) {
@@ -632,7 +643,7 @@ int main(int argc, char**argv)  {
     VkCommandPoolCreateInfo commandPoolCreateInfo = {};
     commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     commandPoolCreateInfo.queueFamilyIndex = queueFamilyIndex;
-    commandPoolCreateInfo.flags = 0;
+    commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
     result = vkCreateCommandPool(device, &commandPoolCreateInfo, nullptr, &commandPool);
     if (result != VK_SUCCESS) {
@@ -657,36 +668,55 @@ int main(int argc, char**argv)  {
         std::cout << "created allocate command buffers" << std::endl;
     }
 
+    base::timer t;
+    t.init();
+    t.reset();
+
     // filling commands
-    for (size_t i = 0; i < commandBuffers.size(); ++i) {
-        VkCommandBufferBeginInfo beginInfo = {};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-        beginInfo.pInheritanceInfo = nullptr;
-        vkBeginCommandBuffer(commandBuffers[i], &beginInfo);
+    auto rebuildCommandBuffers = [&]() {
+        for (size_t i = 0; i < commandBuffers.size(); ++i) {
+            double mouseX = 0.0;
+            double mouseY = 0.0;
+            glfwGetCursorPos(window, &mouseX, &mouseY);
+            float btnL = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS ? 1.0f : 0.0f;
+            float btnR = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS ? 1.0f : 0.0f;
+            pushConstants.mouse[0] = mouseX;
+            pushConstants.mouse[1] = mouseY;
+            pushConstants.mouse[2] = btnL;
+            pushConstants.mouse[3] = btnR;
+            pushConstants.size[0] = width;
+            pushConstants.size[1] = height;
+            pushConstants.time = t.getTimeS();
 
-        VkRenderPassBeginInfo renderPassInfo = {};
-        VkClearValue clearColor = { 0.0f, 0.2f, 0.1f, 1.0f };
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderPassInfo.renderPass = renderPass;
-        renderPassInfo.framebuffer = swapchainFramebuffers[i];
-        renderPassInfo.renderArea.offset = { 0, 0 };
-        renderPassInfo.renderArea.extent = extent;
-        renderPassInfo.clearValueCount = 1;
-        renderPassInfo.pClearValues = &clearColor;
-        vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-        vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-        vkCmdDraw(commandBuffers[i], 6, 1, 0, 0);
-        vkCmdEndRenderPass(commandBuffers[i]);
+            VkCommandBufferBeginInfo beginInfo = {};
+            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+            beginInfo.pInheritanceInfo = nullptr;
+            vkBeginCommandBuffer(commandBuffers[i], &beginInfo);
 
-        result = vkEndCommandBuffer(commandBuffers[i]);
-        if (result != VK_SUCCESS) {
-            std::cout << "failed call to vkEndCommandBuffer" << std::endl;
+            VkRenderPassBeginInfo renderPassInfo = {};
+            VkClearValue clearColor = { 0.0f, 0.2f, 0.1f, 1.0f };
+            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            renderPassInfo.renderPass = renderPass;
+            renderPassInfo.framebuffer = swapchainFramebuffers[i];
+            renderPassInfo.renderArea.offset = { 0, 0 };
+            renderPassInfo.renderArea.extent = extent;
+            renderPassInfo.clearValueCount = 1;
+            renderPassInfo.pClearValues = &clearColor;
+            vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+            vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+            vkCmdPushConstants(commandBuffers[i], pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pushConstants), &pushConstants);
+            vkCmdDraw(commandBuffers[i], 6, 1, 0, 0);
+            vkCmdEndRenderPass(commandBuffers[i]);
+
+            result = vkEndCommandBuffer(commandBuffers[i]);
+            if (result != VK_SUCCESS) {
+                std::cout << "failed call to vkEndCommandBuffer" << std::endl;
+            }
         }
-        else {
-            std::cout << "ok call to vkEndCommandBuffer" << std::endl;
-        }
-    }
+    };
+
+    rebuildCommandBuffers();
 
     //- synchronization, semaphores, fences
     VkSemaphore smfImageAvailable;
@@ -746,6 +776,9 @@ int main(int argc, char**argv)  {
         presentInfo.pImageIndices = &imageIndex;
         presentInfo.pResults = nullptr;
         vkQueuePresentKHR(queue, &presentInfo);
+
+        vkQueueWaitIdle(queue);
+        rebuildCommandBuffers();
     }
 
     //- delete vulkan stuff
