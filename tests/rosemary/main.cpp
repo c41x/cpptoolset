@@ -77,7 +77,6 @@ int main(int argc, char**argv)  {
         }
     }
 
-
     VkInstance instance;
 
     VkApplicationInfo appInfo = {};
@@ -466,22 +465,31 @@ int main(int argc, char**argv)  {
         return module;
     };
 
-    VkShaderModule vShaderModule = createShaderModule(base::fs::load("/home/calx/dev/granite/tests/rosemary/shader.vert"), glsl2spirvShaderTypeVertex);
-    VkShaderModule fShaderModule = createShaderModule(base::fs::load("/home/calx/dev/granite/tests/rosemary/shader.frag"), glsl2spirvShaderTypeFragment);
-
+    VkShaderModule vShaderModule;
+    VkShaderModule fShaderModule;
     VkPipelineShaderStageCreateInfo vssInfo = {};
-    vssInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    vssInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vssInfo.module = vShaderModule;
-    vssInfo.pName = "main";
-
     VkPipelineShaderStageCreateInfo fssInfo = {};
-    fssInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    fssInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fssInfo.module = fShaderModule;
-    fssInfo.pName = "main";
+    VkPipelineShaderStageCreateInfo shaderStages[2];
 
-    VkPipelineShaderStageCreateInfo shaderStages[] = { vssInfo, fssInfo };
+    auto reloadShaderModules = [&]() {
+        vShaderModule = createShaderModule(base::fs::load("/home/calx/dev/granite/tests/rosemary/shader.vert"), glsl2spirvShaderTypeVertex);
+        fShaderModule = createShaderModule(base::fs::load("/home/calx/dev/granite/tests/rosemary/shader.frag"), glsl2spirvShaderTypeFragment);
+
+        vssInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        vssInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+        vssInfo.module = vShaderModule;
+        vssInfo.pName = "main";
+
+        fssInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        fssInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+        fssInfo.module = fShaderModule;
+        fssInfo.pName = "main";
+
+        shaderStages[0] = vssInfo;
+        shaderStages[1] = fssInfo;
+    };
+
+    reloadShaderModules();
 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -584,33 +592,38 @@ int main(int argc, char**argv)  {
         std::cout << "created pipeline layout" << std::endl;
     }
 
-    VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
-    pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipelineCreateInfo.stageCount = 2;
-    pipelineCreateInfo.pStages = shaderStages;
-    pipelineCreateInfo.pVertexInputState = &vertexInputInfo;
-    pipelineCreateInfo.pInputAssemblyState = &inputAssembly;
-    pipelineCreateInfo.pViewportState = &viewportState;
-    pipelineCreateInfo.pRasterizationState = &rasterizerCreateInfo;
-    pipelineCreateInfo.pMultisampleState = &multisampling;
-    pipelineCreateInfo.pDepthStencilState = nullptr;
-    pipelineCreateInfo.pColorBlendState = &colorBlending;
-    pipelineCreateInfo.pDynamicState = nullptr;
-    pipelineCreateInfo.layout = pipelineLayout;
-    pipelineCreateInfo.renderPass = renderPass;
-    pipelineCreateInfo.subpass = 0;
-    pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE; // specifing previous handle could be much faster
-    pipelineCreateInfo.basePipelineIndex = -1;
+    VkPipeline pipeline = VK_NULL_HANDLE;
 
-    VkPipeline pipeline;
-    result = vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline);
+    auto createPipeline = [&](VkPipeline &retPipeline) {
+        VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
+        pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        pipelineCreateInfo.stageCount = 2;
+        pipelineCreateInfo.pStages = shaderStages;
+        pipelineCreateInfo.pVertexInputState = &vertexInputInfo;
+        pipelineCreateInfo.pInputAssemblyState = &inputAssembly;
+        pipelineCreateInfo.pViewportState = &viewportState;
+        pipelineCreateInfo.pRasterizationState = &rasterizerCreateInfo;
+        pipelineCreateInfo.pMultisampleState = &multisampling;
+        pipelineCreateInfo.pDepthStencilState = nullptr;
+        pipelineCreateInfo.pColorBlendState = &colorBlending;
+        pipelineCreateInfo.pDynamicState = nullptr;
+        pipelineCreateInfo.layout = pipelineLayout;
+        pipelineCreateInfo.renderPass = renderPass;
+        pipelineCreateInfo.subpass = 0;
+        pipelineCreateInfo.basePipelineHandle = retPipeline; // specifing previous handle could be much faster
+        pipelineCreateInfo.basePipelineIndex = -1;
 
-    if (result != VK_SUCCESS) {
-        std::cout << "failed to create pipeline" << std::endl;
-    }
-    else {
-        std::cout << "created pipeline" << std::endl;
-    }
+        result = vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &retPipeline);
+
+        if (result != VK_SUCCESS) {
+            std::cout << "failed to create pipeline" << std::endl;
+        }
+        else {
+            std::cout << "created pipeline" << std::endl;
+        }
+    };
+
+    createPipeline(pipeline);
 
     vkDestroyShaderModule(device, vShaderModule, nullptr);
     vkDestroyShaderModule(device, fShaderModule, nullptr);
@@ -741,7 +754,30 @@ int main(int argc, char**argv)  {
         std::cout << "created semaphore" << std::endl;
     }
 
+    //- setup file watcher
+    // setup working directory and set project file (fragment shader)
+    std::string shaderFile = "/home/calx/dev/granite/tests/rosemary/shader.frag";
+    if (!base::fs::exists(shaderFile)) {
+        std::cout << "specified shader file does not exist" << std::endl;
+    }
+
+    std::string shaderDir = base::extractFilePath(shaderFile);
+    if (!base::fs::open(shaderDir)) {
+    }
+
+    uint32 watchId = 0;
+    std::string shaderFileName = base::extractFileName(shaderFile);
+    watchId = base::fs::addWatch(shaderFileName);
+    if (watchId == 0) {
+        std::cout << "could not setup file watch for directory" << std::endl;
+    }
+
     //- run applcation loop
+    float time = 0.0f;
+    float frames = 0.0f;
+    base::timer frameTimer;
+    frameTimer.init();
+
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
@@ -778,10 +814,39 @@ int main(int argc, char**argv)  {
         vkQueuePresentKHR(queue, &presentInfo);
 
         vkQueueWaitIdle(queue);
+
+        // reload shader when file is changed
+        auto cs = base::fs::pollWatch(watchId);
+        for (auto c : cs) {
+            if (std::get<0>(c) == base::fs::fileMonitorModify && std::get<1>(c) == shaderFileName) {
+                std::cout << "RELOAD" << std::endl;
+                reloadShaderModules();
+
+                auto previousPipeline = pipeline;
+                createPipeline(pipeline);
+                vkDestroyPipeline(device, previousPipeline, nullptr);
+
+                vkDestroyShaderModule(device, vShaderModule, nullptr);
+                vkDestroyShaderModule(device, fShaderModule, nullptr);
+            }
+        }
+
         rebuildCommandBuffers();
+
+        if (time > 5.0f) {
+            frames = 1.0f;
+            time = frameTimer.timeS();
+            std::cout << (frames / time) << " fps" << std::endl;
+        }
+        else {
+            frames += 1.0f;
+            time += frameTimer.timeS();
+        }
     }
 
     //- delete vulkan stuff
+    if (watchId != 0)
+        base::fs::removeWatch(watchId);
     vkQueueWaitIdle(queue);
     vkDeviceWaitIdle(device);
     vkDestroySemaphore(device, smfRenderFinished, nullptr);
