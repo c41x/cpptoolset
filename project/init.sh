@@ -2,11 +2,11 @@ mkdir debug
 mkdir release
 
 cd debug
-cmake ../../ -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug -DENABLE_SSSE3=OFF
+cmake ../../ -G"Unix Makefiles" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_BUILD_TYPE=Debug -DENABLE_SSSE3=OFF
 cd ..
 
 cd release
-cmake ../../ -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DENABLE_SSSE3=OFF
+cmake ../../ -G"Unix Makefiles" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_BUILD_TYPE=Release -DENABLE_SSSE3=OFF
 cd ../../ext
 
 cd glfw
