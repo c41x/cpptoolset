@@ -54,7 +54,8 @@ int main(int argc, char**argv)  {
     }
 
     const std::vector<const char*> validationLayers = {
-        "VK_LAYER_LUNARG_standard_validation"
+        "VK_LAYER_LUNARG_standard_validation"//,
+        //"VK_LAYER_LUNARG_monitor"
     };
 
     // verify that all required extensions are supported
