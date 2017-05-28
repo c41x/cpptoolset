@@ -2,6 +2,40 @@
 #include <base/scheduler.hpp>
 #include <condition_variable>
 
+class semaphore
+{
+public:
+    std::mutex mutex_;
+    std::condition_variable condition_;
+    unsigned long count_ = 0; // Initialized as locked.
+
+public:
+    void notify() {
+        std::unique_lock<decltype(mutex_)> lock(mutex_);
+        //std::cout << "unlock" << std::endl;
+        ++count_;
+        condition_.notify_one();
+    }
+
+    void wait() {
+        std::unique_lock<decltype(mutex_)> lock(mutex_);
+        //std::cout << "wait" << std::endl;
+        while(!count_) // Handle spurious wake-ups.
+            condition_.wait(lock);
+        //std::cout << "wait end" << std::endl;
+        --count_;
+    }
+
+    bool try_wait() {
+        std::unique_lock<decltype(mutex_)> lock(mutex_);
+        if(count_) {
+            --count_;
+            return true;
+        }
+        return false;
+    }
+};
+
 using namespace granite;
 using namespace granite::base;
 
@@ -28,8 +62,9 @@ struct worker {
     std::thread t;
     std::function<void()> work;
     std::atomic<bool> workToDo;
-    std::mutex mtx;
-    std::condition_variable cv;
+    //std::mutex mtx;
+    //std::condition_variable cv;
+    semaphore sem;
     int id;
     worker() : t(std::bind(runWorker, std::ref(*this))), workToDo(false) {}
 };
@@ -43,6 +78,10 @@ void printState() {
 
 void runWorker(worker &context) {
     while (run) {
+        while (!context.workToDo && run) {
+            context.sem.wait();
+        }
+
         if (context.workToDo) {
             context.work(); // work must be done first - task scheduling is very lightweight
             //std::cout << "&";
@@ -55,10 +94,6 @@ void runWorker(worker &context) {
 
             //printState();
         }
-        /*else {
-            std::unique_lock<std::mutex> l(context.mtx);
-            context.cv.wait(l);
-            }*/
     }
 }
 
@@ -68,6 +103,7 @@ void init() {
     for (int i = 0; i < MAX_T; ++i) {
         T[i] = i;
         TT[i].id = i;
+        TT[i].workToDo = false;
     }
 
     tip = MAX_T;
@@ -86,7 +122,7 @@ void schedule(std::function<void()> fx) {
                 //printState();
                 TT[T[ind]].work = fx;
                 TT[T[ind]].workToDo = true;
-                //TT[T[ind]].cv.notify_one();
+                TT[T[ind]].sem.notify();
                 T[ind] = -1;
                 // run fx on thread ind
                 return;
@@ -105,8 +141,14 @@ void countWords2(const string &s, int begin, int end, int &result) {
     countWords(s, begin, end, result);
     jobsDone++;
 
+    //std::cout << "+";
+
     if (jobsDone >= 1000) {
         run = false;
+    }
+
+    if (jobsDone == 999) {
+        std::this_thread::sleep_for(std::chrono::seconds(5));
     }
 
     scheduleNextTask();
@@ -177,6 +219,7 @@ int main(int argc, char **argv) {
     while (run);
 
     for (auto &t : TT) {
+        t.sem.notify();
         t.t.join();
     }
 
