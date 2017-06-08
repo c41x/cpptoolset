@@ -77,8 +77,11 @@ void printState() {
 }
 
 void runWorker(worker &context) {
+    //std::cout << "thread start >\n" << std::flush;
+
     while (run) {
         while (!context.workToDo && run) {
+            std::cout << "sleep ...\n" << std::flush;
             context.sem.wait();
         }
 
@@ -95,6 +98,8 @@ void runWorker(worker &context) {
             //printState();
         }
     }
+
+    //std::cout << "thread done <\n" << std::flush;
 }
 
 worker TT[MAX_T];
@@ -135,28 +140,44 @@ void schedule(std::function<void()> fx) {
     fx();
 }
 
+// task information graph
+std::map<std::thread::id, int> data;
+
 // (2)
 std::atomic<int> jobsDone = {0};
 void countWords2(const string &s, int begin, int end, int &result) {
     countWords(s, begin, end, result);
     jobsDone++;
 
+    // gather information data
+    auto e = data.find(std::this_thread::get_id());
+    if (e == data.end()) {
+        data.insert(std::make_pair(std::this_thread::get_id(), 0));
+    }
+    else {
+        e->second++;
+    }
+
     //std::cout << "+";
 
     if (jobsDone >= 1000) {
         run = false;
+
+        for (auto &t : TT) {
+            t.sem.notify();
+        }
     }
 
     if (jobsDone == 999) {
-        std::this_thread::sleep_for(std::chrono::seconds(5));
+        //std::this_thread::sleep_for(std::chrono::seconds(5));
     }
 
     scheduleNextTask();
     scheduleNextTask();
     scheduleNextTask();
-    scheduleNextTask();
-    scheduleNextTask();
-    scheduleNextTask();
+    // scheduleNextTask();
+    // scheduleNextTask();
+    // scheduleNextTask();
 }
 
 std::atomic<size_t> taskI = {0}, taskJ = {0};
@@ -216,12 +237,16 @@ int main(int argc, char **argv) {
     // }
     scheduleNextTask();
 
-    while (run);
+    //std::cout << "finishing all threads" << std::endl;
 
     for (auto &t : TT) {
         t.sem.notify();
         t.t.join();
     }
+
+    while (run);
+
+    //std::cout << "entering finishing while loop" << std::endl;
 
     printResult(results);
     std::cout << "\nresult: " << toStr(t.timeMs()) << " ms" << std::endl;
@@ -230,11 +255,16 @@ int main(int argc, char **argv) {
 
     fs::close();
 
-
     int result = 0;
     t.reset();
     countWords(txt, 0, txt.size(), result);
     std::cout << "should be: " << result << " in " << t.timeMs() << " ms" << std::endl;
+
+
+    std::cout << std::endl << "scheduling thread info: " << std::endl;
+    for (auto &t : data) {
+        std::cout << t.first << " tasks done: " << t.second << std::endl;
+    }
 
     return 0;
 }
