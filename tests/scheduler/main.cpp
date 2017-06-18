@@ -2,42 +2,9 @@
 #include <base/scheduler.hpp>
 #include <condition_variable>
 
-class semaphore
-{
-public:
-    std::mutex mutex_;
-    std::condition_variable condition_;
-    unsigned long count_ = 0; // Initialized as locked.
-
-public:
-    void notify() {
-        std::unique_lock<decltype(mutex_)> lock(mutex_);
-        //std::cout << "unlock" << std::endl;
-        ++count_;
-        condition_.notify_one();
-    }
-
-    void wait() {
-        std::unique_lock<decltype(mutex_)> lock(mutex_);
-        //std::cout << "wait" << std::endl;
-        while(!count_) // Handle spurious wake-ups.
-            condition_.wait(lock);
-        //std::cout << "wait end" << std::endl;
-        --count_;
-    }
-
-    bool try_wait() {
-        std::unique_lock<decltype(mutex_)> lock(mutex_);
-        if(count_) {
-            --count_;
-            return true;
-        }
-        return false;
-    }
-};
-
 using namespace granite;
 using namespace granite::base;
+using namespace granite::base::detail;
 
 void countWords(const string &s, int begin, int end, int &result) {
     result = (int)std::count(s.begin() + begin, s.begin() + end, ' ') +
@@ -53,20 +20,21 @@ void printResult(std::vector<int> &results) {
 const int MAX_T = 8;
 std::atomic<int> T[MAX_T];
 std::atomic<int> tip;
-bool run = true;
+//std::atomic<bool> run = {true}; // atomic?
 
 struct worker;
 void runWorker(worker &context);
 
 struct worker {
-    std::thread t;
     std::function<void()> work;
     std::atomic<bool> workToDo;
+    std::atomic<bool> run;
     //std::mutex mtx;
     //std::condition_variable cv;
     semaphore sem;
     int id;
-    worker() : t(std::bind(runWorker, std::ref(*this))), workToDo(false) {}
+    std::thread t;
+    worker() : workToDo(false), run(true), t(std::bind(runWorker, std::ref(*this))) {} // order matters!
 };
 
 void printState() {
@@ -79,8 +47,8 @@ void printState() {
 void runWorker(worker &context) {
     //std::cout << "thread start >\n" << std::flush;
 
-    while (run) {
-        while (!context.workToDo && run) {
+    while (context.run) {
+        while (!context.workToDo && context.run) {
             std::cout << "sleep ...\n" << std::flush;
             context.sem.wait();
         }
@@ -99,7 +67,7 @@ void runWorker(worker &context) {
         }
     }
 
-    //std::cout << "thread done <\n" << std::flush;
+    std::cout << "thread done <\n" << std::flush;
 }
 
 worker TT[MAX_T];
@@ -145,27 +113,34 @@ std::map<std::thread::id, int> data;
 
 // (2)
 std::atomic<int> jobsDone = {0};
-void countWords2(const string &s, int begin, int end, int &result) {
-    countWords(s, begin, end, result);
-    jobsDone++;
 
-    // gather information data
-    auto e = data.find(std::this_thread::get_id());
-    if (e == data.end()) {
-        data.insert(std::make_pair(std::this_thread::get_id(), 0));
-    }
-    else {
-        e->second++;
-    }
+void countWords2(const string &s, int begin, int end, int &result) {
+    //countWords(s, begin, end, result);
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    ++jobsDone;
+
+    // // gather information data TODO: make thread safe (thread_local?)
+    // auto e = data.find(std::this_thread::get_id());
+    // if (e == data.end()) {
+    //     data.insert(std::make_pair(std::this_thread::get_id(), 0));
+    // }
+    // else {
+    //     e->second++;
+    // }
 
     //std::cout << "+";
 
-    if (jobsDone >= 1000) {
-        run = false;
+    //std::cout << jobsDone << std::endl;
 
-        for (auto &t : TT) {
-            t.sem.notify();
-        }
+    if (jobsDone >= 1000) {
+        std::cout << "DONE" << std::endl;
+        //run = false;
+
+        // // this IS thread safe ?
+        // for (auto &t : TT) {
+        //     t.run = false;
+        //     t.sem.notify();
+        // }
     }
 
     if (jobsDone == 999) {
@@ -188,8 +163,10 @@ size_t taskSize;
 void scheduleNextTask() {
     size_t i = taskI.fetch_add(taskSize);
     size_t j = taskJ.fetch_add(1);
-    if (i < taskTxt->size())
+    if (i < taskTxt->size()) {
+        std::cout << "> " << i << "/" << std::min(i + taskSize, taskTxt->size()) << std::endl;
         schedule(std::bind(countWords2, std::ref(*taskTxt), i, std::min(i + taskSize, taskTxt->size()), std::ref(results[j])));
+    }
 }
 
 int main(int argc, char **argv) {
@@ -235,16 +212,19 @@ int main(int argc, char **argv) {
     // for (size_t i = 0, j = 0; i < txt.size(); i += taskSize) {
     //     schedule(std::bind(countWords2, std::ref(txt), i, std::min(i + taskSize, txt.size()), std::ref(results[j++])));
     // }
-    scheduleNextTask();
+    while (jobsDone < 1000) {
+        scheduleNextTask();
+    }
 
-    //std::cout << "finishing all threads" << std::endl;
+    std::cout << "finishing all threads" << std::endl;
 
     for (auto &t : TT) {
+        t.run = false;
         t.sem.notify();
         t.t.join();
     }
 
-    while (run);
+    // while (run);
 
     //std::cout << "entering finishing while loop" << std::endl;
 
