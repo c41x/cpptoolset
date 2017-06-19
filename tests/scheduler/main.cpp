@@ -17,82 +17,82 @@ void printResult(std::vector<int> &results) {
     std::cout << "result: " << wordCount << " words" << std::endl;
 }
 
-const int MAX_T = 8;
-std::atomic<int> T[MAX_T];
-std::atomic<int> tip;
-//std::atomic<bool> run = {true}; // atomic?
+class scheduler2 {
+    struct worker {
+        std::function<void()> work;
+        std::atomic<bool> workToDo;
+        std::atomic<bool> run;
+        semaphore sem;
+        int id;
+        std::thread t;
 
-struct worker;
-void runWorker(worker &context);
+        scheduler2 *sc;
 
-struct worker {
-    std::function<void()> work;
-    std::atomic<bool> workToDo;
-    std::atomic<bool> run;
-    //std::mutex mtx;
-    //std::condition_variable cv;
-    semaphore sem;
-    int id;
-    std::thread t;
-    worker() : workToDo(false), run(true), t(std::bind(runWorker, std::ref(*this))) {} // order matters!
-};
-
-void printState() {
-    for (int i = 0; i < MAX_T; ++i) {
-        std::cout << T[i] << " ";
-    }
-    std::cout << "  | " << tip << std::endl;
-}
-
-void runWorker(worker &context) {
-    //std::cout << "thread start >\n" << std::flush;
-
-    while (context.run) {
-        while (!context.workToDo && context.run) {
-            std::cout << "sleep ...\n" << std::flush;
-            context.sem.wait();
+        void initialize(scheduler2 *_sc) {
+            run = true;
+            workToDo = false;
+            sc = _sc;
+            t = std::thread(std::bind(runWorker, std::ref(*this)));
         }
 
-        if (context.workToDo) {
-            context.work(); // work must be done first - task scheduling is very lightweight
-            //std::cout << "&";
-            context.workToDo = false;
+        static void runWorker(worker &context) {
+            //std::cout << "thread start >\n" << std::flush;
 
-            int ind = ++tip;
-            T[ind - 1] = context.id;
+            while (context.run) {
+                while (!context.workToDo && context.run) {
+                    std::cout << "sleep ...\n" << std::flush;
+                    context.sem.wait();
+                }
 
-            //T[context.id] = -1;
+                if (context.workToDo) {
+                    context.work(); // work must be done first - task scheduling is very lightweight
+                    //std::cout << "&";
+                    context.workToDo = false;
 
-            //printState();
+                    int ind = ++context.sc->tip;
+                    context.sc->T[ind - 1] = context.id;
+
+                    //T[context.id] = -1;
+
+                    //printState();
+                }
+            }
+
+            std::cout << "thread done <\n" << std::flush;
+        }
+    };
+
+    size_t threadsCount;
+    std::atomic<int> *T; // merge below
+    worker *TT;
+    std::atomic<int> tip;
+
+public:
+
+    scheduler2(size_t maxThreads) {
+        threadsCount = maxThreads;
+
+        T = new std::atomic<int>[maxThreads];
+        TT = new worker[maxThreads];
+
+        tip = maxThreads;
+
+        for (size_t i = 0; i < maxThreads; ++i) {
+            T[i] = i;
+            TT[i].id = i;
+            TT[i].initialize(this);
         }
     }
 
-    std::cout << "thread done <\n" << std::flush;
-}
-
-worker TT[MAX_T];
-
-void init() {
-    for (int i = 0; i < MAX_T; ++i) {
-        T[i] = i;
-        TT[i].id = i;
-        TT[i].workToDo = false;
-    }
-
-    tip = MAX_T;
-}
-
-void scheduleNextTask();
-
-void schedule(std::function<void()> fx) {
-    if (tip > 0) {
-        int ind = --tip;
-        //for (int ind = 0; ind < MAX_T; ++ind)
+    void schedule(std::function<void()> fx) {
+        if (tip > 0) {
+            int ind = --tip;
+            //for (int ind = 0; ind < MAX_T; ++ind)
 
             if (T[ind] != -1) {
                 //std::cout << "#";
                 // thread is free -> acquire
-                //printState();
+                printState();
                 TT[T[ind]].work = fx;
                 TT[T[ind]].workToDo = true;
                 TT[T[ind]].sem.notify();
@@ -100,13 +100,31 @@ void schedule(std::function<void()> fx) {
                 // run fx on thread ind
                 return;
             }
+        }
+
+        // run on this thread
+        //std::cout << ".";
+        //std::cout << std::this_thread::get_id() << " ";
+        fx();
     }
 
-    // run on this thread
-    //std::cout << ".";
-    //std::cout << std::this_thread::get_id() << " ";
-    fx();
-}
+    void printState() {
+        for (int i = 0; i < threadsCount; ++i) {
+            std::cout << T[i] << " ";
+        }
+        std::cout << "  | " << tip << std::endl;
+    }
+
+    void shutdown() {
+        for (size_t i = 0; i < threadsCount; ++i) {
+            TT[i].run = false;
+            TT[i].sem.notify();
+            TT[i].t.join();
+        }
+    }
+};
+
+void scheduleNextTask();
 
 // task information graph
 std::map<std::thread::id, int> data;
@@ -133,7 +151,7 @@ void countWords2(const string &s, int begin, int end, int &result) {
     //std::cout << jobsDone << std::endl;
 
     if (jobsDone >= 1000) {
-        std::cout << "DONE" << std::endl;
+        //std::cout << "DONE" << std::endl;
         //run = false;
 
         // // this IS thread safe ?
@@ -143,8 +161,8 @@ void countWords2(const string &s, int begin, int end, int &result) {
         // }
     }
 
-    if (jobsDone == 999) {
-        //std::this_thread::sleep_for(std::chrono::seconds(5));
+    if (jobsDone == 10) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 
     scheduleNextTask();
@@ -160,12 +178,14 @@ string *taskTxt;
 std::vector<int> results;
 size_t taskSize;
 
+scheduler2 sc(8);
+
 void scheduleNextTask() {
     size_t i = taskI.fetch_add(taskSize);
     size_t j = taskJ.fetch_add(1);
     if (i < taskTxt->size()) {
-        std::cout << "> " << i << "/" << std::min(i + taskSize, taskTxt->size()) << std::endl;
-        schedule(std::bind(countWords2, std::ref(*taskTxt), i, std::min(i + taskSize, taskTxt->size()), std::ref(results[j])));
+        //std::cout << "> " << i << "/" << std::min(i + taskSize, taskTxt->size()) << std::endl;
+        sc.schedule(std::bind(countWords2, std::ref(*taskTxt), i, std::min(i + taskSize, taskTxt->size()), std::ref(results[j])));
     }
 }
 
@@ -202,27 +222,30 @@ int main(int argc, char **argv) {
 
     #else
 
-    init();
     taskSize = txt.size() / 1000 + 1; // <= 1000 tasks
     results.resize(1001, 0);
 
     timer t;
     t.init();
     t.reset();
-    // for (size_t i = 0, j = 0; i < txt.size(); i += taskSize) {
-    //     schedule(std::bind(countWords2, std::ref(txt), i, std::min(i + taskSize, txt.size()), std::ref(results[j++])));
-    // }
     while (jobsDone < 1000) {
         scheduleNextTask();
     }
 
+    for (int i = 0; i < 10; ++i) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        jobsDone = 0;
+        taskI = 0;
+        taskJ = 0;
+
+        while (jobsDone < 1000) {
+            scheduleNextTask();
+        }
+    }
+
     std::cout << "finishing all threads" << std::endl;
 
-    for (auto &t : TT) {
-        t.run = false;
-        t.sem.notify();
-        t.t.join();
-    }
+    sc.shutdown();
 
     // while (run);
 
