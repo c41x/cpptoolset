@@ -4,7 +4,6 @@
 
 using namespace granite;
 using namespace granite::base;
-using namespace granite::base::detail;
 
 void countWords(const string &s, int begin, int end, int &result) {
     result = (int)std::count(s.begin() + begin, s.begin() + end, ' ') +
@@ -19,29 +18,29 @@ void printResult(std::vector<int> &results) {
 
 class scheduler2 {
     struct worker {
-        std::function<void()> work;
-        std::atomic<bool> workToDo;
-        std::atomic<bool> run;
-        semaphore sem;
-        int id;
-        std::thread t;
+        std::function<void()> work; // work to do
+        std::atomic<bool> workToDo; // marked true when there is job to do
+        std::atomic<bool> run; // global run flag - this is not scheduler member to avoid false sharing (?test this?)
+        detail::semaphore semaphore; // just mutex for sleeping
+        std::thread thread;
+        int id; // thread identifier
 
-        scheduler2 *sc;
+        scheduler2 *parentScheduler; // parent context
 
-        void initialize(scheduler2 *_sc) {
+        void initialize(scheduler2 *parentSchedulerInstance) {
             run = true;
             workToDo = false;
-            sc = _sc;
-            t = std::thread(std::bind(runWorker, std::ref(*this)));
+            parentScheduler = parentSchedulerInstance;
+            thread = std::thread(std::bind(workerThread, std::ref(*this)));
         }
 
-        static void runWorker(worker &context) {
+        static void workerThread(worker &context) {
             //std::cout << "thread start >\n" << std::flush;
 
             while (context.run) {
                 while (!context.workToDo && context.run) {
                     std::cout << "sleep ...\n" << std::flush;
-                    context.sem.wait();
+                    context.semaphore.wait();
                 }
 
                 if (context.workToDo) {
@@ -50,7 +49,7 @@ class scheduler2 {
                     context.workToDo = false;
 
                     int ind = ++context.sc->tip;
-                    context.sc->T[ind - 1] = context.id;
+                    context.sc->freeWorkers[ind - 1] = context.id;
 
                     //T[context.id] = -1;
 
@@ -58,68 +57,67 @@ class scheduler2 {
                 }
             }
 
-            std::cout << "thread done <\n" << std::flush;
+            std::cout << "thread done <\n" << std::flush; // TODO: remove
         }
     };
 
+    // how many worker threads we have
     size_t threadsCount;
-    std::atomic<int> *T; // merge below
-    worker *TT;
+
+    // free workers list, tip is pointing to free worker
+    std::atomic<int> *freeWorkers;
     std::atomic<int> tip;
+
+    // list of workers
+    worker *workers;
 
 public:
 
-    scheduler2(size_t maxThreads) {
+    explicit scheduler2(size_t maxThreads) {
         threadsCount = maxThreads;
 
-        T = new std::atomic<int>[maxThreads];
-        TT = new worker[maxThreads];
-
+        freeWorkers = new std::atomic<int>[maxThreads];
         tip = maxThreads;
 
+        workers = new worker[maxThreads];
+
         for (size_t i = 0; i < maxThreads; ++i) {
-            T[i] = i;
-            TT[i].id = i;
-            TT[i].initialize(this);
+            freeWorkers[i] = i;
+            workers[i].id = i;
+            workers[i].initialize(this);
         }
     }
 
-    void schedule(std::function<void()> fx) {
+    void schedule(std::function<void()> work) {
+        // if tip is > 0 it means that there could be free worker thread to complete the task
         if (tip > 0) {
-            int ind = --tip;
-            //for (int ind = 0; ind < MAX_T; ++ind)
+            // acquire tip index and free worker id
+            int freeWorkerIndex = --tip;
+            int freeWorkerId = freeWorkers[freeWorkerIndex];
 
-            if (T[ind] != -1) {
-                //std::cout << "#";
-                // thread is free -> acquire
-                printState();
-                TT[T[ind]].work = fx;
-                TT[T[ind]].workToDo = true;
-                TT[T[ind]].sem.notify();
-                T[ind] = -1;
-                // run fx on thread ind
+            // it may happen that thread is not ready yet, it does not matter
+            // we go wait free
+            if (freeWorkerId != -1) {
+                // but if this thread is free -> acquire it and send work to do
+                workers[freeWorkerId].work = work;
+                workers[freeWorkerId].workToDo = true;
+                workers[freeWorkerId].semaphore.notify();
+                freeWorkers[freeWorkerIndex] = -1;
                 return;
             }
         }
 
-        // run on this thread
-        //std::cout << ".";
-        //std::cout << std::this_thread::get_id() << " ";
-        fx();
-    }
-
-    void printState() {
-        for (int i = 0; i < threadsCount; ++i) {
-            std::cout << T[i] << " ";
-        }
-        std::cout << "  | " << tip << std::endl;
+        // there are no free worker threads -> run task on caller thread
+        // this allows us to utilize main thread too (I do not want a *special* threads
+        // like render thread, audio thread etc.)
+        work();
     }
 
     void shutdown() {
         for (size_t i = 0; i < threadsCount; ++i) {
-            TT[i].run = false;
-            TT[i].sem.notify();
-            TT[i].t.join();
+            workers[i].run = false;
+            workers[i].semaphore.notify();
+            workers[i].thread.join();
         }
     }
 };
