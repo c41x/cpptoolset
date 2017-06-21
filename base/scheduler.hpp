@@ -1,5 +1,5 @@
 /*
- * granite engine 1.0 | 2006-2015 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
+ * granite engine 1.0 | 2006-2017 | Jakub Duracz | jakubduracz@gmail.com | http://jakubduracz.com
  * file: scheduler
  * created: 13-07-2015
  *
@@ -8,6 +8,7 @@
  * changelog:
  * - 17-09-2007: file created
  * - 13-07-2015: rewrite
+ * - 21-06-2017: simplified wait-free implementation without dependency management
  */
 
 #pragma once
@@ -45,133 +46,103 @@ public:
 
 }
 
-enum jobPriority {
-    jobPriorityLow,
-    jobPriorityMedium,
-    jobPriorityHigh,
-    jobPriorityNow,
-    jobPriorityDependent
-};
-
 class scheduler {
-    struct thread {
-        std::thread *t;
-    };
+    struct worker {
+        std::function<void()> work; // work to do
+        std::atomic<bool> workToDo; // marked true when there is job to do
+        std::atomic<bool> run; // global run flag - this is not scheduler member to avoid false sharing (?test this?)
+        detail::semaphore semaphore; // just mutex for sleeping
+        std::thread thread;
+        int id; // thread identifier
 
-    struct job {
-        std::function<void()> fn;
-        jobPriority priority;
-        int count;
-        job *parent;
-        job *nextFree;
-    };
+        scheduler *parentScheduler; // parent context
 
-    std::vector<thread> _threads;
-    std::vector<job> _jobsList; // free list containing all jobs
-    std::vector<job*> _jobs; // jobs about to execute
-    job *_freeJobs; // head of free list jobs
-    std::mutex _jobMutex;
+        void initialize(scheduler *parentSchedulerInstance) {
+            run = true;
+            workToDo = false;
+            parentScheduler = parentSchedulerInstance;
+            thread = std::thread(std::bind(workerThread, std::ref(*this)));
+        }
 
-    std::vector<job*>::iterator findJob() {
-        return std::find_if(_jobs.begin(), _jobs.end(),
-                            [](job *j) {
-                                return j->priority != jobPriorityDependent;
-                            });
-    }
+        static void workerThread(worker &context) {
+            while (context.run) {
+                // when there is nothing to do - thread will wait...
+                while (!context.workToDo && context.run) {
+                    context.semaphore.wait();
+                }
 
-    void fthread(size_t ti) {
-        while (_jobs.size() > 0) {
-            _jobMutex.lock();
-            if (_jobs.size() > 0) {
-                // find next job
-                auto ji = findJob();
-                auto j = *ji;
-                auto fn = j->fn;
-                _jobs.erase(ji);
+                // ... otherwise just run task and mark worker thread as free
+                if (context.workToDo) {
+                    context.work(); // work must be done first - task scheduling is lightweight
+                    context.workToDo = false;
 
-                // release free list element
-                j->nextFree = _freeJobs;
-                _freeJobs = j;
-
-                // update dependency (if all subtasks are done, just set priority to 'now')
-                if (j->parent && --j->parent->count == 0)
-                    j->parent->priority = jobPriorityNow;
-
-                _jobMutex.unlock();
-
-                // execute job
-                fn();
-            }
-            else {
-                _jobMutex.unlock();
+                    // move tip position and store id in free worker list slot
+                    int ind = ++context.parentScheduler->tip;
+                    context.parentScheduler->freeWorkers[ind - 1] = context.id;
+                }
             }
         }
-    }
+    };
+
+    // how many worker threads we have
+    size_t threadsCount;
+
+    // free workers list, tip is pointing to free worker
+    std::atomic<int> *freeWorkers;
+    std::atomic<int> tip;
+
+    // list of workers
+    worker *workers;
 
 public:
-    typedef job *jobID;
 
-    explicit scheduler(size_t maxJobs) {
-        // allocate and initialize free list containing jobs
-        _jobsList.resize(maxJobs);
-        job *prv = nullptr;
-        for (size_t i = 0; i < maxJobs; ++i) {
-            _jobsList[i].nextFree = prv;
-            prv = &_jobsList[i];
+    explicit scheduler(size_t maxThreads) {
+        threadsCount = maxThreads;
+
+        freeWorkers = new std::atomic<int>[maxThreads];
+        tip = maxThreads;
+
+        workers = new worker[maxThreads];
+
+        for (size_t i = 0; i < maxThreads; ++i) {
+            freeWorkers[i] = i;
+            workers[i].id = i;
+            workers[i].initialize(this);
         }
-        _freeJobs = prv;
     }
 
-    ~scheduler() {
-        stop();
+    void schedule(std::function<void()> work) {
+        // if tip is > 0 it means that there could be free worker thread to complete the task
+        if (tip > 0) {
+            // acquire tip index and free worker id
+            int freeWorkerIndex = --tip;
+            int freeWorkerId = freeWorkers[freeWorkerIndex];
+
+            // it may happen that thread is not ready yet, it does not matter
+            // we go wait free
+            if (freeWorkerId != -1) {
+                // but if this thread is free -> acquire it and send work to do
+                workers[freeWorkerId].work = work;
+                workers[freeWorkerId].workToDo = true;
+                workers[freeWorkerId].semaphore.notify();
+                freeWorkers[freeWorkerIndex] = -1;
+                return;
+            }
+        }
+
+        // there are no free worker threads -> run task on caller thread
+        // this allows us to utilize main thread too (I do not want a *special* threads
+        // like render thread, audio thread etc.)
+        work();
     }
 
-    void stop() {
-        // signal all threads to stop, then join them and clear threads list
-        for (auto &t : _threads) t.t->join();
-        _threads.clear();
-    }
-
-    void start(size_t numThreads) {
-        // create and run threads
-        gassert(_threads.size() == 0, "threads already initialized");
-        for (size_t i = 0; i < numThreads; ++i)
-            _threads.push_back({ new std::thread(&scheduler::fthread, this, i) });
-    }
-
-    jobID addJob(std::function<void()> fn, jobPriority priority, jobID parent = nullptr) {
-        gassert(_freeJobs != nullptr, "max jobs limit exceeded");
-
-        _jobMutex.lock();
-
-        // find free block and update free list head
-        job *j = _freeJobs;
-        j->fn = fn;
-        j->priority = priority;
-        j->count = 0;
-        j->parent = parent;
-        _freeJobs = j->nextFree;
-
-        // keep track of all allocated jobs
-        _jobs.push_back(j);
-
-        // if there is dependency - update count
-        if (parent)
-            ++parent->count;
-
-        _jobMutex.unlock();
-
-        // return ID
-        return j;
+    void shutdown() {
+        for (size_t i = 0; i < threadsCount; ++i) {
+            workers[i].run = false;
+            workers[i].semaphore.notify();
+            workers[i].thread.join();
+        }
     }
 };
 
-// shortcut
-typedef scheduler::jobID jobID;
-
 }}
-
-// TODO: condition variable to wake up / kill threads
-// TODO: relax max jobs limit - create temporary buffer with stored rest of jobs
-// TODO: message priority selection (test this)
-// TODO: someday - lock free version
