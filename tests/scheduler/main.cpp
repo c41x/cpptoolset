@@ -47,6 +47,8 @@ void scheduleNextTask() {
 }
 
 int main(int argc, char **argv) {
+    timer::init();
+
     // generate random string
     rng<> rn;
     const size_t txtSize = 1024 * 1024 * 256; // 128MB
@@ -65,7 +67,6 @@ int main(int argc, char **argv) {
     std::cout << "[info] data generated" << std::endl;
 
     timer t;
-    t.init();
     t.reset();
 
     while (jobsDone < 1000) {
