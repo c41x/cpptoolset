@@ -116,17 +116,24 @@ public:
         if (tip > 0) {
             // acquire tip index and free worker id
             int freeWorkerIndex = --tip;
-            int freeWorkerId = freeWorkers[freeWorkerIndex];
 
-            // it may happen that thread is not ready yet, it does not matter
-            // we go wait free
-            if (freeWorkerId != -1) {
-                // but if this thread is free -> acquire it and send work to do
-                workers[freeWorkerId].work = work;
-                workers[freeWorkerId].workToDo = true;
-                workers[freeWorkerId].semaphore.notify();
-                freeWorkers[freeWorkerIndex] = -1;
-                return;
+            // we need to check if tip is really >= 0 because multiple threads could
+            // enter this if (tip > 0) at the same time and every each of them will
+            // think that tip is correct and decrementing --tip could lead to freeWorkerIndex
+            // to be negative
+            if (freeWorkerIndex >= 0) {
+                int freeWorkerId = freeWorkers[freeWorkerIndex];
+
+                // it may happen that thread is not ready yet, it does not matter
+                // we go wait free
+                if (freeWorkerId != -1) {
+                    // but if this thread is free -> acquire it and send work to do
+                    workers[freeWorkerId].work = work;
+                    workers[freeWorkerId].workToDo = true;
+                    workers[freeWorkerId].semaphore.notify();
+                    freeWorkers[freeWorkerIndex] = -1;
+                    return;
+                }
             }
         }
 
