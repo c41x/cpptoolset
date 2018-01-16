@@ -21,8 +21,6 @@
 
 namespace granite { namespace base {
 
-namespace detail {
-
 // simple C++11 semaphore
 class semaphore {
     std::mutex m;
@@ -44,14 +42,12 @@ public:
     }
 };
 
-}
-
 class scheduler {
     struct worker {
         std::function<void()> work; // work to do
         std::atomic<bool> workToDo; // marked true when there is job to do
         std::atomic<bool> run; // global run flag - this is not scheduler member to avoid false sharing (?test this?)
-        detail::semaphore semaphore; // just mutex for sleeping
+        semaphore semaphore; // just mutex for sleeping
         std::thread thread;
         int id; // thread identifier
 
