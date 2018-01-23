@@ -47,7 +47,7 @@ class scheduler {
         std::function<void()> work; // work to do
         std::atomic<bool> workToDo; // marked true when there is job to do
         std::atomic<bool> run; // global run flag - this is not scheduler member to avoid false sharing (?test this?)
-        semaphore semaphore; // just mutex for sleeping
+        semaphore notifier; // just mutex for sleeping
         std::thread thread;
         int id; // thread identifier
 
@@ -64,7 +64,7 @@ class scheduler {
             while (context.run) {
                 // when there is nothing to do - thread will wait...
                 while (!context.workToDo && context.run) {
-                    context.semaphore.wait();
+                    context.notifier.wait();
                 }
 
                 // ... otherwise just run task and mark worker thread as free
@@ -126,7 +126,7 @@ public:
                     // but if this thread is free -> acquire it and send work to do
                     workers[freeWorkerId].work = work;
                     workers[freeWorkerId].workToDo = true;
-                    workers[freeWorkerId].semaphore.notify();
+                    workers[freeWorkerId].notifier.notify();
                     freeWorkers[freeWorkerIndex] = -1;
                     return;
                 }
@@ -142,7 +142,7 @@ public:
     void shutdown() {
         for (size_t i = 0; i < threadsCount; ++i) {
             workers[i].run = false;
-            workers[i].semaphore.notify();
+            workers[i].notifier.notify();
             workers[i].thread.join();
         }
     }
