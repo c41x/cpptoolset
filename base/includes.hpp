@@ -48,10 +48,11 @@
 #endif
 
 // SIMD
-#include <mmintrin.h> //MMX
-#include <xmmintrin.h> //SSE
-#include <emmintrin.h> //SSE 2
-#include <pmmintrin.h> //SSE 3
+#include <mmintrin.h> // MMX
+#include <xmmintrin.h> // SSE
+#include <emmintrin.h> // SSE 2
+#include <pmmintrin.h> // SSE 3
+#include <tmmintrin.h> // SSSE3
 
 // string as built-in type
 namespace granite { namespace base {
