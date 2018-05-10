@@ -11,8 +11,8 @@ if(ENABLE_SSSE3)
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y -Wall -msse -msse2 -msse3 ${SSE_INSTRUCTIONS}")
-  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y -Wall -msse -msse2 -msse3 ${SSE_INSTRUCTIONS} -Wno-misleading-indentation")
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -Wno-misleading-indentation")
 endif()
 
 include_directories("${CMAKE_SOURCE_DIR}")
