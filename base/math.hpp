@@ -167,7 +167,7 @@ public:
 
     vec2f(const float _x, const float _y) : x(_x), y(_y) {}
     vec2f(const float _v) : x(_v), y(_v) {}
-    explicit vec2f(const float *p) { x = *p; y = *(p + 1); }
+    vec2f(const float *p) { x = *p; y = *(p + 1); }
     vec2f() = default;
     ~vec2f() = default;
 
@@ -205,8 +205,8 @@ public:
 
     vec3f(const float _x, const float _y, const float _z):x(_x), y(_y), z(_z) {}
     vec3f(const float _v) { x = y = z = _v; }
-    vec3f(const vec2f &xy, const float _z) { x = xy.x; y = xy.y; z = _z; }
     vec3f(const float *p) { x = *p; y = *(p + 1); z = *(p + 2); }
+    vec3f(const vec2f &xy, const float _z) { x = xy.x; y = xy.y; z = _z; }
     vec3f(){}
     ~vec3f(){}
 
@@ -238,7 +238,7 @@ public:
     vec3f reflection(const vec3f &normal) const { float x = 2.f * this->dot(normal); return (*this) - normal * x; }
     float angle(const vec3f &v) const { return acosf(this->dot(v)); } // angle between vectors in radians (vectors must be normalized)
     float length() const { return sqrtf(x * x + y * y + z * z); }
-    vec3f lengthSq() const { return x * x + y * y + z * z; }
+    float lengthSq() const { return x * x + y * y + z * z; }
     float distance(const vec3f &v) const { return (*this - v).length(); }
     float dot(const vec3f &v) const { return x * v.x + y * v.y + z * v.z; }
     vec3f cross(const vec3f &v) const { vec3f r; r.x = v.y * z - v.z * y; r.y = v.x * z - v.z * x; r.z = v.x * y - v.y * x; return r; }
@@ -255,10 +255,10 @@ public:
 
     vec4f(const float _x, const float _y, const float _z, const float _w) : x(_x), y(_y), z(_z), w(_w) {}
     vec4f(const float _v) { x = y = z = w = _v; }
+    vec4f(const float *p) { x = *p; y = *(p + 1); z = *(p + 2); w = *(p + 3); }
     vec4f(const vec2f &v1, const vec2f &v2) { x = v1.x; y = v1.y; z = v2.x; w = v2.y; }
     vec4f(const vec2f &xy, const float _z, const float _w) { x = xy.x; y = xy.y; z = _z; w = _w; }
     vec4f(const vec3f &xyz, const float _w) { x = xyz.x; y = xyz.y; z = xyz.z; w = _w; }
-    vec4f(const float *p) { x = *p; y = *(p + 1); z = *(p + 2); w = *(p + 3); }
     vec4f(){}
     ~vec4f(){}
 
@@ -290,7 +290,7 @@ public:
     vec4f reflection(const vec4f &normal) const { float x = 2.f * this->dot(normal); return (*this) - normal * x; }
     float angle(const vec4f &v) const { return acosf(this->dot(v)); } // angle between vectors in radians (vectors must be normalized)
     float length() const { return sqrtf(x * x + y * y + z * z); }
-    vec4f lengthSq() const { return x * x + y * y + z * z; }
+    float lengthSq() const { return x * x + y * y + z * z; }
     float distance(const vec4f &v) const { return (*this - v).length(); }
     float dot(const vec4f &v) const { return x * v.x + y * v.y + z * v.z; }
     vec4f cross(const vec4f &v) const { vec4f r; r.x = v.y * z - v.z * y; r.y = v.x * z - v.z * x; r.z = v.x * y - v.y * x; return r; }
@@ -361,7 +361,7 @@ public:
     float dot(const vec &v) const { return _mm_cvtss_f32(xmmDot(v)); }
     vec cross(const vec &v) const { return *this ^ v; }
 
-    // xmm stuff 4U
+    // xmm stuff
     vec xmmLengthSq() const { __m128 m = _mm_mul_ps(xmm, xmm); __m128 t1 = _mm_hadd_ps(m, m); return _mm_hadd_ps(t1, t1);}
     vec xmmLength() const { return _mm_sqrt_ps(xmmLengthSq()); }
     vec xmmDistance(const vec &v) const {return (*this - v).xmmLength(); }
@@ -606,7 +606,7 @@ public:
     ~aabbox(){}
 
     aabbox &operator()(const vec &pmi, const vec &pma) { pmin = pmi; pmax = pma; return *this; }
-    aabbox &operator()(const sphere &sp) { __m128 r = _mm_shuffle_ps(sp.cr, sp.cr, _MM_SHUFFLE(3, 3, 3, 3)); pmin = sp.cr - r; pmax = sp.cr + r; return *this; }
+    aabbox &operator()(const sphere &sp) { __m128 r = _mm_shuffle_ps(sp.cr, sp.cr, _MM_SHUFFLE(3, 3, 3, 3)); pmin = sp.cr - vec(r); pmax = sp.cr + vec(r); return *this; }
 
     vec getCenter() const { return (pmax + pmin) / 2.f; }
     void getEdges(vec *o) const; // gets 8 edges
