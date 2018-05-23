@@ -31,24 +31,24 @@ extern int8 floatPrecision;
 // 2 iterators for substring positions in string
 struct stringRange {
 private:
-	explicit stringRange(string &&s) = delete;
-	explicit stringRange(const string &&s) = delete;
+    explicit stringRange(string &&s) = delete;
+    explicit stringRange(const string &&s) = delete;
 public:
-	string::const_iterator begin;
-	string::const_iterator end;
-	stringRange(string::const_iterator ibegin, string::const_iterator iend) : begin(ibegin), end(iend) { gassert(ibegin <= iend, "invalid range pointers positions"); }
-	explicit stringRange(const string &s) : begin(s.begin()), end(s.end()) {}
-	stringRange &operator()(string::const_iterator ibegin, string::const_iterator iend) { gassert(ibegin <= iend, "invalid range pointers positions"); begin = ibegin; end = iend; return *this; }
-	stringRange &operator()(const string &s) { begin = s.begin(); end = s.end(); return *this; }
-	size_t ibegin(const string &s) const { return std::distance(s.begin(), begin); }
-	size_t iend(const string &s) const { return std::distance(s.begin(), end); }
-	size_t count() const { return std::distance(begin, end); }
-	string str() const { return string(begin, end); }
-	operator string() const { return string(begin, end); }
-	inline bool operator==(const stringRange &s) const;
-	inline bool operator==(const string &s) const;
-	bool operator!=(const stringRange &s) const { return !(*this == s); }
-	bool operator!=(const string &s) const { return !(*this == s); }
+    string::const_iterator begin;
+    string::const_iterator end;
+    stringRange(string::const_iterator ibegin, string::const_iterator iend) : begin(ibegin), end(iend) { gassert(ibegin <= iend, "invalid range pointers positions"); }
+    explicit stringRange(const string &s) : begin(s.begin()), end(s.end()) {}
+    stringRange &operator()(string::const_iterator ibegin, string::const_iterator iend) { gassert(ibegin <= iend, "invalid range pointers positions"); begin = ibegin; end = iend; return *this; }
+    stringRange &operator()(const string &s) { begin = s.begin(); end = s.end(); return *this; }
+    size_t ibegin(const string &s) const { return std::distance(s.begin(), begin); }
+    size_t iend(const string &s) const { return std::distance(s.begin(), end); }
+    size_t count() const { return std::distance(begin, end); }
+    string str() const { return string(begin, end); }
+    operator string() const { return string(begin, end); }
+    inline bool operator==(const stringRange &s) const;
+    inline bool operator==(const string &s) const;
+    bool operator!=(const stringRange &s) const { return !(*this == s); }
+    bool operator!=(const string &s) const { return !(*this == s); }
 };
 
 // inlines char fxs:

@@ -21,40 +21,40 @@
 namespace granite { namespace base {
 
 class timer {
-	int64 m_start;
-	static double m_secsPerTick;
+    int64 m_start;
+    static double m_secsPerTick;
 
 public:
-	timer(){}
-	~timer(){}
+    timer(){}
+    ~timer(){}
 
-	// statics
-	static bool init();
-	static int64 tick();
-	static int64 delta(const int64 &t1,const int64 &t2) { return t2-t1; }
-	static inline double deltaS(const int64 &t1, const int64 &t2);
-	static inline double deltaMs(const int64 &t1, const int64 &t2);
-	static inline double deltaUs(const int64 &t1, const int64 &t2);
-	static inline double deltaNs(const int64 &t1, const int64 &t2);
+    // statics
+    static bool init();
+    static int64 tick();
+    static int64 delta(const int64 &t1,const int64 &t2) { return t2-t1; }
+    static inline double deltaS(const int64 &t1, const int64 &t2);
+    static inline double deltaMs(const int64 &t1, const int64 &t2);
+    static inline double deltaUs(const int64 &t1, const int64 &t2);
+    static inline double deltaNs(const int64 &t1, const int64 &t2);
 
-	// get/set start time
-	void reset() { m_start = tick(); }
-	void setStartTick(const int64 &iTick) { m_start = iTick; }
-	int64 getStartTick()const { return m_start; }
+    // get/set start time
+    void reset() { m_start = tick(); }
+    void setStartTick(const int64 &iTick) { m_start = iTick; }
+    int64 getStartTick()const { return m_start; }
 
-	// reset start time and get result time
-	int64 time() { int64 t = tick(); int64 ret = delta(m_start, t); m_start = t; return ret; }
-	double timeS() { int64 t = tick(); double ret = deltaS(m_start, t); m_start = t; return ret; }
-	double timeMs() { int64 t = tick(); double ret = deltaMs(m_start, t); m_start = t; return ret; }
-	double timeUs() { int64 t = tick(); double ret = deltaUs(m_start, t); m_start = t; return ret; }
-	double timeNs() { int64 t = tick(); double ret = deltaNs(m_start, t); m_start = t; return ret; }
+    // reset start time and get result time
+    int64 time() { int64 t = tick(); int64 ret = delta(m_start, t); m_start = t; return ret; }
+    double timeS() { int64 t = tick(); double ret = deltaS(m_start, t); m_start = t; return ret; }
+    double timeMs() { int64 t = tick(); double ret = deltaMs(m_start, t); m_start = t; return ret; }
+    double timeUs() { int64 t = tick(); double ret = deltaUs(m_start, t); m_start = t; return ret; }
+    double timeNs() { int64 t = tick(); double ret = deltaNs(m_start, t); m_start = t; return ret; }
 
-	// just give me time without changing start time
-	int64 getTime() const { return delta(m_start, tick()); }
-	double getTimeS() const { return deltaS(m_start, tick()); }
-	double getTimeMs() const { return deltaMs(m_start, tick()); }
-	double getTimeUs() const { return deltaUs(m_start, tick()); }
-	double getTimeNs() const { return deltaNs(m_start, tick()); }
+    // just give me time without changing start time
+    int64 getTime() const { return delta(m_start, tick()); }
+    double getTimeS() const { return deltaS(m_start, tick()); }
+    double getTimeMs() const { return deltaMs(m_start, tick()); }
+    double getTimeUs() const { return deltaUs(m_start, tick()); }
+    double getTimeNs() const { return deltaNs(m_start, tick()); }
 };
 
 double timer::deltaS(const int64 &t1, const int64 &t2) { return double(t2 - t1) * m_secsPerTick; }

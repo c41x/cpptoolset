@@ -16,7 +16,7 @@ int main(int argc, char **argv) {
     // std::cout << std::endl;
     // for (auto &f : fs::matchFiles(".*\\.txt"))
     //  std::cout << f.path << " " << f.name << " " << f.dir << std::endl;
-
+    
     // return 0;
     std::cout << "\"" << cpu::toStr() << "\"" << std::endl;
     cpu::cycleTimer ct;

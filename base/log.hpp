@@ -21,10 +21,10 @@
 namespace granite { namespace base { namespace log {
 
 enum logLevel{
-	logLevelError,
-	logLevelOK,
-	logLevelInfo,
-	logLevelCritical
+    logLevelError,
+    logLevelOK,
+    logLevelInfo,
+    logLevelCritical
 };
 
 bool init(const string &fileName);

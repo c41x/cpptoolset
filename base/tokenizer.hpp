@@ -20,36 +20,36 @@ namespace granite { namespace base {
 class tokenizer;
 
 struct token {
-	int id;
-	stringRange value;
-	operator bool() { return id != -2; }
+    int id;
+    stringRange value;
+    operator bool() { return id != -2; }
 };
 
 class tokenizer {
-	struct rule{
-		int id;
-		bool skip;
-		string start;
-		string exception;
-		string end;
-		bool checkEnd;
-	};
-	std::vector<rule> _rules;
-	std::vector<rule>::const_iterator _rule;
-	string::const_iterator _begin, _i, _end;
+    struct rule{
+        int id;
+        bool skip;
+        string start;
+        string exception;
+        string end;
+        bool checkEnd;
+    };
+    std::vector<rule> _rules;
+    std::vector<rule>::const_iterator _rule;
+    string::const_iterator _begin, _i, _end;
 
 public:
-	string input;
+    string input;
 
     tokenizer() {}
     ~tokenizer() {}
 
-	void addRule(int id, bool skip, const string &start, const string &exception = "", const string &end = "");
-	void removeRule(int id);
-	token begin(const string &input, bool copyInput = true);
-	token next();
-	bool hasInputCopy() const { return input.size() > 0; }
-	void clear();
+    void addRule(int id, bool skip, const string &start, const string &exception = "", const string &end = "");
+    void removeRule(int id);
+    token begin(const string &input, bool copyInput = true);
+    token next();
+    bool hasInputCopy() const { return input.size() > 0; }
+    void clear();
 };
 
 }}

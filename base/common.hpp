@@ -53,7 +53,7 @@
 #else
     #pragma error "Unknown compiler!"
 #endif
-    
+
 // detect operating system
 #if defined(__WIN32__)||defined(_WIN32)
     #define GE_PLATFORM_WINDOWS

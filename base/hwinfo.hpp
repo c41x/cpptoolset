@@ -36,14 +36,14 @@ bool support64bit();
 
 // cycles measurment utility
 class cycleTimer {
-	uint64 _last;
+    uint64 _last;
 
 public:
-	cycleTimer();
-	~cycleTimer();
+    cycleTimer();
+    ~cycleTimer();
 
-	void reset();
-	uint64 elapsed();
+    void reset();
+    uint64 elapsed();
 };
 }
 

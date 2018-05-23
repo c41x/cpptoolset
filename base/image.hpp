@@ -19,20 +19,20 @@
 namespace granite { namespace base {
 
 enum imageCodec {
-	imageCodecJPEG,
-	imageCodecPNG,
-	imageCodecBMP,
-	imageCodecTGA
+    imageCodecJPEG,
+    imageCodecPNG,
+    imageCodecBMP,
+    imageCodecTGA
 };
 
 struct image {
-	simd_vector<uint8, 3 * 16> data;
-	int channels;
-	int width;
-	int height;
+    simd_vector<uint8, 3 * 16> data;
+    int channels;
+    int width;
+    int height;
 
-	// conversion operator for const stream
-	inline operator const_stream();
+    // conversion operator for const stream
+    inline operator const_stream();
 };
 
 bool toImage(const_stream s, image &i);
