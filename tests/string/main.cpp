@@ -1,4 +1,5 @@
 #include <base/base.hpp>
+#include <charconv>
 
 void PrintStats(std::vector<double> timings) {
     double fastest = std::numeric_limits<double>::max();
@@ -321,6 +322,27 @@ int main(int argc, char**argv){
         }
 
         std::cout << "\natof(): ";
+        PrintStats(timings);
+        std::cout << std::endl;
+        std::cout << tsum << std::endl;
+    }
+
+    {
+        double tsum = 0.0;
+        std::vector<double> timings;
+        timings.reserve(R);
+        for (size_t r=0 ; r<R ; ++r) {
+            t.reset();
+            for (size_t i=0 ; i<nums.size() ; ++i) {
+                double x;
+                std::from_chars((const char*)nums[i].data(),
+                                (const char*)nums[i].data() + nums[i].size(), x);
+                tsum += x;
+            }
+            timings.push_back(t.timeS());
+        }
+
+        std::cout << "\nC++17 std::from_chars(): ";
         PrintStats(timings);
         std::cout << std::endl;
         std::cout << tsum << std::endl;
