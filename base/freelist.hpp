@@ -56,7 +56,7 @@ template <typename T, size_t SIZE> struct free_allocator {
         remove(addr);
     }
 
-    bool full() const { free == nullptr; }
+    bool full() const { return free == nullptr; }
 };
 
 template <typename T, size_t PAGE_SIZE> struct paged_free_allocator {
@@ -105,7 +105,7 @@ template <typename T, size_t PAGE_SIZE> struct paged_free_allocator {
         remove(addr);
     }
 
-    bool full() const { free == nullptr; }
+    bool full() const { return free == nullptr; }
 };
 
 }}

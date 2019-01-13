@@ -105,6 +105,8 @@ public:
             workers[i].id = i;
             workers[i].initialize(this);
         }
+
+        logOK(strs("initialized scheduler with ", maxThreads, " threads"));
     }
 
     void schedule(std::function<void()> work) {

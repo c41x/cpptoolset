@@ -60,4 +60,5 @@ install(FILES
   string.inc.hpp
   timer.hpp
   tokenizer.hpp
+  freelist.hpp
   DESTINATION include/base)
