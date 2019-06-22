@@ -124,37 +124,15 @@
 
 // basic typedefs
 namespace granite{
-#ifdef GE_COMPILER_VISUAL
-    typedef __int8 int8;
-    typedef __int16 int16;
-    typedef __int32 int32;
-    typedef __int64 int64;
-    typedef unsigned __int8 uint8;
-    typedef unsigned __int16 uint16;
-    typedef unsigned __int32 uint32;
-    typedef unsigned __int32 uint;
-    typedef unsigned __int64 uint64;
-#elif defined(GE_COMPILER_BORLAND)
-    typedef char int8;
-    typedef short int16;
-    typedef int int32;
-    typedef __int64 int64;
-    typedef unsigned char uint8;
-    typedef unsigned short uint16;
-    typedef unsigned int uint32;
-    typedef unsigned int uint;
-    typedef unsigned __int64 uint64;
-#elif defined(GE_COMPILER_GCC)
-    typedef char int8;
-    typedef short int16;
-    typedef int int32;
-    typedef long long int int64;
-    typedef unsigned char uint8;
-    typedef unsigned short uint16;
-    typedef unsigned int uint32;
-    typedef unsigned int uint;
-    typedef unsigned long long int uint64;
-#endif
+typedef int8_t int8;
+typedef int16_t int16;
+typedef int32_t int32;
+typedef int64_t int64;
+typedef uint8_t uint8;
+typedef uint16_t uint16;
+typedef uint32_t uint32;
+typedef uint32_t uint;
+typedef uint64_t uint64;
 }
 
 // run once macro - usefull for fast prototyping (do not use in production code)

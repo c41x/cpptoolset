@@ -13,8 +13,6 @@
 
 #pragma once
 
-#include "common.hpp"
-
 // C-STD/STL
 #include <ctime>
 #include <vector>
@@ -36,6 +34,9 @@
 #include <cassert>
 #include <memory>
 #include <numeric>
+#include <cstdint>
+
+#include "common.hpp"
 
 #ifdef GE_PLATFORM_WINDOWS
 #ifndef NOMINMAX
