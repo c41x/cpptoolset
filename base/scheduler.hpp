@@ -82,7 +82,6 @@ template <typename T_WORK> class scheduler {
     // worker thread status + sync
     std::atomic<bool> *workerRunning;
     std::atomic<int> freeWorkersCount;
-    std::mutex workerStateMutex;
 
     // list of workers
     worker *workers;
@@ -106,23 +105,22 @@ public:
         logOK(strs("initialized scheduler with ", maxThreads, " threads"));
     }
 
-    void schedule(std::function<void()> work) {
+    void schedule(T_WORK work) {
         // if count is > 0 it means that there could be free worker thread to complete the task
         if (freeWorkersCount > 0) {
             // SLOW PATH
             // find free worker
             int worker = -1;
-            {
-                std::lock_guard<std::mutex> l(workerStateMutex);
 
-                // first one that is available
-                for (size_t i = 0; i < threadsCount; ++i) {
-                    if (!workerRunning[i]) {
-                        worker = i;
-                        workerRunning[i] = true;
-                        freeWorkersCount--;
-                        break;
-                    }
+            // first one that is available
+            for (size_t i = 0; i < threadsCount; ++i) {
+                // try to acquire worker, check if is not working first
+                // then replace flag to true atomicaly
+                bool expectingFalse = false;
+                if (workerRunning[i].compare_exchange_weak(expectingFalse, true)) {
+                    worker = i;
+                    freeWorkersCount--;
+                    break;
                 }
             }
 
