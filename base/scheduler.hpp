@@ -3,7 +3,7 @@
  * file: scheduler
  * created: 13-07-2015
  *
- * description: multithread job scheduler
+ * description: multithread blocking job scheduler
  *
  * changelog:
  * - 17-09-2007: file created
@@ -21,33 +21,34 @@
 
 namespace granite { namespace base {
 
-// simple C++11 semaphore
-class semaphore {
+// blocking notifier
+template <typename T_MESSAGE> class notifier {
     std::mutex m;
     std::condition_variable c;
-    int count = 0;
+    T_MESSAGE msg;
 
 public:
-    void notify() {
+    // call from producer: unlocks thread and passes message to thread
+    void notify(T_MESSAGE passMessage) {
         std::unique_lock<std::mutex> lock(m);
-        ++count;
+        msg = passMessage;
         c.notify_one();
     }
 
-    void wait() {
+    // call from consumer: locks thread and waits for message
+    T_MESSAGE wait() {
         std::unique_lock<std::mutex> lock(m);
-        while (count == 0)
+        msg = nullptr;
+        while (msg == nullptr) // prevent spurious wake ups
             c.wait(lock);
-        --count;
+        return msg;
     }
 };
 
-class scheduler {
+template <typename T_WORK> class scheduler {
     struct worker {
-        std::function<void()> work; // work to do
-        std::atomic<bool> workToDo; // marked true when there is job to do
         std::atomic<bool> run; // global run flag - this is not scheduler member to avoid false sharing (?test this?)
-        semaphore notifier; // just mutex for sleeping
+        notifier<T_WORK> notify; // just mutex for sleeping
         std::thread thread;
         int id; // thread identifier
 
@@ -55,7 +56,6 @@ class scheduler {
 
         void initialize(scheduler *parentSchedulerInstance) {
             run = true;
-            workToDo = false;
             parentScheduler = parentSchedulerInstance;
             thread = std::thread(std::bind(workerThread, std::ref(*this)));
         }
@@ -63,19 +63,15 @@ class scheduler {
         static void workerThread(worker &context) {
             while (context.run) {
                 // when there is nothing to do - thread will wait...
-                while (!context.workToDo && context.run) {
-                    context.notifier.wait();
-                }
+                T_WORK work = context.notify.wait();
 
-                // ... otherwise just run task and mark worker thread as free
-                if (context.workToDo) {
-                    context.work(); // work must be done first - task scheduling is lightweight
-                    context.workToDo = false;
+                // ... util there is some task to do
+                // just run task and mark worker thread as free
+                work(); // work must be done first - task scheduling is lightweight
 
-                    // move tip position and store id in free worker list slot
-                    int ind = ++context.parentScheduler->tip;
-                    context.parentScheduler->freeWorkers[ind - 1] = context.id;
-                }
+                // update state
+                context.parentScheduler->freeWorkersCount++;
+                context.parentScheduler->workerRunning[context.id] = false;
             }
         }
     };
@@ -83,9 +79,10 @@ class scheduler {
     // how many worker threads we have
     size_t threadsCount;
 
-    // free workers list, tip is pointing to free worker
-    std::atomic<int> *freeWorkers;
-    std::atomic<int> tip;
+    // worker thread status + sync
+    std::atomic<bool> *workerRunning;
+    std::atomic<int> freeWorkersCount;
+    std::mutex workerStateMutex;
 
     // list of workers
     worker *workers;
@@ -95,13 +92,13 @@ public:
     explicit scheduler(size_t maxThreads) {
         threadsCount = maxThreads;
 
-        freeWorkers = new std::atomic<int>[maxThreads];
-        tip = maxThreads;
+        workerRunning = new std::atomic<bool>[maxThreads];
+        freeWorkersCount = maxThreads;
 
         workers = new worker[maxThreads];
 
         for (size_t i = 0; i < maxThreads; ++i) {
-            freeWorkers[i] = i;
+            workerRunning[i] = false;
             workers[i].id = i;
             workers[i].initialize(this);
         }
@@ -110,43 +107,46 @@ public:
     }
 
     void schedule(std::function<void()> work) {
-        // if tip is > 0 it means that there could be free worker thread to complete the task
-        if (tip > 0) {
-            // acquire tip index and free worker id
-            int freeWorkerIndex = --tip;
+        // if count is > 0 it means that there could be free worker thread to complete the task
+        if (freeWorkersCount > 0) {
+            // SLOW PATH
+            // find free worker
+            int worker = -1;
+            {
+                std::lock_guard<std::mutex> l(workerStateMutex);
 
-            // we need to check if tip is really >= 0 because multiple threads could
-            // enter this if (tip > 0) at the same time and every each of them will
-            // think that tip is correct and decrementing --tip could lead to freeWorkerIndex
-            // to be negative
-            if (freeWorkerIndex >= 0) {
-                int freeWorkerId = freeWorkers[freeWorkerIndex];
-
-                // it may happen that thread is not ready yet, it does not matter
-                // we go wait free
-                if (freeWorkerId != -1) {
-                    // but if this thread is free -> acquire it and send work to do
-                    workers[freeWorkerId].work = work;
-                    workers[freeWorkerId].workToDo = true;
-                    workers[freeWorkerId].notifier.notify();
-                    freeWorkers[freeWorkerIndex] = -1;
-                    return;
+                // first one that is available
+                for (size_t i = 0; i < threadsCount; ++i) {
+                    if (!workerRunning[i]) {
+                        worker = i;
+                        workerRunning[i] = true;
+                        freeWorkersCount--;
+                        break;
+                    }
                 }
+            }
+
+            // run task on worker thread (if found one)
+            if (worker >= 0) {
+                workers[worker].notify.notify(work);
+                return;
             }
         }
 
+        // FAST PATH
         // there are no free worker threads -> run task on caller thread
-        // this allows us to utilize main thread too (I do not want a *special* threads
-        // like render thread, audio thread etc.)
+        // this allows us to utilize calling thread too (blocking scheduler)
         work();
     }
 
     void shutdown() {
         for (size_t i = 0; i < threadsCount; ++i) {
             workers[i].run = false;
-            workers[i].notifier.notify();
+            workers[i].notify.notify([](){});
             workers[i].thread.join();
         }
+
+        delete [] workerRunning;
     }
 };
 
