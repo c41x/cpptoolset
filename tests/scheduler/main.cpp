@@ -36,7 +36,7 @@ string *taskTxt;
 std::vector<int> results;
 size_t taskSize;
 
-scheduler sc(8);
+scheduler<std::function<void()>> sc(8);
 
 void scheduleNextTask() {
     size_t i = taskI.fetch_add(taskSize);
