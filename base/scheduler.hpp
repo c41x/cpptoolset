@@ -88,7 +88,7 @@ template <typename T_WORK> class scheduler {
 
 public:
 
-    explicit scheduler(size_t maxThreads) {
+    void initialize(size_t maxThreads) {
         threadsCount = maxThreads;
 
         workerRunning = new std::atomic<bool>[maxThreads];
@@ -106,6 +106,15 @@ public:
     }
 
     void schedule(T_WORK work) {
+        if (!trySchedule(work)) {
+            // FAST PATH
+            // there are no free worker threads -> run task on caller thread
+            // this allows us to utilize calling thread too (blocking scheduler)
+            work();
+        }
+    }
+
+    bool trySchedule(T_WORK work) {
         // if count is > 0 it means that there could be free worker thread to complete the task
         if (freeWorkersCount > 0) {
             // SLOW PATH
@@ -127,20 +136,17 @@ public:
             // run task on worker thread (if found one)
             if (worker >= 0) {
                 workers[worker].notify.notify(work);
-                return;
+                return true;
             }
         }
 
-        // FAST PATH
-        // there are no free worker threads -> run task on caller thread
-        // this allows us to utilize calling thread too (blocking scheduler)
-        work();
+        return false;
     }
 
     void shutdown() {
         for (size_t i = 0; i < threadsCount; ++i) {
             workers[i].run = false;
-            workers[i].notify.notify([](){});
+            workers[i].notify.notify(T_WORK::empty(this));
             workers[i].thread.join();
         }
 
