@@ -47,6 +47,7 @@ public:
     operator string() const { return string(begin, end); }
     inline bool operator==(const stringRange &s) const;
     inline bool operator==(const string &s) const;
+    // TODO: operator == const char*
     bool operator!=(const stringRange &s) const { return !(*this == s); }
     bool operator!=(const string &s) const { return !(*this == s); }
 };

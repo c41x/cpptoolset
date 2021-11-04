@@ -35,6 +35,7 @@
 #include <memory>
 #include <numeric>
 #include <cstdint>
+#include <cstddef>
 
 #include "common.hpp"
 

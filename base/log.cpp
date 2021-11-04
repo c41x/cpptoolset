@@ -41,7 +41,7 @@ void signalCallback(int signal) {
         size_t s = backtrace(a, 10);
         char **p = backtrace_symbols(a, s);
         for (size_t i = 0; i < s; ++i) {
-            std::cerr << p[i] << std::endl;
+            //std::cerr << p[i] << std::endl; TODO: liner errors
             v_file << p[i] << std::endl;
         }
         free(p);

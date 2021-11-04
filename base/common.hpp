@@ -31,22 +31,22 @@
 
 // detect compiler
 #if defined(_MSC_VER) // visual c++
-    #define GE_COMPILER_VISUAL
+    #define GE_COMPILER_VISUAL 1
     #define GE_COMPILER_VERSION _MSC_VER
     #define GE_SCOMPILER_VERSION _GE_QUOTE(_MSC_VER)
     #define GE_SCOMPILER "VisualStudio " _GE_QUOTE(GE_COMPILER_VERSION)
 #elif defined(__BORLANDC__) // borland c++
-    #define GE_COMPILER_BORLAND
+    #define GE_COMPILER_BORLAND 1
     #define GE_COMPILER_VERSION __BCPLUSPLUS__
     #define GE_SCOMPILER_VERSION _GE_QUOTE(__BCPLUSPLUS__)
     #define GE_SCOMPILER "BorlandC++ " _GE_QUOTE(GE_COMPILER_VERSION)
 #elif defined(__clang__)
-    #define GE_COMPILER_CLANG
+    #define GE_COMPILER_CLANG 1
     #define GE_COMPILER_VERSION (((__clang_major__) * 100) + (__clang_minor__ * 10) + __clang_patchlevel__)
     #define GE_SCOMPILER_VERSION _GE_QUOTE(__clang_major__) "." _GE_QUOTE(__clang_minor__) "." _GE_QUOTE(__clang_patchlevel__)
     #define GE_SCOMPILER "CLANG " _GE_QUOTE(GE_COMPILER_VERSION)
 #elif defined(__GNUC__) // gcc
-    #define GE_COMPILER_GCC
+    #define GE_COMPILER_GCC 1
     #define GE_COMPILER_VERSION (((__GNUC__) * 100) + (__GNUC_MINOR__ * 10) + __GNUC_PATCHLEVEL__)
     #define GE_SCOMPILER_VERSION _GE_QUOTE(__GNUC__) "." _GE_QUOTE(__GNUC_MINOR__) "." _GE_QUOTE(__GNUC_PATCHLEVEL__)
     #define GE_SCOMPILER "GCC " GE_SCOMPILER_VERSION
@@ -56,22 +56,22 @@
 
 // detect operating system
 #if defined(__WIN32__)||defined(_WIN32)
-    #define GE_PLATFORM_WINDOWS
+    #define GE_PLATFORM_WINDOWS 1
     #define GE_PLATFORM "Windows"
 #elif defined(__APPLE__)||defined(__APPLE_CC__)
-    #define GE_PLATFORM_APPLE
+    #define GE_PLATFORM_APPLE 1
     #define GE_PLATFORM "Apple"
 #else
-    #define GE_PLATFORM_LINUX
+    #define GE_PLATFORM_LINUX 1
     #define GE_PLATFORM "Linux"
 #endif
 
 // detect architecture (64 bit or 32 bit)
 #if defined(__x86_64__)||defined(d_M_X64)||defined(__powerpc64__)||defined( __alpha__)||defined(__ia64__)||defined(__s390__)||defined(__s390x__)
-    #define GE_ARCHITECTURE_64
+    #define GE_ARCHITECTURE_64 1
     #define GE_ARCHITECTURE "64bit"
 #else
-    #define GE_ARCHITECTURE_32
+    #define GE_ARCHITECTURE_32 1
     #define GE_ARCHITECTURE "32bit"
 #endif
 
@@ -177,7 +177,7 @@ typedef uint64_t uint64;
 
 // assert
 #ifdef GE_DEBUG
-#define gassert(condition, message) if(!(condition)) { const granite::base::string e = granite::base::string("assertion failed(" #condition ") ") + GE_LOG_PREFIX_STRING + message; std::cerr << e << std::endl; logError(e); toggleBreakpoint; } else
+#define gassert(condition, message) if(!(condition)) { const granite::base::string e = granite::base::string("assertion failed(" #condition ") ") + GE_LOG_PREFIX_STRING + message; /* TODO: cerr liner errors std::cerr << e << std::endl; */ logError(e); toggleBreakpoint; } else
 #define gassertl(condition, message) gassert(condition, message); if (!(condition)) logError(message);
 #else
 #define gassert(condition, message)

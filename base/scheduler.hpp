@@ -152,6 +152,10 @@ public:
 
         delete [] workerRunning;
     }
+
+    size_t getThreadCount() const {
+        return threadsCount;
+    }
 };
 
 }}
