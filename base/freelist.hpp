@@ -11,40 +11,46 @@
 
 #pragma once
 #include "includes.hpp"
+#include <atomic>
 
 namespace granite { namespace base {
 
 // fixed size allocator
 template <typename T, size_t SIZE> struct free_allocator {
-    std::array<T, SIZE> mem;
-    T *free;
+    union node {
+        T data;
+        node *next;
+    };
+
+    std::array<node, SIZE> mem;
+    node *free;
 
     free_allocator() {
-        static_assert(sizeof(T*) <= sizeof(T), "FreeList is not working for such small elements");
         clear();
     }
 
     void clear() {
-        T *p = mem.data();
+        node *p = mem.data();
         free = p;
 
         for (int i = 0; i < SIZE - 1; ++i) {
-            *((T**)p) = p + 1;
+            p->next = p + 1;
             ++p;
         }
 
-        *((T**)p) = nullptr;
+        p->next = nullptr;
     }
 
     T *add() {
-        T *recoveredItem = free;
-        free = *((T**)free);
-        return recoveredItem;
+        node *recoveredItem = free;
+        free = free->next;
+        return &recoveredItem->data;
     }
 
     void remove(T *addr) {
-        *((T**)addr) = free;
-        free = addr;
+        node *removed_node = (node*)addr;
+        removed_node->next = free;
+        free = removed_node;
     }
 
     template <typename... ARGS> T *construct(ARGS... args) {
@@ -55,30 +61,107 @@ template <typename T, size_t SIZE> struct free_allocator {
         addr->~T();
         remove(addr);
     }
-
-    bool full() const { return free == nullptr; }
 };
 
-template <typename T, size_t PAGE_SIZE> struct paged_free_allocator {
-    std::list<std::array<T, PAGE_SIZE>> pages;
-    T *free;
+// lock free multiple producer (freeing memory), single consumer
+// (allocating memory) free list allocator. all functions except
+// ones with _ts prefix are not thread safe
+template <typename T, size_t SIZE> struct free_allocator_mpsc {
+    union node {
+        T data;
+        node *next;
+    };
 
-    paged_free_allocator() : free(nullptr) {
-        static_assert(sizeof(T*) <= sizeof(T), "FreeList is not working for such small elements");
+    std::array<node, SIZE> mem;
+    node *free;
+    std::atomic<node*> bin; // separate linked list that is used for freeing memory
+
+    free_allocator_mpsc() {
+        bin = nullptr;
+        clear();
     }
 
-    void add_page() {
-        pages.push_back(std::array<T, PAGE_SIZE>());
-
-        T *p = pages.back().data();
+    void clear() {
+        node *p = mem.data();
         free = p;
 
-        for (int i = 0; i < PAGE_SIZE - 1; ++i) {
-            *((T**)p) = p + 1;
+        for (int i = 0; i < SIZE - 1; ++i) {
+            p->next = p + 1;
             ++p;
         }
 
-        *((T**)p) = nullptr;
+        p->next = nullptr;
+    }
+
+    T *add() {
+        if (free == nullptr) {
+            // there is no memory left in free list
+            // we just exchange free list for disposed list
+            // into local one
+            free = bin.exchange(nullptr, std::memory_order_acquire);
+        }
+
+        node *recoveredItem = free;
+        free = free->next;
+        return &recoveredItem->data;
+    }
+
+    void remove(T *addr) {
+        node *removed_node = (node*)addr;
+        removed_node->next = free;
+        free = removed_node;
+    }
+
+    void remove_ts(T *addr) {
+        node *removed_node = (node*)addr;
+
+        // removed node now points to bin head
+        // this is to avoid looping in while loop below
+        // if we don't do that this loop always fails on first
+        // try, entering slow path
+        removed_node->next = bin.load(std::memory_order_relaxed);
+
+        // 1) checks bin == removed_node->next
+        // 2) if false -> removed_node->next = bin
+        // 3) if true -> bin = removed_node
+        while (bin.compare_exchange_weak(removed_node->next, removed_node,
+                                         std::memory_order_release,
+                                         std::memory_order_relaxed));
+    }
+
+    template <typename... ARGS> T *construct(ARGS... args) {
+        return new (add()) T(args...);
+    }
+
+    void destruct(T *addr) {
+        addr->~T();
+        remove(addr);
+    }
+};
+
+template <typename T, size_t PAGE_SIZE> struct paged_free_allocator {
+    union node {
+        T data;
+        node *next;
+    };
+
+    std::list<std::array<node, PAGE_SIZE>> pages;
+    node *free;
+
+    paged_free_allocator() : free(nullptr) {}
+
+    void add_page() {
+        pages.push_back(std::array<node, PAGE_SIZE>());
+
+        node *p = pages.back().data();
+        free = p;
+
+        for (size_t i = 0; i < PAGE_SIZE - 1; ++i) {
+            p->next = p + 1;
+            ++p;
+        }
+
+        p->next = nullptr;
     }
 
     T *add() {
@@ -86,14 +169,15 @@ template <typename T, size_t PAGE_SIZE> struct paged_free_allocator {
             add_page();
         }
 
-        T *recoveredItem = free;
-        free = *((T**)free);
-        return recoveredItem;
+        node *recoveredItem = free;
+        free = free->next;
+        return &recoveredItem->data;
     }
 
     void remove(T *addr) {
-        *((T**)addr) = free;
-        free = addr;
+        node *removed_node = (node*)addr;
+        removed_node->next = free;
+        free = removed_node;
     }
 
     template <typename... ARGS> T *construct(ARGS... args) {
@@ -104,11 +188,84 @@ template <typename T, size_t PAGE_SIZE> struct paged_free_allocator {
         addr->~T();
         remove(addr);
     }
-
-    bool full() const { return free == nullptr; }
 };
 
+template <typename T, size_t PAGE_SIZE> struct paged_free_allocator_mpsc {
+    union node {
+        T data;
+        node *next;
+    };
+
+    std::list<std::array<node, PAGE_SIZE>> pages;
+    node *free;
+    std::atomic<node*> bin; // separate linked list that is used for freeing memory
+
+    paged_free_allocator_mpsc() : free(nullptr), bin(nullptr) {}
+
+    void add_page() {
+        pages.push_back(std::array<node, PAGE_SIZE>());
+
+        node *p = pages.back().data();
+        free = p;
+
+        for (size_t i = 0; i < PAGE_SIZE - 1; ++i) {
+            p->next = p + 1;
+            ++p;
+        }
+
+        p->next = nullptr;
+    }
+
+    T *add() {
+        if (free == nullptr) {
+            // there is no memory left in free list
+            // we just exchange free list for disposed list
+            // into local one
+            free = bin.exchange(nullptr, std::memory_order_acquire);
+        }
+
+        if (free == nullptr) {
+            // if there is still no memory, it allocates new page
+            add_page();
+        }
+
+        node *recoveredItem = free;
+        free = free->next;
+        return &recoveredItem->data;
+    }
+
+    void remove(T *addr) {
+        node *removed_node = (node*)addr;
+        removed_node->next = free;
+        free = removed_node;
+    }
+
+    void remove_ts(T *addr) {
+        node *removed_node = (node*)addr;
+
+        // removed node now points to bin head
+        // this is to avoid looping in while loop below
+        // if we don't do that this loop always fails on first
+        // try, entering slow path
+        removed_node->next = bin.load(std::memory_order_relaxed);
+
+        // 1) checks bin == removed_node->next
+        // 2) if false -> removed_node->next = bin
+        // 3) if true -> bin = removed_node
+        while (bin.compare_exchange_weak(removed_node->next, removed_node,
+                                         std::memory_order_release,
+                                         std::memory_order_relaxed));
+    }
+
+    template <typename... ARGS> T *construct(ARGS... args) {
+        return new (add()) T(args...);
+    }
+
+    void destruct(T *addr) {
+        addr->~T();
+        remove(addr);
+    }
+};
 }}
 
-// TODO: lock-free versions (make T* atomic + correct acq/rel)
 //~

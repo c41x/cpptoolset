@@ -1,12 +1,12 @@
 # pull first
-git pull origin master
-git pull git master
+#git pull origin master
+#git pull git master
 
 # push to repositories
 git push origin master
 git push git master
 cd ../engine
-git pull origin master
+#git pull origin master
 git push origin master
 
 # generate statistics (gitstats required)
