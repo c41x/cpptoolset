@@ -149,9 +149,9 @@ template <typename T, size_t PAGE_SIZE> struct paged_free_allocator {
     node *free;
 
     paged_free_allocator() : free(nullptr) {}
-
+    
     void add_page() {
-        pages.push_back(std::array<node, PAGE_SIZE>());
+        pages.emplace_back();
 
         node *p = pages.back().data();
         free = p;
@@ -203,7 +203,7 @@ template <typename T, size_t PAGE_SIZE> struct paged_free_allocator_mpsc {
     paged_free_allocator_mpsc() : free(nullptr), bin(nullptr) {}
 
     void add_page() {
-        pages.push_back(std::array<node, PAGE_SIZE>());
+        pages.emplace_back();
 
         node *p = pages.back().data();
         free = p;
