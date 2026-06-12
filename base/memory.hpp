@@ -11,6 +11,7 @@
 
 #pragma once
 #include "includes.hpp"
+#include "alignment.hpp"
 
 // TODO: make sure that poke and templated reads are aligned (uint32_t must have alignment of 4 to not crash on arm)
 void *memoryOffset(void *memory, uint32_t offset) {

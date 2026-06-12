@@ -30,6 +30,7 @@
 #include "scheduler.hpp"
 #include "profiler.hpp"
 #include "freelist.hpp"
-//#include "memory.hpp"
+#include "memory.hpp"
+#include "alignment.hpp"
 
 //~
