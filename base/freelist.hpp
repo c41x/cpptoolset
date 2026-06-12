@@ -149,7 +149,7 @@ template <typename T, size_t PAGE_SIZE> struct paged_free_allocator {
     node *free;
 
     paged_free_allocator() : free(nullptr) {}
-    
+
     void add_page() {
         pages.emplace_back();
 
@@ -190,6 +190,8 @@ template <typename T, size_t PAGE_SIZE> struct paged_free_allocator {
     }
 };
 
+// thread safe removing
+// no-thread safe adding
 template <typename T, size_t PAGE_SIZE> struct paged_free_allocator_mpsc {
     union node {
         T data;
