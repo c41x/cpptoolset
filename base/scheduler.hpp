@@ -146,7 +146,7 @@ public:
     void shutdown() {
         for (size_t i = 0; i < threadsCount; ++i) {
             workers[i].run = false;
-            workers[i].notify.notify(T_WORK::empty(this));
+            workers[i].notify.notify(T_WORK::empty());
             workers[i].thread.join();
         }
 
