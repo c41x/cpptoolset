@@ -32,5 +32,6 @@
 #include "freelist.hpp"
 #include "memory.hpp"
 #include "alignment.hpp"
+#include "queue.hpp"
 
 //~
