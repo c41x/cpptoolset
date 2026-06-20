@@ -11,8 +11,10 @@
 
 #pragma once
 #include "includes.hpp"
+#include <atomic>
 
 constexpr uint64_t maximum_alignment = alignof(std::max_align_t);
+constexpr size_t cacheline_size = 64; // this produces warnings in clang and gcc: std::hardware_destructive_interference_size;
 
 // required alignment for atomic operations. I prefer using raw types instead of
 // std::atomic in structs. Just use this with alignas before specifying the type
